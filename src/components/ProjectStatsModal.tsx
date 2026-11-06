@@ -1,0 +1,604 @@
+import React, { useState, useRef } from 'react';
+import {
+  X,
+  Clock,
+  Calendar,
+  TrendingUp,
+  Scissors,
+  Check,
+  BarChart3,
+  Download,
+  Share2,
+  FileSpreadsheet,
+  FileText,
+  Shield,
+  Flame,
+  Award,
+} from 'lucide-react';
+import {
+  TaskItem,
+  TimeSession,
+  HabitDailyLog,
+  calculatePersistenceDensity,
+  formatDuration,
+  trimSessionDuration,
+  generateStreakMatrix,
+  generateCSVExport,
+  generateMarkdownExport,
+  MatrixDayStatus,
+} from '../utils/engine';
+
+interface ProjectStatsModalProps {
+  task: TaskItem;
+  sessions: TimeSession[];
+  logs?: HabitDailyLog[];
+  userEmail?: string | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onTrimLatestSession?: (taskId: string, trimMinutes: number) => void;
+  onCompleteSprintSession?: (taskId: string) => void;
+}
+
+export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
+  task,
+  sessions,
+  logs = [],
+  userEmail,
+  isOpen,
+  onClose,
+  onTrimLatestSession,
+  onCompleteSprintSession,
+}) => {
+  const [trimMinutes, setTrimMinutes] = useState(15);
+  const [trimSuccessMessage, setTrimSuccessMessage] = useState<string | null>(null);
+  const [shareCardGenerating, setShareCardGenerating] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  if (!isOpen) return null;
+
+  // Filter sessions and logs for this task
+  const taskSessions = sessions.filter((s) => s.taskId === task.id);
+  const taskLogs = logs.filter((l) => l.taskId === task.id);
+
+  const totalSessionMs = taskSessions.reduce((acc, s) => acc + s.durationMs, 0);
+  const totalLogMs = taskLogs.reduce((acc, l) => acc + (l.actualDurationMs || 0), 0);
+  const totalDurationMs = task.mode === 'project'
+    ? totalSessionMs + task.accumulatedMs
+    : totalLogMs + task.accumulatedMs;
+
+  // Calculate distinct active days
+  const activeDaysSet = new Set(
+    task.mode === 'project'
+      ? taskSessions.map((s) => s.logicalDate)
+      : taskLogs.filter((l) => l.completed).map((l) => l.logicalDate)
+  );
+  const activeDaysCount = activeDaysSet.size;
+
+  // Calculate history days since task creation
+  const now = Date.now();
+  const DAY_MS = 24 * 3600 * 1000;
+  const historyDays = Math.max(1, Math.ceil((now - task.historyStartTimestamp) / DAY_MS));
+  const persistenceDensity = calculatePersistenceDensity(activeDaysCount, historyDays);
+
+  const avgMinutesPerActiveDay = activeDaysCount > 0
+    ? Math.round(totalDurationMs / activeDaysCount / 60000)
+    : 0;
+
+  // Group durations by last 14 days for Project bar chart
+  const last14Days: { dateStr: string; label: string; durationMinutes: number }[] = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now - i * DAY_MS);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dayName = i === 0 ? 'Nay' : `${d.getDate()}/${d.getMonth() + 1}`;
+    const minutes = Math.round(
+      taskSessions
+        .filter((s) => s.logicalDate === dateStr)
+        .reduce((sum, s) => sum + s.durationMs, 0) / 60000
+    );
+    last14Days.push({ dateStr, label: dayName, durationMinutes: minutes });
+  }
+
+  const maxMinutesIn14Days = Math.max(...last14Days.map((d) => d.durationMinutes));
+
+  // Habit Streak Matrix
+  const targetMilestone = task.targetMilestoneDays || 30;
+  const streakMatrix = generateStreakMatrix(targetMilestone, task.currentStreak, logs, task.id);
+
+  // Trim Session calculation for project
+  const latestSession = taskSessions.length > 0 ? taskSessions[taskSessions.length - 1] : null;
+  const targetToTrimMs = task.accumulatedMs > 0 ? task.accumulatedMs : latestSession ? latestSession.durationMs : 0;
+  const trimmedMs = trimSessionDuration(targetToTrimMs, trimMinutes);
+
+  const handleApplyTrim = () => {
+    if (onTrimLatestSession) {
+      onTrimLatestSession(task.id, trimMinutes);
+      setTrimSuccessMessage(`Đã cắt gọt ${trimMinutes} phút thành công!`);
+      setTimeout(() => setTrimSuccessMessage(null), 3000);
+    }
+  };
+
+  // Export CSV
+  const handleExportCSV = () => {
+    const csvContent = generateCSVExport(task, sessions, logs);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ben-bi-${task.id}-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export Markdown
+  const handleExportMarkdown = () => {
+    const mdContent = generateMarkdownExport(task, sessions, logs);
+    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ben-bi-${task.id}-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Generate 1200x630 HTML5 Canvas Share Card
+  const handleGenerateShareCard = () => {
+    setShareCardGenerating(true);
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 630;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setShareCardGenerating(false);
+      return;
+    }
+
+    // 1. Background (White / Pale Slate 65%)
+    ctx.fillStyle = '#F4F7FA';
+    ctx.fillRect(0, 0, 1200, 630);
+
+    // Decorative Deep Jean Blue Banner (25%)
+    ctx.fillStyle = '#1E3A5F';
+    ctx.fillRect(0, 0, 1200, 140);
+
+    // Orange Accent Line (10%)
+    ctx.fillStyle = '#FF6B00';
+    ctx.fillRect(0, 134, 1200, 6);
+
+    // Header Branding
+    ctx.font = 'bold 36px sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText('BỀN BỈ TỚI CÙNG', 60, 65);
+
+    ctx.font = '20px sans-serif';
+    ctx.fillStyle = '#E8F0FE';
+    ctx.fillText('Hành trình kỷ luật không ma sát • Persistence To The End', 60, 102);
+
+    // User Tag
+    if (userEmail) {
+      ctx.font = '18px sans-serif';
+      ctx.fillStyle = '#FCC934';
+      ctx.textAlign = 'right';
+      ctx.fillText(userEmail, 1140, 85);
+      ctx.textAlign = 'left';
+    }
+
+    // Main Card Box
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.roundRect(60, 180, 1080, 390, 24);
+    ctx.fill();
+
+    // Box border
+    ctx.strokeStyle = '#E2E8F0';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Task Name & Mode Badge
+    ctx.font = 'bold 42px sans-serif';
+    ctx.fillStyle = '#1E3A5F';
+    ctx.fillText(task.name, 100, 250);
+
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillStyle = task.mode === 'habit' ? '#FF6B00' : '#3B6998';
+    ctx.fillText(
+      task.mode === 'habit'
+        ? `🔥 THÓI QUEN KỶ LUẬT (${targetMilestone} NGÀY)`
+        : '⏱️ DỰ ÁN TÍCH LŨY',
+      100,
+      290
+    );
+
+    // Stats Grid
+    // Col 1: Streak / Total Time
+    ctx.fillStyle = '#FFF3E0';
+    ctx.beginPath();
+    ctx.roundRect(100, 330, 280, 140, 16);
+    ctx.fill();
+
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#B45309';
+    ctx.fillText(task.mode === 'habit' ? 'CHUỖI HIỆN TẠI' : 'TỔNG TẬP TRUNG', 130, 365);
+
+    ctx.font = 'bold 44px sans-serif';
+    ctx.fillStyle = '#FF6B00';
+    ctx.fillText(
+      task.mode === 'habit' ? `🔥 ${task.currentStreak} ngày` : formatDuration(totalDurationMs, true),
+      130,
+      430
+    );
+
+    // Col 2: Persistence Density
+    ctx.fillStyle = '#E8F0FE';
+    ctx.beginPath();
+    ctx.roundRect(410, 330, 280, 140, 16);
+    ctx.fill();
+
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#1E3A5F';
+    ctx.fillText('MẬT ĐỘ BỀN BỈ', 440, 365);
+
+    ctx.font = 'bold 44px sans-serif';
+    ctx.fillStyle = '#1E3A5F';
+    ctx.fillText(`${persistenceDensity}%`, 440, 430);
+
+    // Col 3: Shields or Active Days
+    ctx.fillStyle = '#F4F7FA';
+    ctx.beginPath();
+    ctx.roundRect(720, 330, 380, 140, 16);
+    ctx.fill();
+
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText(task.mode === 'habit' ? 'KHIÊN BỀN BỈ TÍCH TRỮ' : 'SỐ NGÀY THỰC HIỆN', 750, 365);
+
+    ctx.font = 'bold 44px sans-serif';
+    ctx.fillStyle = '#1E3A5F';
+    ctx.fillText(
+      task.mode === 'habit' ? `🛡️ ${task.shields} khiên` : `${activeDaysCount} / ${historyDays} ngày`,
+      750,
+      430
+    );
+
+    // Footer quote
+    ctx.font = 'italic 18px sans-serif';
+    ctx.fillStyle = '#64748B';
+    ctx.fillText(
+      '“Chiến thắng không thuộc về người thông minh nhất, mà thuộc về người bền bỉ tới cùng.”',
+      100,
+      525
+    );
+
+    // Watermark URL
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillStyle = '#3B6998';
+    ctx.fillText('app.benbi.ai', 1100, 525);
+    ctx.textAlign = 'left';
+
+    // Download PNG
+    const dataUrl = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `vinh-danh-ben-bi-${task.id}.png`;
+    a.click();
+    setShareCardGenerating(false);
+  };
+
+  const getMatrixColor = (status: MatrixDayStatus): string => {
+    switch (status) {
+      case 'completed_on_time':
+        return 'bg-[#FF6B00] text-white border-[#FF6B00]';
+      case 'frozen_by_shield':
+        return 'bg-[#FCC934] text-slate-900 border-[#FCC934]';
+      case 'makeup_recovered':
+        return 'bg-[#1E3A5F] text-white border-[#1E3A5F]';
+      case 'missed':
+        return 'bg-[#D93025] text-white border-[#D93025]';
+      case 'upcoming':
+      default:
+        return 'bg-[#E8F0FE] text-slate-500 border-[#D0E1FD]';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col">
+        {/* Header Ribbon */}
+        <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase tracking-wider font-bold bg-[#3B6998] px-2.5 py-0.5 rounded-full text-[#E8F0FE]">
+                {task.mode === 'habit' ? 'Báo cáo Thói quen' : 'Báo cáo Dự án'}
+              </span>
+              <span className="text-xs text-[#E8F0FE]/80">Mục tiêu: {targetMilestone} ngày</span>
+            </div>
+            <h2 className="text-xl font-bold mt-1 text-white flex items-center gap-2">
+              {task.name}
+              {task.mode === 'habit' && (
+                <span className="text-sm font-semibold text-[#FCC934] bg-white/10 px-2 py-0.5 rounded-md">
+                  🔥 {task.currentStreak} ngày
+                </span>
+              )}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-5 sm:p-6 space-y-6">
+          {/* TẦNG 1: Hero Summary Cards (#1E3A5F theme) */}
+          <div className="bg-[#1E3A5F] text-white p-5 rounded-2xl shadow-lg border border-[#3B6998]">
+            <div className="text-xs font-semibold text-[#E8F0FE]/80 uppercase tracking-wider mb-3">
+              Tầng 1 • Tổng quan năng lực kiên trì (Hero Summary)
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+                <div className="flex items-center gap-2 text-[#E8F0FE] text-xs font-medium">
+                  <Clock className="w-4 h-4 text-[#FF6B00]" />
+                  <span>Tổng thời gian tích lũy</span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-white mt-1.5 tabular-nums">
+                  {formatDuration(totalDurationMs, true)}
+                </div>
+                <div className="text-xs text-blue-200 mt-0.5">
+                  {(totalDurationMs / 3600000).toFixed(1)} giờ thực tế
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+                <div className="flex items-center gap-2 text-[#E8F0FE] text-xs font-medium">
+                  <TrendingUp className="w-4 h-4 text-[#FCC934]" />
+                  <span>Mật độ bền bỉ (% Density)</span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-[#FCC934] mt-1.5 tabular-nums">
+                  {persistenceDensity}%
+                </div>
+                <div className="text-xs text-blue-200 mt-0.5">
+                  {activeDaysCount} ngày làm / {historyDays} ngày lịch sử
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+                <div className="flex items-center gap-2 text-[#E8F0FE] text-xs font-medium">
+                  <Calendar className="w-4 h-4 text-[#81C995]" />
+                  <span>Trung bình mỗi ngày làm</span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-white mt-1.5 tabular-nums">
+                  {avgMinutesPerActiveDay} <span className="text-sm font-normal">phút</span>
+                </div>
+                <div className="text-xs text-blue-200 mt-0.5">Định mức: {Math.round(task.targetDurationMs / 60000)} phút</div>
+              </div>
+            </div>
+          </div>
+
+          {/* TẦNG 2: Trực quan hóa dữ liệu (Project Bar Chart or Habit 66-day Matrix) */}
+          <div className="bg-[#F4F7FA] p-5 rounded-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-[#1E3A5F]" />
+                <h3 className="text-sm font-bold text-slate-800">
+                  {task.mode === 'project'
+                    ? 'Tầng 2 • Phân bố thời gian 14 ngày gần nhất (phút)'
+                    : `Tầng 2 • Ma trận chuỗi ${targetMilestone} ngày (UCL habit formation)`}
+                </h3>
+              </div>
+              <span className="text-xs text-slate-500 font-medium">Rollover: 04:00 AM</span>
+            </div>
+
+            {task.mode === 'project' ? (
+              /* Project 14-day Bar Chart */
+              <div className="space-y-2">
+                <div className="flex items-end justify-between gap-1 sm:gap-2 h-44 pt-4 border-b border-slate-300">
+                  {last14Days.map((d, idx) => {
+                    const isMax = d.durationMinutes > 0 && d.durationMinutes === maxMinutesIn14Days;
+                    const heightPercent = maxMinutesIn14Days > 0
+                      ? Math.max(6, Math.min(100, (d.durationMinutes / maxMinutesIn14Days) * 100))
+                      : 6;
+
+                    return (
+                      <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
+                        <span className={`text-xs font-mono font-bold mb-1 transition-opacity ${
+                          isMax ? 'text-[#FF6B00] opacity-100' : 'text-slate-500 opacity-0 group-hover:opacity-100'
+                        }`}>
+                          {d.durationMinutes}m
+                        </span>
+                        <div
+                          className={`w-full max-w-[28px] rounded-t-md transition-all duration-300 ${
+                            isMax
+                              ? 'bg-[#FF6B00] shadow-sm'
+                              : d.durationMinutes > 0
+                              ? 'bg-[#1E3A5F] group-hover:bg-[#3B6998]'
+                              : 'bg-slate-200'
+                          }`}
+                          style={{ height: `${heightPercent}%` }}
+                        />
+                        <span className="text-xs font-semibold text-slate-600 mt-2 truncate w-full text-center">
+                          {d.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 bg-[#FF6B00] rounded-xs inline-block" />
+                    <span>Cam (#FF6B00): Ngày tập trung cao nhất ({maxMinutesIn14Days} phút)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 bg-[#1E3A5F] rounded-xs inline-block" />
+                    <span>Xanh Jean: Ngày có làm việc</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Habit 30/66-day Matrix */
+              <div className="space-y-3">
+                <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5 max-h-56 overflow-y-auto p-1">
+                  {streakMatrix.map((cell) => (
+                    <div
+                      key={cell.dayNumber}
+                      title={`${cell.label}: ${cell.status}`}
+                      className={`h-9 rounded-lg border flex flex-col items-center justify-center text-xs font-bold transition-all shadow-xs ${getMatrixColor(
+                        cell.status
+                      )}`}
+                    >
+                      <span className="text-xs leading-tight">D{cell.dayNumber}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 5-Color Legend */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-xs font-medium text-slate-600">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-[#FF6B00] rounded-xs inline-block shrink-0" />
+                    <span>Hoàn thành đúng giờ</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-[#FCC934] rounded-xs inline-block shrink-0" />
+                    <span>Khiên Bền Bỉ bảo vệ</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-[#1E3A5F] rounded-xs inline-block shrink-0" />
+                    <span>Nhiệm vụ đền bù (x2)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-[#D93025] rounded-xs inline-block shrink-0" />
+                    <span>Bỏ lỡ / Đứt chuỗi</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-[#E8F0FE] border border-[#D0E1FD] rounded-xs inline-block shrink-0" />
+                    <span>Ngày tương lai</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Cắt gọt thời gian thừa nếu quên tắt timer (Cho Dự án) */}
+          {task.mode === 'project' && onTrimLatestSession && (
+            <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-[#FF6B00] text-white">
+                  <Scissors className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                    Cắt gọt thời gian thừa (Trim Session)
+                  </h4>
+                  <p className="text-xs text-slate-600">
+                    Nếu bạn để quên đồng hồ chạy qua giờ, hãy kéo thanh trượt để cắt bớt thời gian thừa.
+                  </p>
+                </div>
+              </div>
+
+              {trimSuccessMessage && (
+                <div className="bg-emerald-100 text-emerald-800 text-xs px-3 py-2 rounded-lg flex items-center gap-1.5 font-medium">
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>{trimSuccessMessage}</span>
+                </div>
+              )}
+
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                  <span>Số phút muốn cắt bớt:</span>
+                  <span className="text-[#FF6B00] font-mono text-sm">{trimMinutes} phút</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="60"
+                  step="1"
+                  value={trimMinutes}
+                  onChange={(e) => setTrimMinutes(Number(e.target.value))}
+                  className="w-full accent-[#FF6B00] cursor-pointer"
+                />
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-amber-200 text-xs flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="text-slate-500">Thời gian sau khi cắt: </span>
+                  <strong className="text-slate-900 font-mono font-bold text-sm">
+                    {formatDuration(trimmedMs)}
+                  </strong>
+                  <span className="text-slate-400 text-xs"> (gốc: {formatDuration(targetToTrimMs)})</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleApplyTrim}
+                  className="bg-[#FF6B00] hover:bg-[#E65100] text-white font-semibold text-xs px-3 py-1.5 rounded-lg shadow-xs transition-colors"
+                >
+                  Xác nhận cắt gọt
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TẦNG 3: Xuất dữ liệu & Bảng vinh danh Share Card */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Download className="w-5 h-5 text-[#FF6B00]" />
+                <h4 className="text-sm font-bold text-slate-800">
+                  Tầng 3 • Xuất dữ liệu & Bảng vinh danh Share Card
+                </h4>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Xuất nhật ký làm việc để lưu trữ cá nhân hoặc tạo ảnh 1200x630 vinh danh chia sẻ mạng xã hội.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors border border-slate-200"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Xuất file CSV (.csv)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportMarkdown}
+                className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors border border-slate-200"
+              >
+                <FileText className="w-4 h-4 text-blue-600" />
+                <span>Xuất Markdown (.md)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGenerateShareCard}
+                disabled={shareCardGenerating}
+                className="py-2.5 px-3 bg-[#FF6B00] hover:bg-[#E05E00] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+              >
+                <Award className="w-4 h-4 text-[#FCC934]" />
+                <span>{shareCardGenerating ? 'Đang tạo...' : '🏆 Tạo Thẻ Vinh Danh (PNG)'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-[#F4F7FA] px-6 py-3.5 border-t border-slate-200 flex justify-between items-center">
+          <span className="text-xs text-slate-500 font-medium">Bền bỉ tới cùng • Chuẩn UCL 66 ngày</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+          >
+            Đóng báo cáo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

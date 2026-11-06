@@ -1,0 +1,6 @@
+{
+  "name": "Bền bỉ tới cùng - Persistence To The End",
+  "description": "Ứng dụng PWA Offline-First tối ưu kỷ luật, đếm giờ độ lệch thời gian thực, quản lý thói quen và dự án với mốc ngày sinh học 04:00.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
