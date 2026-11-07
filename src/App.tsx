@@ -818,6 +818,18 @@ export default function App() {
     [tasks, showToast]
   );
 
+  // --- HÀM MỚI: Xóa Tác Vụ ---
+  const handleDeleteTask = useCallback((taskId: string) => {
+    if (window.confirm('Anh có chắc chắn muốn xóa tác vụ này? Toàn bộ lịch sử sẽ bị xóa vĩnh viễn.')) {
+      soundEngine.playTap(false);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setSessions((prev) => prev.filter((s) => s.taskId !== taskId));
+      setLogs((prev) => prev.filter((l) => l.taskId !== taskId));
+      setStatsModalTaskId(null); // Đóng bảng báo cáo
+      showToast('Đã xóa tác vụ thành công.');
+    }
+  }, [showToast]);
+
   // Streak Break Recoveries
   const handleUseShield = useCallback((taskId: string) => {
     soundEngine.playSoftChime(587.33, 0.3, 0.8);
@@ -1154,7 +1166,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FA] text-slate-800 flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white pb-24">
-      {/* Top Header with 25% Deep Jean Blue (#1E3A5F) & 10% Relentless Orange (#FF6B00) */}
+      {/* Top Header */}
       <Header
         wakeLockActive={wakeLockActive}
         wakeLockRequested={wakeLockRequested}
@@ -1197,57 +1209,8 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-6xl mx-auto w-full px-4 pt-5 sm:pt-7 flex-1">
-        {/* Phase 3 Architecture Status Banner */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#FF6B00] bg-[#FFF3E0] px-2 py-0.5 rounded-md">
-                Giai đoạn 3
-              </span>
-              <span className="text-xs text-[#1E3A5F] font-semibold bg-[#E8F0FE] px-2 py-0.5 rounded-md">
-                Tâm Lý Học Chuỗi 66 Ngày UCL & Báo Cáo 3 Tầng
-              </span>
-              <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-                Media Session API • OpenGraph Share Card
-              </span>
-            </div>
-            <h2 className="text-base sm:text-lg font-bold text-[#1E3A5F]">
-              Đo lường bằng thời gian thực • Tự động hóa phản xạ thần kinh
-            </h2>
-            <p className="text-xs text-slate-600 max-w-2xl">
-              Nâng cấp cột mốc 30 → 66 ngày, bảo vệ chuỗi bằng Khiên Bền Bỉ, truy lĩnh thói quen đêm qua và xuất bản thẻ vinh danh 1200x630px.
-            </p>
-          </div>
-
-          {/* Quick Metrics Strip */}
-          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-between sm:justify-start">
-            <div className="bg-[#F4F7FA] px-3 py-2 rounded-xl border border-slate-200 text-center">
-              <div className="text-xs font-semibold text-slate-500">Hoàn thành</div>
-              <div className="text-base font-black text-[#81C995] font-mono">
-                {completedTodayCount} / {tasks.length}
-              </div>
-            </div>
-            <div className="bg-[#FFF3E0] px-3 py-2 rounded-xl border border-[#FF6B00]/30 text-center">
-              <div className="text-xs font-semibold text-[#FF6B00]">Chuỗi tích cực</div>
-              <div className="text-base font-black text-[#FF6B00] font-mono">
-                {totalActiveStreaks} tác vụ
-              </div>
-            </div>
-            <div className="bg-[#E8F0FE] px-3 py-2 rounded-xl border border-[#3B6998]/30 text-center">
-              <div className="text-xs font-semibold text-[#1E3A5F]">Hàng đợi Mây</div>
-              <div className="text-base font-black text-[#1E3A5F] font-mono flex items-center justify-center gap-1">
-                {isSimulatedOffline ? (
-                  <CloudOff className="w-3.5 h-3.5 text-rose-500" />
-                ) : (
-                  <Cloud className="w-3.5 h-3.5 text-[#81C995]" />
-                )}
-                <span>{pendingSyncCount}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Category Filter Tabs & Task Capacity Counter */}
+        
+        {/* Category Filter Tabs */}
         <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
           <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-x-auto max-w-full">
             <button
@@ -1331,7 +1294,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Right items: Task Limit Badge & Guide Indicator */}
           <div className="flex items-center gap-2.5">
             <div
               className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono border flex items-center gap-1.5 ${
@@ -1339,42 +1301,15 @@ export default function App() {
                   ? 'bg-red-50 text-red-700 border-red-300'
                   : 'bg-[#E8F0FE] text-[#1E3A5F] border-[#3B6998]/30'
               }`}
-              title="Dung lượng tối đa để duy trì sự tập trung sâu sắc"
             >
-              <span>{tasks.length}/24 tác vụ tối đa</span>
+              <span>{tasks.length}/24 tác vụ</span>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setShowInfoBanner((prev) => !prev)}
-              className="flex items-center gap-1 text-xs text-[#3B6998] hover:text-[#1E3A5F] font-semibold cursor-pointer"
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>Tính năng GĐ3</span>
-            </button>
           </div>
         </div>
 
-        {/* Collapsible Info Guide */}
-        {showInfoBanner && (
-          <div className="bg-[#E8F0FE] p-4 rounded-xl border border-[#3B6998]/30 mb-6 text-xs text-[#1E3A5F] space-y-2 animate-fade-in">
-            <h4 className="font-bold text-sm text-[#1E3A5F] flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-[#FF6B00]" />
-              Tính năng nổi bật Giai đoạn 3:
-            </h4>
-            <ul className="list-disc list-inside space-y-1 text-slate-700">
-              <li><strong>Tâm lý học Chuỗi UCL (30 -&gt; 66 ngày):</strong> Nghiên cứu UCL chứng minh 66 ngày để tự động hóa thói quen; tự động mở khóa nâng cấp khi chạm mốc 30 ngày.</li>
-              <li><strong>Báo cáo 3 Tầng & Lưới 66 ngày:</strong> Báo cáo Hero summary, lưới màu 5 trạng thái cho Thói quen hoặc biểu đồ cột ngày cao nhất cho Dự án.</li>
-              <li><strong>Xuất CSV / Markdown & Share Card:</strong> Vẽ trực tiếp canvas 1200x630 vinh danh thành tích để tải ảnh PNG chia sẻ mạng xã hội.</li>
-              <li><strong>Xác nhận Truy lĩnh & Phát hiện Idle:</strong> Cứu chuỗi hôm qua nếu ngủ quên; cảnh báo và cắt gọt nếu để đồng hồ chạy quá 180 phút.</li>
-              <li><strong>Media Session API:</strong> Điều khiển Play / Pause tác vụ ngay từ màn hình khóa điện thoại hoặc Smartwatch.</li>
-            </ul>
-          </div>
-        )}
-
-        {/* SVG Circular Nodes Grid */}
+        {/* --- GRID HIỂN THỊ ĐÃ ĐƯỢC CHỈNH THÀNH 2 CỘT TRÊN ĐIỆN THOẠI --- */}
         {filteredTasks.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
             {filteredTasks.map((task) => (
               <CircularTaskNode
                 key={task.id}
@@ -1398,14 +1333,11 @@ export default function App() {
               <Filter className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-slate-800 text-sm">Chưa có tác vụ nào trong danh mục này</h3>
-            <p className="text-xs text-slate-500 mt-1 mb-4">
-              Nhấn nút Thêm tác vụ để bắt đầu tạo hành trình kỷ luật mới.
-            </p>
             <button
               type="button"
               disabled={tasks.length >= 24}
               onClick={() => setIsAddTaskModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF6B00] hover:bg-[#E65100] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF6B00] hover:bg-[#E65100] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Thêm tác vụ mới</span>
@@ -1414,7 +1346,7 @@ export default function App() {
         )}
       </main>
 
-      {/* 3-Tier Deep Report & Share Card Modal */}
+      {/* 3-Tier Deep Report & Share Card Modal (BỔ SUNG HÀM XÓA VÀO ĐÂY) */}
       {selectedStatsTask && (
         <ProjectStatsModal
           task={selectedStatsTask}
@@ -1425,10 +1357,10 @@ export default function App() {
           onClose={() => setStatsModalTaskId(null)}
           onTrimLatestSession={handleTrimLatestSession}
           onCompleteSprintSession={handleCompleteSprintSession}
+          onDeleteTask={handleDeleteTask}
         />
       )}
 
-      {/* Streak Break Modal (1 missed day vs 2+ missed days) */}
       {selectedBreakStreakTask && (
         <StreakBreakModal
           task={selectedBreakStreakTask}
@@ -1442,7 +1374,6 @@ export default function App() {
         />
       )}
 
-      {/* UCL 66-day Milestone Upgrade Modal */}
       {milestoneTask && (
         <MilestoneUpgradeModal
           task={milestoneTask}
@@ -1452,7 +1383,6 @@ export default function App() {
         />
       )}
 
-      {/* Retroactive Confirmation Modal (Fell asleep last night) */}
       {retroactiveItem && (
         <RetroactiveConfirmModal
           item={retroactiveItem}
@@ -1462,7 +1392,6 @@ export default function App() {
         />
       )}
 
-      {/* Idle Detection & Trim Slider Modal (> 180 min continuous) */}
       {idleDetectionTask && (
         <IdleDetectionModal
           task={idleDetectionTask}
@@ -1473,7 +1402,6 @@ export default function App() {
         />
       )}
 
-      {/* Add Task Modal with 24 Task Limit */}
       <AddTaskModal
         isOpen={isAddTaskModalOpen}
         onClose={() => setIsAddTaskModalOpen(false)}
@@ -1481,7 +1409,6 @@ export default function App() {
         taskCount={tasks.length}
       />
 
-      {/* Authentication & Cloud Sync Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
@@ -1492,7 +1419,6 @@ export default function App() {
         isSyncing={isSyncing}
       />
 
-      {/* PWA Installation Guidance Modal */}
       <PWAInstallGuideModal
         isOpen={isPWAGuideOpen}
         onClose={() => setIsPWAGuideOpen(false)}
@@ -1501,15 +1427,14 @@ export default function App() {
         isIOS={isIOS}
       />
 
-      {/* Dev & Testing Toolbar (Bottom Right) */}
       <DevTestToolbar
         isSimulatedOffline={isSimulatedOffline}
         onToggleSimulatedOffline={() => {
           setIsSimulatedOffline((prev) => !prev);
           showToast(
             !isSimulatedOffline
-              ? 'Đã chuyển sang chế độ Mất mạng (Offline). Các thay đổi sẽ tích luỹ trong hàng đợi sync_status = 1.'
-              : 'Đã khôi phục kết nối mạng (Online). Sẵn sàng đồng bộ lên đám mây.'
+              ? 'Đã chuyển sang chế độ Mất mạng (Offline).'
+              : 'Đã khôi phục kết nối mạng (Online).'
           );
         }}
         pendingSyncCount={pendingSyncCount}
