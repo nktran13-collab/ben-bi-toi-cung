@@ -83,7 +83,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
           {isLimitReached && (
             <div className="bg-red-50 text-red-700 text-xs p-3 rounded-lg border border-red-200 font-medium">
               ⚠️ Đã đạt giới hạn tối đa 24 tác vụ. Bạn không thể tạo thêm tác vụ mới để duy trì sự tập trung tối ưu.
