@@ -14,6 +14,7 @@ import {
   Shield,
   Flame,
   Award,
+  Trash2,
 } from 'lucide-react';
 import {
   TaskItem,
@@ -37,6 +38,7 @@ interface ProjectStatsModalProps {
   onClose: () => void;
   onTrimLatestSession?: (taskId: string, trimMinutes: number) => void;
   onCompleteSprintSession?: (taskId: string) => void;
+  onDeleteTask?: (taskId: string) => void;
 }
 
 export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
@@ -48,6 +50,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   onClose,
   onTrimLatestSession,
   onCompleteSprintSession,
+  onDeleteTask,
 }) => {
   const [trimMinutes, setTrimMinutes] = useState(15);
   const [trimSuccessMessage, setTrimSuccessMessage] = useState<string | null>(null);
@@ -305,7 +308,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
       <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col">
         {/* Header Ribbon */}
-        <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className="bg-[#1E3A5F] text-white p-5 flex flex-wrap gap-3 items-center justify-between sticky top-0 z-10 shadow-sm">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-wider font-bold bg-[#3B6998] px-2.5 py-0.5 rounded-full text-[#E8F0FE]">
@@ -322,13 +325,28 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
               )}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          
+          {/* Top-Right Action Buttons: Delete & Close */}
+          <div className="flex items-center gap-2">
+            {onDeleteTask && (
+              <button
+                type="button"
+                onClick={() => onDeleteTask(task.id)}
+                title="Xóa tác vụ này vĩnh viễn"
+                className="w-9 h-9 rounded-full bg-red-500/20 text-red-300 font-bold hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              title="Đóng bảng báo cáo"
+              className="w-9 h-9 rounded-full bg-[#3B6998] text-white font-bold hover:bg-[#FF6B00] transition-colors flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -389,7 +407,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                     : `Tầng 2 • Ma trận chuỗi ${targetMilestone} ngày (UCL habit formation)`}
                 </h3>
               </div>
-              <span className="text-xs text-slate-500 font-medium">Rollover: 04:00 AM</span>
+              <span className="text-xs text-slate-500 font-medium hidden sm:inline">Rollover: 04:00 AM</span>
             </div>
 
             {task.mode === 'project' ? (
@@ -404,7 +422,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
                     return (
                       <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
-                        <span className={`text-xs font-mono font-bold mb-1 transition-opacity ${
+                        <span className={`text-[10px] sm:text-xs font-mono font-bold mb-1 transition-opacity ${
                           isMax ? 'text-[#FF6B00] opacity-100' : 'text-slate-500 opacity-0 group-hover:opacity-100'
                         }`}>
                           {d.durationMinutes}m
@@ -419,14 +437,14 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                           }`}
                           style={{ height: `${heightPercent}%` }}
                         />
-                        <span className="text-xs font-semibold text-slate-600 mt-2 truncate w-full text-center">
+                        <span className="text-[10px] sm:text-xs font-semibold text-slate-600 mt-2 truncate w-full text-center">
                           {d.label}
                         </span>
                       </div>
                     );
                   })}
                 </div>
-                <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs text-slate-500 pt-1 gap-1">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 bg-[#FF6B00] rounded-xs inline-block" />
                     <span>Cam (#FF6B00): Ngày tập trung cao nhất ({maxMinutesIn14Days} phút)</span>
@@ -440,7 +458,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
             ) : (
               /* Habit 30/66-day Matrix */
               <div className="space-y-3">
-                <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5 max-h-56 overflow-y-auto p-1">
+                <div className="grid grid-cols-5 sm:grid-cols-11 gap-1.5 max-h-[300px] overflow-y-auto p-1">
                   {streakMatrix.map((cell) => (
                     <div
                       key={cell.dayNumber}
@@ -462,11 +480,11 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#FCC934] rounded-xs inline-block shrink-0" />
-                    <span>Khiên Bền Bỉ bảo vệ</span>
+                    <span>Khiên bảo vệ</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#1E3A5F] rounded-xs inline-block shrink-0" />
-                    <span>Nhiệm vụ đền bù (x2)</span>
+                    <span>Đền bù (x2)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#D93025] rounded-xs inline-block shrink-0" />
@@ -492,8 +510,8 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   <h4 className="text-xs sm:text-sm font-bold text-slate-900">
                     Cắt gọt thời gian thừa (Trim Session)
                   </h4>
-                  <p className="text-xs text-slate-600">
-                    Nếu bạn để quên đồng hồ chạy qua giờ, hãy kéo thanh trượt để cắt bớt thời gian thừa.
+                  <p className="text-[10px] sm:text-xs text-slate-600">
+                    Nếu bạn để quên đồng hồ chạy qua giờ, hãy kéo thanh trượt để cắt bớt.
                   </p>
                 </div>
               </div>
@@ -521,20 +539,20 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 />
               </div>
 
-              <div className="bg-white p-3 rounded-lg border border-amber-200 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="bg-white p-3 rounded-lg border border-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
                 <div>
-                  <span className="text-slate-500">Thời gian sau khi cắt: </span>
+                  <span className="text-slate-500">Thời gian sau cắt: </span>
                   <strong className="text-slate-900 font-mono font-bold text-sm">
                     {formatDuration(trimmedMs)}
                   </strong>
-                  <span className="text-slate-400 text-xs"> (gốc: {formatDuration(targetToTrimMs)})</span>
+                  <span className="text-slate-400 text-[10px] sm:text-xs block sm:inline"> (gốc: {formatDuration(targetToTrimMs)})</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleApplyTrim}
-                  className="bg-[#FF6B00] hover:bg-[#E65100] text-white font-semibold text-xs px-3 py-1.5 rounded-lg shadow-xs transition-colors"
+                  className="w-full sm:w-auto bg-[#FF6B00] hover:bg-[#E65100] text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-xs transition-colors text-center"
                 >
-                  Xác nhận cắt gọt
+                  Cắt gọt
                 </button>
               </div>
             </div>
@@ -546,13 +564,13 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
               <div className="flex items-center gap-2">
                 <Download className="w-5 h-5 text-[#FF6B00]" />
                 <h4 className="text-sm font-bold text-slate-800">
-                  Tầng 3 • Xuất dữ liệu & Bảng vinh danh Share Card
+                  Tầng 3 • Xuất dữ liệu & Thẻ Vinh Danh
                 </h4>
               </div>
             </div>
 
-            <p className="text-xs text-slate-600">
-              Xuất nhật ký làm việc để lưu trữ cá nhân hoặc tạo ảnh 1200x630 vinh danh chia sẻ mạng xã hội.
+            <p className="text-[11px] sm:text-xs text-slate-600">
+              Xuất nhật ký làm việc để lưu trữ hoặc tạo ảnh 1200x630 chia sẻ mạng xã hội.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
@@ -581,19 +599,19 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 className="py-2.5 px-3 bg-[#FF6B00] hover:bg-[#E05E00] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
               >
                 <Award className="w-4 h-4 text-[#FCC934]" />
-                <span>{shareCardGenerating ? 'Đang tạo...' : '🏆 Tạo Thẻ Vinh Danh (PNG)'}</span>
+                <span>{shareCardGenerating ? 'Đang tạo...' : '🏆 Tạo Thẻ Vinh Danh'}</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="bg-[#F4F7FA] px-6 py-3.5 border-t border-slate-200 flex justify-between items-center">
-          <span className="text-xs text-slate-500 font-medium">Bền bỉ tới cùng • Chuẩn UCL 66 ngày</span>
+        <div className="bg-[#F4F7FA] px-5 sm:px-6 py-3.5 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <span className="text-[10px] sm:text-xs text-slate-500 font-medium">Bền bỉ tới cùng • Chuẩn UCL 66 ngày</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+            className="w-full sm:w-auto px-6 py-2 sm:py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 bg-slate-100 sm:bg-transparent rounded-lg transition-colors border border-slate-200 sm:border-transparent"
           >
             Đóng báo cáo
           </button>
