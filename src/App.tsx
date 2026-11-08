@@ -48,6 +48,7 @@ import { usePWAInstall } from './utils/usePWAInstall';
 import { notificationService } from './utils/notifications';
 import { realtimeManager, CURRENT_DEVICE_ID } from './utils/realtime';
 import { setupMediaSession } from './utils/mediaSession';
+import { Analytics } from '@vercel/analytics/react';
 
 import { Header } from './components/Header';
 import { CircularTaskNode } from './components/CircularTaskNode';
@@ -1453,6 +1454,8 @@ export default function App() {
         onTestStreakBreak1Day={handleTestStreakBreak1Day}
         onTestStreakBreak2Days={handleTestStreakBreak2Days}
       />
+
+      <Analytics />
     </div>
   );
 }
