@@ -5,14 +5,16 @@ import {
   Mail,
   Shield,
   LogOut,
-  Database,
-  Key,
   Send,
   RefreshCw,
   Download,
   Upload,
   RotateCcw,
   Sparkles,
+  Smartphone,
+  Laptop,
+  CheckCircle2,
+  ArrowRight,
 } from 'lucide-react';
 import { UserAccount, formatClockTime } from '../utils/engine';
 
@@ -22,7 +24,7 @@ interface AuthModalProps {
   account: UserAccount;
   onLoginSuccess: (
     email: string,
-    provider: 'mock_otp' | 'supabase',
+    provider: 'email_sync' | 'mock_otp' | 'supabase',
     supabaseUrl?: string,
     supabaseAnonKey?: string
   ) => void;
@@ -48,57 +50,65 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onResetToCleanStarter,
   onLoadDemoSeed,
 }) => {
-  const [authMode, setAuthMode] = useState<'mock_otp' | 'supabase'>('mock_otp');
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [step, setStep] = useState<'enter_email' | 'enter_otp'>('enter_email');
-  const [supabaseUrl, setSupabaseUrl] = useState('');
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [confirmCleanReset, setConfirmCleanReset] = useState(false);
+  const [isCheckingCloud, setIsCheckingCloud] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes('@')) {
-      setError('Vui lòng nhập địa chỉ Email hợp lệ.');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setError('Vui lòng nhập địa chỉ Email hợp lệ (ví dụ: tenban@gmail.com).');
       return;
     }
+
     setError(null);
-    setStep('enter_otp');
-    setInfo(`Đã gửi mã xác nhận 6 số đến ${email}. (Mã xác thực nhanh: 123456)`);
+    setIsCheckingCloud(true);
+
+    try {
+      // Check if user already exists on cloud
+      const res = await fetch(`/api/sync?email=${encodeURIComponent(cleanEmail)}`);
+      const json = await res.json();
+      if (json.found) {
+        setInfo(`Đã tìm thấy dữ liệu đám mây của ${cleanEmail} (${json.data?.tasks?.length || 0} tác vụ). Nhập mã OTP 123456 để khôi phục ngay.`);
+      } else {
+        setInfo(`Email mới hợp lệ. Nhập mã xác nhận nhanh 123456 để kích hoạt lưu trữ đám mây cho ${cleanEmail}.`);
+      }
+    } catch {
+      setInfo(`Đã gửi mã xác nhận 6 số đến ${cleanEmail}. (Mã xác thực nhanh: 123456)`);
+    } finally {
+      setIsCheckingCloud(false);
+      setStep('enter_otp');
+    }
   };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode.trim() !== '123456') {
-      setError('Mã xác thực không chính xác. Hãy nhập mã: 123456');
+    const cleanEmail = email.trim().toLowerCase();
+    if (otpCode.trim() !== '123456' && otpCode.trim() !== '999999') {
+      setError('Mã xác thực không đúng. Bạn hãy nhập mã nhanh: 123456');
       return;
     }
     setError(null);
-    onLoginSuccess(email.trim(), 'mock_otp');
+    onLoginSuccess(cleanEmail, 'email_sync');
     onClose();
   };
 
-  const handleConnectSupabase = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !email.includes('@')) {
-      setError('Vui lòng nhập Email để liên kết tài khoản.');
+  const handleQuickLoginWithoutOtp = () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setError('Vui lòng nhập địa chỉ Email hợp lệ.');
       return;
     }
-    if (!supabaseUrl.startsWith('https://')) {
-      setError('SUPABASE_URL phải bắt đầu bằng https://');
-      return;
-    }
-    if (!supabaseAnonKey.trim()) {
-      setError('Vui lòng nhập SUPABASE_ANON_KEY.');
-      return;
-    }
-
-    onLoginSuccess(email.trim(), 'supabase', supabaseUrl.trim(), supabaseAnonKey.trim());
+    setError(null);
+    onLoginSuccess(cleanEmail, 'email_sync');
     onClose();
   };
 
@@ -122,21 +132,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col text-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col text-slate-800 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between sticky top-0 z-10">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#3B6998] text-[#FCC934]">
+        <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-[#3B6998] text-[#FCC934] shadow-inner">
               <Cloud className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-white">
-                {account.isAnonymous ? 'Sao Lưu & Đồng Bộ Đám Mây' : 'Tài Khoản & Quản Trị Dữ Liệu'}
+              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                {account.isAnonymous ? 'Đồng Bộ & Lưu Trữ Đám Mây' : 'Hồ Sơ Đám Mây Của Bạn'}
               </h2>
               <p className="text-xs text-[#E8F0FE]/80">
                 {account.isAnonymous
-                  ? 'Bảo vệ chuỗi kỷ luật, xuất file Backup & đồng bộ đa thiết bị'
+                  ? 'Đăng nhập email để chuyển đổi giữa Điện thoại & Máy tính mà không mất dữ liệu'
                   : `Đang liên kết: ${account.email}`}
               </p>
             </div>
@@ -144,7 +154,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors cursor-pointer"
+            aria-label="Đóng"
+            className="p-1.5 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -152,26 +163,209 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Body */}
         <div className="p-5 sm:p-6 space-y-5">
+          {/* Banner: Cross-device persistence highlight */}
+          <div className="bg-gradient-to-r from-blue-50 to-amber-50 p-3.5 rounded-xl border border-blue-200/80 flex items-start gap-3">
+            <div className="flex items-center gap-1 text-[#FF6B00] shrink-0 mt-0.5">
+              <Smartphone className="w-4 h-4" />
+              <ArrowRight className="w-3 h-3 text-slate-400" />
+              <Laptop className="w-4 h-4 text-[#1E3A5F]" />
+            </div>
+            <div className="text-xs text-slate-700 leading-relaxed">
+              <strong className="text-slate-900 block font-semibold mb-0.5">
+                Bảo toàn dữ liệu xuyên suốt đa thiết bị
+              </strong>
+              Chỉ cần đăng nhập đúng email trên điện thoại hoặc máy tính mới, toàn bộ chuỗi streak, khiên và thời gian bấm giờ sẽ tự động khôi phục về máy bạn.
+            </div>
+          </div>
+
+          {/* If already logged in: Profile Card */}
+          {!account.isAnonymous && (
+            <div className="bg-[#F4F7FA] p-4 sm:p-5 rounded-xl border border-slate-200 space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-bold text-base shadow-sm">
+                    {account.email?.[0].toUpperCase() || 'U'}
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-slate-900">{account.email}</div>
+                    <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-emerald-700 font-medium">Đã kết nối Đám mây Vercel Cloud</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onTriggerSyncNow}
+                  disabled={isSyncing}
+                  className="flex items-center gap-1.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-95 text-white px-3 py-2 rounded-xl text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer transition-all"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}</span>
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 border-t border-slate-200 pt-3 flex items-center justify-between">
+                <span>Lần đồng bộ gần nhất:</span>
+                <strong className="font-mono text-slate-800">
+                  {account.lastSyncedAtMs ? formatClockTime(account.lastSyncedAtMs) : 'Vừa xong'}
+                </strong>
+              </div>
+
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLogout();
+                    onClose();
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Đăng xuất tài khoản này</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* If Anonymous: Login Form */}
+          {account.isAnonymous && (
+            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#FF6B00]/10 flex items-center justify-center text-[#FF6B00]">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  Đăng nhập bằng Email của bạn
+                </span>
+              </div>
+
+              {error && (
+                <div className="bg-rose-50 text-rose-700 text-xs p-3 rounded-xl border border-rose-200 flex items-start gap-2">
+                  <X className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+              {info && (
+                <div className="bg-emerald-50 text-emerald-800 text-xs p-3 rounded-xl border border-emerald-200 flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+                  <span>{info}</span>
+                </div>
+              )}
+
+              {step === 'enter_email' ? (
+                <form onSubmit={handleSendOtp} className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Địa chỉ Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="nhap-email-cua-ban@gmail.com"
+                        className="w-full text-xs sm:text-sm pl-9 pr-3 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1.5">
+                      💡 Khi đổi điện thoại hoặc mở tab mới, chỉ cần nhập lại đúng email này là dữ liệu tự nạp lại.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={isCheckingCloud}
+                      className="flex-1 py-3 bg-[#FF6B00] hover:bg-[#E65100] active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                    >
+                      {isCheckingCloud ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Đang kiểm tra đám mây...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          <span>Tiếp tục với Email này</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleQuickLoginWithoutOtp}
+                      disabled={isCheckingCloud}
+                      className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-700 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Vào nhanh</span>
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyOtp} className="space-y-3.5">
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-xs font-bold text-slate-700">
+                        Nhập mã xác thực 6 số
+                      </label>
+                      <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
+                        Mã nhanh: 123456
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      autoFocus
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      placeholder="123456"
+                      className="w-full text-center tracking-widest text-xl font-mono font-bold py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#FF6B00] transition-all"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep('enter_email')}
+                      className="w-1/3 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                    >
+                      Quay lại
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-[#FCC934]" />
+                      <span>Xác thực & Đồng bộ dữ liệu</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
           {/* Backup & Restore JSON Section */}
           <div className="bg-[#F4F7FA] p-4 rounded-xl border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#1E3A5F] uppercase tracking-wider">
-                Sao lưu & Khôi phục File (.JSON)
+                Sao lưu & Khôi phục Tệp (.JSON)
               </span>
               <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
                 An toàn 100%
               </span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Tải toàn bộ tác vụ, chuỗi ngày và lịch sử phiên làm việc về máy dưới dạng file{' '}
-              <code className="font-mono text-[#1E3A5F]">.json</code> để lưu trữ hoặc chuyển sang thiết bị khác.
+              Bạn luôn có thể tải toàn bộ tác vụ, chuỗi ngày và lịch sử về máy dạng tệp{' '}
+              <code className="font-mono text-[#1E3A5F]">.json</code> để lưu trữ độc lập hoặc nạp vào bất kỳ lúc nào.
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               {onExportBackupJSON && (
                 <button
                   type="button"
                   onClick={onExportBackupJSON}
-                  className="py-2 px-3 bg-[#1E3A5F] hover:bg-[#152a45] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  className="py-2.5 px-3 bg-[#1E3A5F] hover:bg-[#152a45] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 >
                   <Download className="w-3.5 h-3.5 text-[#FCC934]" />
                   <span>Tải bản Sao lưu</span>
@@ -189,10 +383,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="py-2.5 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5 text-[#FF6B00]" />
-                    <span>Nhập file JSON</span>
+                    <span>Nhập tệp JSON</span>
                   </button>
                 </>
               )}
@@ -204,10 +398,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-200/80 space-y-2.5">
               <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />
-                <span>Thiết lập Không gian Bền Bỉ của riêng bạn</span>
+                <span>Không gian Bền Bỉ của riêng bạn</span>
               </div>
               <p className="text-xs text-slate-600">
-                Đặt toàn bộ chuỗi về <strong>Ngày 0</strong> để bắt đầu hành trình thực tế, hoặc nạp bộ dữ liệu mẫu 21 ngày để trải nghiệm tính năng.
+                Đặt toàn bộ chuỗi về <strong>Ngày 0</strong> để bắt đầu hành trình thực tế của bạn, hoặc nạp bộ dữ liệu mẫu 21 ngày để trải nghiệm.
               </p>
 
               {!confirmCleanReset ? (
@@ -264,226 +458,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               )}
             </div>
-          )}
-
-          {/* If already logged in: Profile Card */}
-          {!account.isAnonymous && (
-            <div className="bg-[#F4F7FA] p-4 rounded-xl border border-slate-200 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-full bg-[#1E3A5F] text-white flex items-center justify-center font-bold text-sm">
-                    {account.email?.[0].toUpperCase() || 'U'}
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">{account.email}</div>
-                    <div className="text-xs text-slate-500 flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-[#81C995]" />
-                      <span>
-                        {account.provider === 'supabase' ? 'Supabase Realtime' : 'Hồ sơ Đồng bộ Cục bộ'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={onTriggerSyncNow}
-                  disabled={isSyncing}
-                  className="flex items-center gap-1 bg-[#1E3A5F] hover:bg-[#152a45] text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ'}</span>
-                </button>
-              </div>
-
-              <div className="text-xs text-slate-600 border-t border-slate-200 pt-2 flex items-center justify-between">
-                <span>Lần đồng bộ gần nhất:</span>
-                <strong className="font-mono text-slate-800">
-                  {account.lastSyncedAtMs ? formatClockTime(account.lastSyncedAtMs) : 'Chưa có'}
-                </strong>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  onLogout();
-                  onClose();
-                }}
-                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Đăng xuất (Trở về chế độ Ẩn danh)</span>
-              </button>
-            </div>
-          )}
-
-          {/* If Anonymous: Login Form */}
-          {account.isAnonymous && (
-            <>
-              <div className="bg-[#FFF3E0] p-3 rounded-xl border border-[#FF6B00]/30 text-xs text-amber-900 flex items-start gap-2">
-                <Shield className="w-4 h-4 text-[#FF6B00] shrink-0 mt-0.5" />
-                <p>
-                  <strong>Hợp nhất tự động (Auto-Merge):</strong> Toàn bộ chuỗi streak, lịch sử bấm giờ và các tác vụ bạn vừa tạo sẽ tự động được gộp vào hồ sơ Email mà không bị mất!
-                </p>
-              </div>
-
-              <div className="flex rounded-lg p-1 bg-slate-100 border border-slate-200 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('mock_otp');
-                    setError(null);
-                  }}
-                  className={`flex-1 py-1.5 rounded-md transition-all cursor-pointer ${
-                    authMode === 'mock_otp'
-                      ? 'bg-white text-[#1E3A5F] shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Định danh Email (Nhanh)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('supabase');
-                    setError(null);
-                  }}
-                  className={`flex-1 py-1.5 rounded-md transition-all cursor-pointer ${
-                    authMode === 'supabase'
-                      ? 'bg-white text-[#1E3A5F] shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Kết nối Supabase Cloud
-                </button>
-              </div>
-
-              {error && (
-                <div className="bg-rose-50 text-rose-700 text-xs p-2.5 rounded-lg border border-rose-200">
-                  {error}
-                </div>
-              )}
-              {info && (
-                <div className="bg-emerald-50 text-emerald-800 text-xs p-2.5 rounded-lg border border-emerald-200">
-                  {info}
-                </div>
-              )}
-
-              {authMode === 'mock_otp' && (
-                <div>
-                  {step === 'enter_email' ? (
-                    <form onSubmit={handleSendOtp} className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Địa chỉ Email của bạn
-                        </label>
-                        <div className="relative">
-                          <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                          <input
-                            type="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="tenban@gmail.com"
-                            className="w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
-                          />
-                        </div>
-                      </div>
-                      <button
-                        type="submit"
-                        className="w-full py-2.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>Gửi mã xác nhận OTP</span>
-                      </button>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleVerifyOtp} className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Nhập mã xác thực 6 số (Mã mặc định: 123456)
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={6}
-                          required
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value)}
-                          placeholder="123456"
-                          className="w-full text-center tracking-widest text-lg font-mono font-bold py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setStep('enter_email')}
-                          className="w-1/3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-                        >
-                          Quay lại
-                        </button>
-                        <button
-                          type="submit"
-                          className="flex-1 py-2.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
-                        >
-                          Xác thực & Hợp nhất
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-              )}
-
-              {authMode === 'supabase' && (
-                <form onSubmit={handleConnectSupabase} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Email người dùng
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="user@example.com"
-                      className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                      <Database className="w-3.5 h-3.5 text-[#1E3A5F]" />
-                      <span>SUPABASE_URL</span>
-                    </label>
-                    <input
-                      type="url"
-                      required
-                      value={supabaseUrl}
-                      onChange={(e) => setSupabaseUrl(e.target.value)}
-                      placeholder="https://xyzcompany.supabase.co"
-                      className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                      <Key className="w-3.5 h-3.5 text-[#FCC934]" />
-                      <span>SUPABASE_ANON_KEY</span>
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={supabaseAnonKey}
-                      onChange={(e) => setSupabaseAnonKey(e.target.value)}
-                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                      className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 font-mono"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
-                  >
-                    Kết nối Supabase & Đồng bộ
-                  </button>
-                </form>
-              )}
-            </>
           )}
         </div>
 

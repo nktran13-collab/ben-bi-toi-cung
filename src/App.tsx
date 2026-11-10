@@ -38,12 +38,14 @@ import {
   getEffectiveTargetDurationMs,
   evaluateDailyRollover,
   getMillisecondsUntilRollover,
+  mergeLocalAndCloudData,
 } from './utils/engine';
 import { soundEngine } from './utils/audio';
 import {
   loadStoredData,
   saveStoredData,
   syncDataToCloud,
+  fetchCloudData,
   getCleanStarterTasks,
   getInitialSeedTasks,
   exportFullBackupJSON,
@@ -225,6 +227,69 @@ export default function App() {
     notificationPermission,
     dataLoaded,
   ]);
+
+  // Background refresh on startup: pull any changes made on other devices
+  useEffect(() => {
+    if (!dataLoaded || account.isAnonymous || !account.email || isSimulatedOffline) {
+      return;
+    }
+    fetchCloudData(account.email).then((cloud) => {
+      if (cloud.found && cloud.data) {
+        const merged = mergeLocalAndCloudData(
+          { tasks, sessions, logs },
+          cloud.data
+        );
+        setTasks(merged.tasks);
+        setSessions(merged.sessions);
+        setLogs(merged.logs);
+      }
+    }).catch((e) => console.warn('Background sync on mount failed', e));
+  }, [account.email, account.isAnonymous, dataLoaded, isSimulatedOffline]);
+
+  // Online auto-sync listener
+  useEffect(() => {
+    const handleOnline = () => {
+      if (!account.isAnonymous && account.email && !isSimulatedOffline) {
+        syncDataToCloud(account, { tasks, sessions, logs }, false).then((res) => {
+          if (res.success) {
+            setTasks(res.syncedTasks);
+            setSessions(res.syncedSessions);
+            setLogs(res.syncedLogs);
+            setAccount(res.updatedAccount);
+            showToast('🟢 Đã kết nối mạng trở lại & đồng bộ đám mây thành công.');
+          }
+        });
+      }
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [account, tasks, sessions, logs, isSimulatedOffline, showToast]);
+
+  // Debounced auto-sync when tasks, sessions or logs change
+  useEffect(() => {
+    if (!dataLoaded || account.isAnonymous || !account.email || isSimulatedOffline || isSyncing) {
+      return;
+    }
+    const hasPending =
+      tasks.some((t) => t.sync_status === 1) ||
+      sessions.some((s) => s.sync_status === 1) ||
+      logs.some((l) => l.sync_status === 1);
+
+    if (!hasPending) return;
+
+    const timer = setTimeout(() => {
+      syncDataToCloud(account, { tasks, sessions, logs }, false).then((res) => {
+        if (res.success) {
+          setTasks(res.syncedTasks);
+          setSessions(res.syncedSessions);
+          setLogs(res.syncedLogs);
+          setAccount(res.updatedAccount);
+        }
+      });
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [tasks, sessions, logs, account, isSimulatedOffline, isSyncing, dataLoaded]);
 
   // Delta-Timestamp Engine: Update current time tick & check live 04:00 AM rollover
   const currentLogicalDate = getLogicalDate(currentTimeMs, 4);
@@ -1197,42 +1262,87 @@ export default function App() {
     }
   }, [account, tasks, sessions, logs, isSimulatedOffline, isSyncing, showToast]);
 
-  // Auth: Email Login & Auto-Merge
+  // Auth: Email Login & Cross-Device Cloud Sync
   const handleLoginSuccess = useCallback(
     async (
       email: string,
-      provider: 'mock_otp' | 'supabase',
+      provider: 'email_sync' | 'mock_otp' | 'supabase' = 'email_sync',
       supabaseUrl?: string,
       supabaseAnonKey?: string
     ) => {
-      const updatedAccount: UserAccount = {
-        id: `user_${email.replace(/[^a-zA-Z0-9]/g, '_')}`,
-        email,
-        isAnonymous: false,
-        provider,
-        supabaseUrl,
-        supabaseAnonKey,
-        lastSyncedAtMs: null,
-        createdAtMs: account.createdAtMs || Date.now(),
-      };
-
-      setAccount(updatedAccount);
-      soundEngine.playSuccessChime();
-
+      const normalizedEmail = email.trim().toLowerCase();
       setIsSyncing(true);
+
       try {
-        const result = await syncDataToCloud(
-          updatedAccount,
-          { tasks, sessions, logs },
-          isSimulatedOffline
-        );
-        if (result.success) {
-          setTasks(result.syncedTasks);
-          setSessions(result.syncedSessions);
-          setLogs(result.syncedLogs);
-          setAccount(result.updatedAccount);
-          showToast(`Chào mừng ${email}! Đã tự động hợp nhất dữ liệu.`);
+        // Step 1: Check if this email already has data in Vercel Blob cloud
+        const cloudResult = await fetchCloudData(normalizedEmail);
+
+        let finalTasks = tasks;
+        let finalSessions = sessions;
+        let finalLogs = logs;
+
+        const updatedAccount: UserAccount = {
+          id: `user_${normalizedEmail.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+          email: normalizedEmail,
+          isAnonymous: false,
+          provider,
+          supabaseUrl,
+          supabaseAnonKey,
+          lastSyncedAtMs: Date.now(),
+          createdAtMs: account.createdAtMs || Date.now(),
+        };
+
+        if (cloudResult.found && cloudResult.data) {
+          // Cloud data exists! Intelligently merge local + cloud
+          const merged = mergeLocalAndCloudData(
+            { tasks, sessions, logs },
+            cloudResult.data
+          );
+          finalTasks = merged.tasks;
+          finalSessions = merged.sessions;
+          finalLogs = merged.logs;
+
+          setTasks(finalTasks);
+          setSessions(finalSessions);
+          setLogs(finalLogs);
+          setAccount(updatedAccount);
+          soundEngine.playSuccessChime();
+
+          showToast(
+            `🎉 Chào mừng trở lại! Đã khôi phục thành công ${finalTasks.length} tác vụ từ tài khoản ${normalizedEmail}.`
+          );
+
+          // Push merged snapshot back to ensure cloud is fresh
+          await syncDataToCloud(
+            updatedAccount,
+            { tasks: finalTasks, sessions: finalSessions, logs: finalLogs },
+            isSimulatedOffline
+          );
+        } else {
+          // First time this email logs in: upload current local tasks to cloud!
+          setAccount(updatedAccount);
+          soundEngine.playSuccessChime();
+
+          const syncRes = await syncDataToCloud(
+            updatedAccount,
+            { tasks, sessions, logs },
+            isSimulatedOffline
+          );
+          if (syncRes.success) {
+            setTasks(syncRes.syncedTasks);
+            setSessions(syncRes.syncedSessions);
+            setLogs(syncRes.syncedLogs);
+            setAccount(syncRes.updatedAccount);
+            showToast(
+              `✨ Đã kích hoạt tài khoản ${normalizedEmail} & bảo vệ toàn bộ dữ liệu trên đám mây!`
+            );
+          } else {
+            showToast(`Đã liên kết email ${normalizedEmail}. Dữ liệu đang được lưu an toàn.`);
+          }
         }
+      } catch (err) {
+        console.error('Login sync error:', err);
+        showToast('Có lỗi xảy ra khi đồng bộ đám mây. Vui lòng thử lại.');
       } finally {
         setIsSyncing(false);
       }

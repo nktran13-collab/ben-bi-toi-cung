@@ -263,8 +263,48 @@ export function saveStoredData(
 }
 
 /**
- * Cloud Sync Simulation:
- * Synchronizes pending items (`sync_status === 1`) to the cloud storage table for the account.
+ * Fetches user data from real Cloud Storage (Vercel Blob via /api/sync)
+ */
+export async function fetchCloudData(email: string): Promise<{
+  found: boolean;
+  data: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[]; settings?: AppSettings } | null;
+  lastSyncedAtMs?: number;
+}> {
+  const normalizedEmail = email.trim().toLowerCase();
+  try {
+    const res = await fetch(`/api/sync?email=${encodeURIComponent(normalizedEmail)}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Cloud fetch error: ${res.status}`);
+    }
+    const json = await res.json();
+    return {
+      found: Boolean(json.found),
+      data: json.data || null,
+      lastSyncedAtMs: json.lastSyncedAtMs || Date.now(),
+    };
+  } catch (err) {
+    console.warn('fetchCloudData network error, checking local backup', err);
+    const cloudKey = `benbi_cloud_db_${normalizedEmail}`;
+    const raw = localStorage.getItem(cloudKey);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        return { found: true, data: parsed, lastSyncedAtMs: Date.now() };
+      } catch {}
+    }
+    return { found: false, data: null };
+  }
+}
+
+/**
+ * Cloud Sync:
+ * Synchronizes pending items (`sync_status === 1`) to real cloud storage (/api/sync)
+ * backed by Vercel Blob with offline queue support.
  */
 export async function syncDataToCloud(
   account: UserAccount,
@@ -278,7 +318,7 @@ export async function syncDataToCloud(
   updatedAccount: UserAccount;
   message: string;
 }> {
-  if (isOffline) {
+  if (isOffline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
     return {
       success: false,
       syncedTasks: local.tasks,
@@ -289,48 +329,101 @@ export async function syncDataToCloud(
     };
   }
 
-  // Artificial network roundtrip delay
-  await new Promise((resolve) => setTimeout(resolve, 400));
+  // If user is anonymous, save to local simulated store
+  if (!account.email) {
+    const cloudKey = `benbi_cloud_db_${account.id}`;
+    let cloudDb: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] } = {
+      tasks: [],
+      sessions: [],
+      logs: [],
+    };
+    try {
+      const raw = localStorage.getItem(cloudKey);
+      if (raw) cloudDb = JSON.parse(raw);
+    } catch {}
+    const merged = mergeLocalAndCloudData(local, cloudDb);
+    try {
+      localStorage.setItem(cloudKey, JSON.stringify(merged));
+    } catch {}
+    return {
+      success: true,
+      syncedTasks: merged.tasks,
+      syncedSessions: merged.sessions,
+      syncedLogs: merged.logs,
+      updatedAccount: { ...account, lastSyncedAtMs: Date.now() },
+      message: 'Đã lưu bản sao dữ liệu cục bộ.',
+    };
+  }
 
-  const cloudKey = `benbi_cloud_db_${account.email || account.id}`;
-  let cloudDb: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] } = {
-    tasks: [],
-    sessions: [],
-    logs: [],
-  };
+  const normalizedEmail = account.email.trim().toLowerCase();
 
   try {
-    const rawCloud = localStorage.getItem(cloudKey);
-    if (rawCloud) {
-      cloudDb = JSON.parse(rawCloud);
+    const res = await fetch('/api/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        tasks: local.tasks,
+        sessions: local.sessions,
+        logs: local.logs,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Sync HTTP status: ${res.status}`);
     }
-  } catch (e) {
-    console.warn('Error reading cloud db', e);
+
+    const json = await res.json();
+    if (json.success && json.data) {
+      const cloudData = json.data;
+      const updatedAccount: UserAccount = {
+        ...account,
+        lastSyncedAtMs: json.lastSyncedAtMs || Date.now(),
+      };
+
+      try {
+        localStorage.setItem(`benbi_cloud_db_${normalizedEmail}`, JSON.stringify(cloudData));
+      } catch {}
+
+      return {
+        success: true,
+        syncedTasks: cloudData.tasks.map((t: TaskItem) => ({ ...t, sync_status: 0 })),
+        syncedSessions: cloudData.sessions.map((s: TimeSession) => ({ ...s, sync_status: 0 })),
+        syncedLogs: cloudData.logs.map((l: HabitDailyLog) => ({ ...l, sync_status: 0 })),
+        updatedAccount,
+        message: 'Đã đồng bộ thành công toàn bộ dữ liệu lên đám mây.',
+      };
+    } else {
+      throw new Error(json.error || 'Sync returned failure');
+    }
+  } catch (err: any) {
+    console.warn('Real cloud sync failed, using offline fallback', err);
+    const cloudKey = `benbi_cloud_db_${normalizedEmail}`;
+    let cloudDb: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] } = {
+      tasks: [],
+      sessions: [],
+      logs: [],
+    };
+    try {
+      const raw = localStorage.getItem(cloudKey);
+      if (raw) cloudDb = JSON.parse(raw);
+    } catch {}
+    const merged = mergeLocalAndCloudData(local, cloudDb);
+    try {
+      localStorage.setItem(cloudKey, JSON.stringify(merged));
+    } catch {}
+
+    return {
+      success: false,
+      syncedTasks: local.tasks,
+      syncedSessions: local.sessions,
+      syncedLogs: local.logs,
+      updatedAccount: account,
+      message: 'Không thể kết nối đến máy chủ đám mây. Dữ liệu đã được lưu an toàn trong thiết bị.',
+    };
   }
-
-  // Auto-merge local with cloud
-  const merged = mergeLocalAndCloudData(local, cloudDb);
-
-  // Persist to cloud table
-  try {
-    localStorage.setItem(cloudKey, JSON.stringify(merged));
-  } catch (e) {
-    console.warn('Error saving to cloud table', e);
-  }
-
-  const updatedAccount: UserAccount = {
-    ...account,
-    lastSyncedAtMs: Date.now(),
-  };
-
-  return {
-    success: true,
-    syncedTasks: merged.tasks,
-    syncedSessions: merged.sessions,
-    syncedLogs: merged.logs,
-    updatedAccount,
-    message: 'Đã đồng bộ thành công toàn bộ dữ liệu lên đám mây.',
-  };
 }
 
 /**

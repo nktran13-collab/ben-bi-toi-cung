@@ -81,7 +81,7 @@ export interface UserAccount {
   id: string;
   email: string | null;
   isAnonymous: boolean;
-  provider: 'anonymous' | 'mock_otp' | 'supabase';
+  provider: 'anonymous' | 'mock_otp' | 'supabase' | 'email_sync';
   supabaseUrl?: string;
   supabaseAnonKey?: string;
   lastSyncedAtMs: number | null;
