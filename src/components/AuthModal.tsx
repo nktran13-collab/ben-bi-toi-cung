@@ -1,5 +1,19 @@
-import React, { useState } from 'react';
-import { X, Cloud, Mail, CheckCircle2, Shield, LogOut, Database, Key, Send, RefreshCw } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import {
+  X,
+  Cloud,
+  Mail,
+  Shield,
+  LogOut,
+  Database,
+  Key,
+  Send,
+  RefreshCw,
+  Download,
+  Upload,
+  RotateCcw,
+  Sparkles,
+} from 'lucide-react';
 import { UserAccount, formatClockTime } from '../utils/engine';
 
 interface AuthModalProps {
@@ -15,6 +29,10 @@ interface AuthModalProps {
   onLogout: () => void;
   onTriggerSyncNow: () => void;
   isSyncing: boolean;
+  onExportBackupJSON?: () => void;
+  onImportBackupJSON?: (jsonStr: string) => boolean;
+  onResetToCleanStarter?: () => void;
+  onLoadDemoSeed?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -25,6 +43,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLogout,
   onTriggerSyncNow,
   isSyncing,
+  onExportBackupJSON,
+  onImportBackupJSON,
+  onResetToCleanStarter,
+  onLoadDemoSeed,
 }) => {
   const [authMode, setAuthMode] = useState<'mock_otp' | 'supabase'>('mock_otp');
   const [email, setEmail] = useState('');
@@ -34,6 +56,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [confirmCleanReset, setConfirmCleanReset] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
 
@@ -45,13 +69,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
     setError(null);
     setStep('enter_otp');
-    setInfo(`Đã gửi mã xác nhận 6 số đến ${email}. (Mã test mặc định là 123456)`);
+    setInfo(`Đã gửi mã xác nhận 6 số đến ${email}. (Mã xác thực nhanh: 123456)`);
   };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
     if (otpCode.trim() !== '123456') {
-      setError('Mã xác thực không chính xác. Hãy nhập mã test: 123456');
+      setError('Mã xác thực không chính xác. Hãy nhập mã: 123456');
       return;
     }
     setError(null);
@@ -78,22 +102,41 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     onClose();
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImportBackupJSON) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = typeof reader.result === 'string' ? reader.result : '';
+      const ok = onImportBackupJSON(content);
+      if (ok) {
+        setError(null);
+        setInfo('Đã khôi phục dữ liệu từ file sao lưu (.json) thành công!');
+      } else {
+        setError('File sao lưu không hợp lệ hoặc bị hỏng.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col text-slate-800">
         {/* Header */}
-        <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between">
+        <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#3B6998] text-[#FCC934]">
               <Cloud className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white">
-                {account.isAnonymous ? 'Lưu Tiến Trình / Đám Mây' : 'Tài Khoản Đồng Bộ'}
+                {account.isAnonymous ? 'Sao Lưu & Đồng Bộ Đám Mây' : 'Tài Khoản & Quản Trị Dữ Liệu'}
               </h2>
               <p className="text-xs text-[#E8F0FE]/80">
                 {account.isAnonymous
-                  ? 'Bảo vệ chuỗi và đồng bộ đa thiết bị tự động'
+                  ? 'Bảo vệ chuỗi kỷ luật, xuất file Backup & đồng bộ đa thiết bị'
                   : `Đang liên kết: ${account.email}`}
               </p>
             </div>
@@ -101,14 +144,128 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors"
+            className="p-1 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-5 sm:p-6 space-y-4">
+        <div className="p-5 sm:p-6 space-y-5">
+          {/* Backup & Restore JSON Section */}
+          <div className="bg-[#F4F7FA] p-4 rounded-xl border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#1E3A5F] uppercase tracking-wider">
+                Sao lưu & Khôi phục File (.JSON)
+              </span>
+              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                An toàn 100%
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Tải toàn bộ tác vụ, chuỗi ngày và lịch sử phiên làm việc về máy dưới dạng file{' '}
+              <code className="font-mono text-[#1E3A5F]">.json</code> để lưu trữ hoặc chuyển sang thiết bị khác.
+            </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {onExportBackupJSON && (
+                <button
+                  type="button"
+                  onClick={onExportBackupJSON}
+                  className="py-2 px-3 bg-[#1E3A5F] hover:bg-[#152a45] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5 text-[#FCC934]" />
+                  <span>Tải bản Sao lưu</span>
+                </button>
+              )}
+              {onImportBackupJSON && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-[#FF6B00]" />
+                    <span>Nhập file JSON</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Starter Reset / Demo Data Switcher */}
+          {(onResetToCleanStarter || onLoadDemoSeed) && (
+            <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-200/80 space-y-2.5">
+              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />
+                <span>Thiết lập Không gian Bền Bỉ của riêng bạn</span>
+              </div>
+              <p className="text-xs text-slate-600">
+                Đặt toàn bộ chuỗi về <strong>Ngày 0</strong> để bắt đầu hành trình thực tế, hoặc nạp bộ dữ liệu mẫu 21 ngày để trải nghiệm tính năng.
+              </p>
+
+              {!confirmCleanReset ? (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {onResetToCleanStarter && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmCleanReset(true)}
+                      className="py-2 px-2.5 bg-white hover:bg-amber-100/60 text-slate-800 border border-amber-300 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-[#FF6B00]" />
+                      <span>Bắt đầu từ Ngày 0</span>
+                    </button>
+                  )}
+                  {onLoadDemoSeed && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onLoadDemoSeed();
+                        onClose();
+                      }}
+                      className="py-2 px-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#1E3A5F]" />
+                      <span>Nạp dữ liệu Demo</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white p-3 rounded-lg border border-red-200 space-y-2">
+                  <p className="text-xs text-red-700 font-medium">
+                    Đặt lại toàn bộ chuỗi về Ngày 0 và xóa lịch sử demo để bắt đầu mới?
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmCleanReset(false)}
+                      className="px-3 py-1 text-xs font-semibold text-slate-600 bg-slate-100 rounded-md cursor-pointer"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onResetToCleanStarter) onResetToCleanStarter();
+                        setConfirmCleanReset(false);
+                        onClose();
+                      }}
+                      className="px-3 py-1 text-xs font-bold text-white bg-[#FF6B00] hover:bg-[#E65100] rounded-md cursor-pointer"
+                    >
+                      Xác nhận đặt về Ngày 0
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* If already logged in: Profile Card */}
           {!account.isAnonymous && (
             <div className="bg-[#F4F7FA] p-4 rounded-xl border border-slate-200 space-y-3">
@@ -121,7 +278,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <div className="text-xs font-bold text-slate-900">{account.email}</div>
                     <div className="text-xs text-slate-500 flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-[#81C995]" />
-                      <span>{account.provider === 'supabase' ? 'Supabase Realtime' : 'Mock Cloud OTP'}</span>
+                      <span>
+                        {account.provider === 'supabase' ? 'Supabase Realtime' : 'Hồ sơ Đồng bộ Cục bộ'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -129,8 +288,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="button"
                   onClick={onTriggerSyncNow}
                   disabled={isSyncing}
-                  className="flex items-center gap-1 bg-[#1E3A5F] hover:bg-[#152a45] text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs disabled:opacity-50"
-                  title="Đẩy các thay đổi cục bộ lên đám mây ngay lập tức"
+                  className="flex items-center gap-1 bg-[#1E3A5F] hover:bg-[#152a45] text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                   <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ'}</span>
@@ -150,7 +308,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onLogout();
                   onClose();
                 }}
-                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Đăng xuất (Trở về chế độ Ẩn danh)</span>
@@ -161,15 +319,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {/* If Anonymous: Login Form */}
           {account.isAnonymous && (
             <>
-              {/* Auto-Merge Notice */}
               <div className="bg-[#FFF3E0] p-3 rounded-xl border border-[#FF6B00]/30 text-xs text-amber-900 flex items-start gap-2">
                 <Shield className="w-4 h-4 text-[#FF6B00] shrink-0 mt-0.5" />
                 <p>
-                  <strong>Hợp nhất tự động (Auto-Merge):</strong> Toàn bộ chuỗi streak, lịch sử bấm giờ và các tác vụ bạn vừa tạo sẽ tự động được gộp vào tài khoản Email mà không bị mất!
+                  <strong>Hợp nhất tự động (Auto-Merge):</strong> Toàn bộ chuỗi streak, lịch sử bấm giờ và các tác vụ bạn vừa tạo sẽ tự động được gộp vào hồ sơ Email mà không bị mất!
                 </p>
               </div>
 
-              {/* Mode Switcher */}
               <div className="flex rounded-lg p-1 bg-slate-100 border border-slate-200 text-xs font-semibold">
                 <button
                   type="button"
@@ -177,13 +333,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setAuthMode('mock_otp');
                     setError(null);
                   }}
-                  className={`flex-1 py-1.5 rounded-md transition-all ${
+                  className={`flex-1 py-1.5 rounded-md transition-all cursor-pointer ${
                     authMode === 'mock_otp'
                       ? 'bg-white text-[#1E3A5F] shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Giả lập Cloud OTP (Nhanh)
+                  Định danh Email (Nhanh)
                 </button>
                 <button
                   type="button"
@@ -191,13 +347,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setAuthMode('supabase');
                     setError(null);
                   }}
-                  className={`flex-1 py-1.5 rounded-md transition-all ${
+                  className={`flex-1 py-1.5 rounded-md transition-all cursor-pointer ${
                     authMode === 'supabase'
                       ? 'bg-white text-[#1E3A5F] shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Kết nối Supabase Thật
+                  Kết nối Supabase Cloud
                 </button>
               </div>
 
@@ -212,7 +368,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               )}
 
-              {/* Mode A: Mock OTP Form */}
               {authMode === 'mock_otp' && (
                 <div>
                   {step === 'enter_email' ? (
@@ -235,7 +390,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       </div>
                       <button
                         type="submit"
-                        className="w-full py-2.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                        className="w-full py-2.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Send className="w-3.5 h-3.5" />
                         <span>Gửi mã xác nhận OTP</span>
@@ -245,7 +400,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <form onSubmit={handleVerifyOtp} className="space-y-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Nhập mã xác thực 6 số (Mã test: 123456)
+                          Nhập mã xác thực 6 số (Mã mặc định: 123456)
                         </label>
                         <input
                           type="text"
@@ -261,13 +416,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setStep('enter_email')}
-                          className="w-1/3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                          className="w-1/3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
                         >
                           Quay lại
                         </button>
                         <button
                           type="submit"
-                          className="flex-1 py-2.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+                          className="flex-1 py-2.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
                         >
                           Xác thực & Hợp nhất
                         </button>
@@ -277,7 +432,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               )}
 
-              {/* Mode B: Real Supabase Configuration */}
               {authMode === 'supabase' && (
                 <form onSubmit={handleConnectSupabase} className="space-y-3">
                   <div>
@@ -323,7 +477,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+                    className="w-full py-2.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-98 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
                   >
                     Kết nối Supabase & Đồng bộ
                   </button>
@@ -338,7 +492,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+            className="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
           >
             Đóng
           </button>

@@ -18,10 +18,13 @@ import {
   generateStreakMatrix,
   generateCSVExport,
   generateMarkdownExport,
-  TaskItem,
-  TimeSession,
-  HabitDailyLog,
-} from './engine';
+  getEffectiveTargetDurationMs,
+  calculateDaysBetweenLogicalDates,
+  evaluateDailyRollover,
+  type TaskItem,
+  type TimeSession,
+  type HabitDailyLog,
+} from './engine.ts';
 
 test('getLogicalDate assigns 00:00 - 03:59 to the previous logical day', () => {
   const earlyMorningDate = new Date(2026, 10, 6, 2, 30, 0, 0);
@@ -281,3 +284,70 @@ test('generateCSVExport & generateMarkdownExport output valid report data', () =
   assert.match(md, /Báo Cáo Bền Bỉ/);
   assert.match(md, /Tập thể dục/);
 });
+
+test('getEffectiveTargetDurationMs doubles quota only while inCompensationQuest is active', () => {
+  const baseMs = 30 * 60 * 1000;
+  assert.equal(
+    getEffectiveTargetDurationMs({ mode: 'habit', targetDurationMs: baseMs, inCompensationQuest: false }),
+    baseMs
+  );
+  assert.equal(
+    getEffectiveTargetDurationMs({ mode: 'habit', targetDurationMs: baseMs, inCompensationQuest: true }),
+    baseMs * 2
+  );
+  assert.equal(
+    getEffectiveTargetDurationMs({ mode: 'project', targetDurationMs: baseMs, inCompensationQuest: true }),
+    baseMs
+  );
+});
+
+test('evaluateDailyRollover resets completed_today from yesterday and detects missed days', () => {
+  const tasks: TaskItem[] = [
+    {
+      id: 'h1',
+      name: 'Habit Completed Yesterday',
+      mode: 'habit',
+      category: 'study',
+      targetDurationMs: 1800000,
+      currentStreak: 5,
+      bestStreak: 5,
+      shields: 1,
+      status: 'completed_today',
+      startedAtMs: null,
+      accumulatedMs: 1800000,
+      lastCompletedDate: '2026-11-06',
+      historyStartTimestamp: 0,
+      sync_status: 0,
+      updated_at_ms: 1000,
+    },
+    {
+      id: 'h2',
+      name: 'Habit Missed 1 Day',
+      mode: 'habit',
+      category: 'health',
+      targetDurationMs: 900000,
+      currentStreak: 8,
+      bestStreak: 8,
+      shields: 1,
+      status: 'idle',
+      startedAtMs: null,
+      accumulatedMs: 0,
+      lastCompletedDate: '2026-11-05', // 2 days before 2026-11-07 -> missed 1 day
+      historyStartTimestamp: 0,
+      sync_status: 0,
+      updated_at_ms: 1000,
+    },
+  ];
+
+  assert.equal(calculateDaysBetweenLogicalDates('2026-11-05', '2026-11-07'), 2);
+
+  const rollover = evaluateDailyRollover(tasks, '2026-11-07', 2000);
+  assert.equal(rollover.hasChanges, true);
+  // h1 should be reset to idle for the new day
+  assert.equal(rollover.updatedTasks[0].status, 'idle');
+  assert.equal(rollover.updatedTasks[0].accumulatedMs, 0);
+  // h2 should trigger a detectedBreak with 1 missed day
+  assert.deepEqual(rollover.detectedBreak, { taskId: 'h2', missedDays: 1 });
+  assert.equal(rollover.updatedTasks[1].lastStreakCheckDate, '2026-11-07');
+});
+

@@ -1,15 +1,48 @@
-import React, { useState } from 'react';
-import { X, Sparkles, HeartPulse, Briefcase, BookOpen, Clock, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Sparkles, HeartPulse, Briefcase, BookOpen, Clock, Calendar, Pencil } from 'lucide-react';
 import { TaskMode, TaskCategory, TaskItem } from '../utils/engine';
 
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: Omit<TaskItem, 'id' | 'currentStreak' | 'bestStreak' | 'shields' | 'status' | 'startedAtMs' | 'accumulatedMs' | 'historyStartTimestamp' | 'sync_status' | 'updated_at_ms'>) => void;
+  onAddTask: (
+    task: Omit<
+      TaskItem,
+      | 'id'
+      | 'currentStreak'
+      | 'bestStreak'
+      | 'shields'
+      | 'status'
+      | 'startedAtMs'
+      | 'accumulatedMs'
+      | 'historyStartTimestamp'
+      | 'sync_status'
+      | 'updated_at_ms'
+    >
+  ) => void;
+  editingTask?: TaskItem | null;
+  onEditTask?: (
+    taskId: string,
+    updates: {
+      name: string;
+      mode: TaskMode;
+      category: TaskCategory;
+      targetDurationMs: number;
+      targetMilestoneDays?: number;
+      notes?: string;
+    }
+  ) => void;
   taskCount?: number;
 }
 
-export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onAddTask, taskCount = 0 }) => {
+export const AddTaskModal: React.FC<AddTaskModalProps> = ({
+  isOpen,
+  onClose,
+  onAddTask,
+  editingTask = null,
+  onEditTask,
+  taskCount = 0,
+}) => {
   const [name, setName] = useState('');
   const [mode, setMode] = useState<TaskMode>('habit');
   const [category, setCategory] = useState<TaskCategory>('study');
@@ -18,9 +51,30 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (editingTask) {
+      setName(editingTask.name);
+      setMode(editingTask.mode);
+      setCategory(editingTask.category);
+      setDurationMinutes(Math.max(1, Math.round(editingTask.targetDurationMs / 60000)));
+      setMilestoneDays(editingTask.targetMilestoneDays || 30);
+      setNotes(editingTask.notes || '');
+      setError(null);
+    } else {
+      setName('');
+      setMode('habit');
+      setCategory('study');
+      setDurationMinutes(30);
+      setMilestoneDays(30);
+      setNotes('');
+      setError(null);
+    }
+  }, [editingTask, isOpen]);
+
   if (!isOpen) return null;
 
-  const isLimitReached = taskCount >= 24;
+  const isEditing = !!editingTask;
+  const isLimitReached = !isEditing && taskCount >= 24;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,16 +91,26 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
       return;
     }
 
-    onAddTask({
-      name: name.trim(),
-      mode,
-      category,
-      targetDurationMs: durationMinutes * 60 * 1000,
-      targetMilestoneDays: milestoneDays,
-      notes: notes.trim() || undefined,
-    });
+    if (isEditing && editingTask && onEditTask) {
+      onEditTask(editingTask.id, {
+        name: name.trim(),
+        mode,
+        category,
+        targetDurationMs: durationMinutes * 60 * 1000,
+        targetMilestoneDays: milestoneDays,
+        notes: notes.trim() || undefined,
+      });
+    } else {
+      onAddTask({
+        name: name.trim(),
+        mode,
+        category,
+        targetDurationMs: durationMinutes * 60 * 1000,
+        targetMilestoneDays: milestoneDays,
+        notes: notes.trim() || undefined,
+      });
+    }
 
-    // Reset form
     setName('');
     setDurationMinutes(30);
     setNotes('');
@@ -61,29 +125,42 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
         <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#FCC934]" />
-              Thêm Tác Vụ Mới
+              {isEditing ? (
+                <>
+                  <Pencil className="w-5 h-5 text-[#FCC934]" />
+                  <span>Chỉnh Sửa Tác Vụ</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 text-[#FCC934]" />
+                  <span>Thêm Tác Vụ Mới</span>
+                </>
+              )}
             </h2>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-xs text-[#E8F0FE]/80">
-                Thiết lập mục tiêu và định mức kỷ luật hàng ngày
+                {isEditing
+                  ? 'Cập nhật định mức, danh mục hoặc ghi chú ý định'
+                  : 'Thiết lập mục tiêu và định mức kỷ luật hàng ngày'}
               </span>
-              <span className="text-xs font-mono px-2 py-0.2 rounded-full bg-white/10 text-[#FCC934]">
-                {taskCount}/24 tác vụ tối đa
-              </span>
+              {!isEditing && (
+                <span className="text-xs font-mono px-2 py-0.2 rounded-full bg-white/10 text-[#FCC934]">
+                  {taskCount}/24 tác vụ tối đa
+                </span>
+              )}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors"
+            className="p-1 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto text-slate-800">
           {isLimitReached && (
             <div className="bg-red-50 text-red-700 text-xs p-3 rounded-lg border border-red-200 font-medium">
               ⚠️ Đã đạt giới hạn tối đa 24 tác vụ. Bạn không thể tạo thêm tác vụ mới để duy trì sự tập trung tối ưu.
@@ -122,7 +199,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
               <button
                 type="button"
                 onClick={() => setMode('habit')}
-                className={`p-3 rounded-xl border text-left transition-all ${
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                   mode === 'habit'
                     ? 'border-[#FF6B00] bg-[#FFF3E0] ring-2 ring-[#FF6B00]/20'
                     : 'border-slate-200 hover:bg-slate-50'
@@ -140,7 +217,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
               <button
                 type="button"
                 onClick={() => setMode('project')}
-                className={`p-3 rounded-xl border text-left transition-all ${
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                   mode === 'project'
                     ? 'border-[#1E3A5F] bg-[#E8F0FE] ring-2 ring-[#1E3A5F]/20'
                     : 'border-slate-200 hover:bg-slate-50'
@@ -176,7 +253,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
                     key={cat.id}
                     type="button"
                     onClick={() => setCategory(cat.id as TaskCategory)}
-                    className={`flex items-center gap-1.5 p-2 rounded-lg border text-xs font-medium transition-all ${
+                    className={`flex items-center gap-1.5 p-2 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
                       isSelected
                         ? 'border-slate-800 bg-slate-100 font-bold shadow-xs'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-600'
@@ -206,7 +283,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
                   key={mins}
                   type="button"
                   onClick={() => setDurationMinutes(mins)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-semibold font-mono transition-colors ${
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold font-mono transition-colors cursor-pointer ${
                     durationMinutes === mins
                       ? 'bg-[#1E3A5F] text-white'
                       : 'bg-[#F4F7FA] text-slate-700 hover:bg-slate-200'
@@ -238,13 +315,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
                     key={days}
                     type="button"
                     onClick={() => setMilestoneDays(days)}
-                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
                       milestoneDays === days
                         ? 'border-[#FF6B00] bg-[#FFF3E0] text-[#FF6B00] font-bold'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                     }`}
                   >
-                    🔥 {days} ngày {days === 66 ? '(Hình thành phản xạ)' : ''}
+                    🔥 {days} ngày {days === 66 ? '(Chuẩn UCL)' : ''}
                   </button>
                 ))}
               </div>
@@ -270,15 +347,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onA
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-[#FF6B00] hover:bg-[#E65100] rounded-lg shadow-sm transition-all active:scale-95"
+              className="px-5 py-2 text-xs font-bold text-white bg-[#FF6B00] hover:bg-[#E65100] rounded-lg shadow-sm transition-all active:scale-95 cursor-pointer"
             >
-              Tạo tác vụ
+              {isEditing ? 'Lưu thay đổi' : 'Tạo tác vụ'}
             </button>
           </div>
         </form>

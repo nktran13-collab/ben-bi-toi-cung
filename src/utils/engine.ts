@@ -50,16 +50,17 @@ export interface TaskItem {
   name: string;
   mode: TaskMode;
   category: TaskCategory;
-  targetDurationMs: number; // Habit quota or Project goal/session target (in ms)
-  targetMilestoneDays?: number; // 30 or 66 days
+  targetDurationMs: number; // Base Habit quota or Project goal/session target (in ms)
+  targetMilestoneDays?: number; // 30, 66, or 100 days
   currentStreak: number;
   bestStreak: number;
   shields: number;
-  inCompensationQuest?: boolean; // If true, requires double time next day
+  inCompensationQuest?: boolean; // If true, requires double time (targetDurationMs * 2) for the current day
   status: 'idle' | 'running' | 'paused' | 'pending_confirmation' | 'completed_today';
   startedAtMs: number | null;
   accumulatedMs: number;
   lastCompletedDate?: string;
+  lastStreakCheckDate?: string; // Prevents duplicate streak break prompts on the same logical day
   historyStartTimestamp: number;
   notes?: string;
   sync_status: number; // 1 = pending sync, 0 = synced
@@ -145,6 +146,110 @@ export function getPreviousLogicalDate(input: number | string = Date.now(), roll
   const m = String(adjusted.getMonth() + 1).padStart(2, '0');
   const d = String(adjusted.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * Returns the effective target duration for a task (doubles if inCompensationQuest is active for a habit).
+ * Preserves base targetDurationMs so completing the compensation quest restores normal quota next day.
+ */
+export function getEffectiveTargetDurationMs(task: Pick<TaskItem, 'mode' | 'targetDurationMs' | 'inCompensationQuest'>): number {
+  if (task.mode === 'habit' && task.inCompensationQuest) {
+    return task.targetDurationMs * 2;
+  }
+  return task.targetDurationMs;
+}
+
+/**
+ * Calculates calendar days difference between two YYYY-MM-DD logical dates (toDate - fromDate).
+ */
+export function calculateDaysBetweenLogicalDates(fromDateStr: string, toDateStr: string): number {
+  const fParts = fromDateStr.split('-').map((n) => parseInt(n, 10));
+  const tParts = toDateStr.split('-').map((n) => parseInt(n, 10));
+  if (fParts.length !== 3 || tParts.length !== 3) return 0;
+
+  const fromUtc = Date.UTC(fParts[0], fParts[1] - 1, fParts[2]);
+  const toUtc = Date.UTC(tParts[0], tParts[1] - 1, tParts[2]);
+  return Math.round((toUtc - fromUtc) / (24 * 3600 * 1000));
+}
+
+/**
+ * Evaluates tasks on daily biological rollover (04:00 AM):
+ * 1. Resets 'completed_today' tasks from a previous logical day back to 'idle' for the new day.
+ * 2. Detects real streak breaks when a habit missed 1 or more logical days.
+ */
+export function evaluateDailyRollover(
+  tasks: TaskItem[],
+  currentLogicalDate: string,
+  nowMs: number = Date.now()
+): {
+  updatedTasks: TaskItem[];
+  hasChanges: boolean;
+  detectedBreak: { taskId: string; missedDays: number } | null;
+} {
+  let hasChanges = false;
+  let detectedBreak: { taskId: string; missedDays: number } | null = null;
+
+  const updatedTasks = tasks.map((task): TaskItem => {
+    let updated = task;
+
+    // 1. Reset completed_today if lastCompletedDate is before currentLogicalDate
+    if (
+      updated.status === 'completed_today' &&
+      updated.lastCompletedDate &&
+      updated.lastCompletedDate < currentLogicalDate
+    ) {
+      hasChanges = true;
+      updated = {
+        ...updated,
+        status: 'idle',
+        startedAtMs: null,
+        accumulatedMs: 0,
+        timerEndedAtMs: undefined,
+        sync_status: 1,
+        updated_at_ms: nowMs,
+      };
+    }
+
+    // 2. Check for missed logical days on active streaks
+    if (
+      updated.mode === 'habit' &&
+      updated.currentStreak > 0 &&
+      updated.lastCompletedDate &&
+      updated.lastStreakCheckDate !== currentLogicalDate
+    ) {
+      const daysDiff = calculateDaysBetweenLogicalDates(updated.lastCompletedDate, currentLogicalDate);
+      if (daysDiff >= 2) {
+        const missedDays = daysDiff - 1;
+        if (!detectedBreak) {
+          detectedBreak = { taskId: updated.id, missedDays };
+        }
+        hasChanges = true;
+        updated = {
+          ...updated,
+          lastStreakCheckDate: currentLogicalDate,
+          sync_status: 1,
+          updated_at_ms: nowMs,
+        };
+      }
+    }
+
+    return updated;
+  });
+
+  return { updatedTasks, hasChanges, detectedBreak };
+}
+
+/**
+ * Returns milliseconds remaining until the next biological rollover (04:00 AM).
+ */
+export function getMillisecondsUntilRollover(nowMs: number = Date.now(), rolloverHour = 4): number {
+  const d = new Date(nowMs);
+  const nextRollover = new Date(d);
+  nextRollover.setHours(rolloverHour, 0, 0, 0);
+  if (d.getTime() >= nextRollover.getTime()) {
+    nextRollover.setDate(nextRollover.getDate() + 1);
+  }
+  return Math.max(0, nextRollover.getTime() - nowMs);
 }
 
 /**

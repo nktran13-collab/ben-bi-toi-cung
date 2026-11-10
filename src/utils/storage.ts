@@ -21,6 +21,8 @@ export interface AppSettings {
   wakeLockRequested: boolean;
   dayRolloverHour: number; // default 4
   notificationsEnabled: boolean;
+  darkMode?: boolean;
+  devModeEnabled?: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -28,6 +30,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   wakeLockRequested: true,
   dayRolloverHour: 4,
   notificationsEnabled: false,
+  darkMode: false,
+  devModeEnabled: false,
 };
 
 const DEFAULT_ANONYMOUS_ACCOUNT: UserAccount = {
@@ -327,4 +331,86 @@ export async function syncDataToCloud(
     updatedAccount,
     message: 'Đã đồng bộ thành công toàn bộ dữ liệu lên đám mây.',
   };
+}
+
+/**
+ * Returns clean Day-0 starter templates for a fresh personal journey
+ */
+export function getCleanStarterTasks(): {
+  tasks: TaskItem[];
+  sessions: TimeSession[];
+  logs: HabitDailyLog[];
+} {
+  const now = Date.now();
+  const seed = getInitialSeedTasks();
+  const cleanTasks: TaskItem[] = seed.tasks.map((t) => ({
+    ...t,
+    currentStreak: 0,
+    bestStreak: 0,
+    shields: 0,
+    inCompensationQuest: false,
+    status: 'idle',
+    startedAtMs: null,
+    accumulatedMs: 0,
+    lastCompletedDate: undefined,
+    lastStreakCheckDate: undefined,
+    historyStartTimestamp: now,
+    sync_status: 1,
+    updated_at_ms: now,
+  }));
+  return {
+    tasks: cleanTasks,
+    sessions: [],
+    logs: [],
+  };
+}
+
+export interface FullBackupPayload {
+  version: number;
+  app: string;
+  exportedAt: string;
+  tasks: TaskItem[];
+  sessions: TimeSession[];
+  logs: HabitDailyLog[];
+  settings?: AppSettings;
+}
+
+export function exportFullBackupJSON(
+  tasks: TaskItem[],
+  sessions: TimeSession[],
+  logs: HabitDailyLog[],
+  settings?: AppSettings
+): string {
+  const payload: FullBackupPayload = {
+    version: 2,
+    app: 'ben-bi-toi-cung',
+    exportedAt: new Date().toISOString(),
+    tasks,
+    sessions,
+    logs,
+    settings,
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+export function parseFullBackupJSON(jsonStr: string): {
+  tasks: TaskItem[];
+  sessions: TimeSession[];
+  logs: HabitDailyLog[];
+  settings?: AppSettings;
+} | null {
+  try {
+    const parsed = JSON.parse(jsonStr);
+    if (!parsed || !Array.isArray(parsed.tasks)) {
+      return null;
+    }
+    return {
+      tasks: parsed.tasks,
+      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+      logs: Array.isArray(parsed.logs) ? parsed.logs : [],
+      settings: parsed.settings,
+    };
+  } catch {
+    return null;
+  }
 }

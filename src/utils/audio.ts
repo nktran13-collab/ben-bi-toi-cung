@@ -165,6 +165,80 @@ class SoundEngine {
   }
   private silentGain: GainNode | null = null;
   private silentOsc: OscillatorNode | null = null;
+  private ambientSource: AudioBufferSourceNode | null = null;
+  private ambientGain: GainNode | null = null;
+  private ambientActive: boolean = false;
+
+  /**
+   * Starts a warm, soothing Brown Noise / Gentle Rain ambient sound for Zen Focus Mode
+   */
+  public startAmbientFocus(volume = 0.12): boolean {
+    if (this.isMuted) return false;
+    const ctx = this.initContext();
+    if (!ctx) return false;
+    this.stopAmbientFocus();
+
+    try {
+      const bufferSize = ctx.sampleRate * 4; // 4-second seamless loop
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+
+      let lastOut = 0.0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        output[i] = (lastOut + 0.02 * white) / 1.02;
+        lastOut = output[i];
+        output[i] *= 3.5; // Normalize gain
+      }
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      // Warm lowpass filter for deep concentration
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(420, ctx.currentTime);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(volume, ctx.currentTime + 0.8);
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      source.start();
+      this.ambientSource = source;
+      this.ambientGain = gain;
+      this.ambientActive = true;
+      return true;
+    } catch (e) {
+      console.warn('Ambient audio error', e);
+      return false;
+    }
+  }
+
+  public stopAmbientFocus() {
+    try {
+      if (this.ambientSource) {
+        this.ambientSource.stop();
+        this.ambientSource.disconnect();
+        this.ambientSource = null;
+      }
+      if (this.ambientGain) {
+        this.ambientGain.disconnect();
+        this.ambientGain = null;
+      }
+      this.ambientActive = false;
+    } catch {
+      this.ambientActive = false;
+    }
+  }
+
+  public getIsAmbientPlaying(): boolean {
+    return this.ambientActive;
+  }
 
   /**
    * Starts an inaudible silent audio carrier so mobile browsers keep MediaSession alive

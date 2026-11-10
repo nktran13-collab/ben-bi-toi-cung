@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Sparkles,
   HeartPulse,
@@ -13,22 +13,18 @@ import {
   CheckCircle2,
   Clock,
   Flame,
-  Shield,
   Layers,
-  HelpCircle,
   Plus,
-  Cloud,
-  CloudOff,
-  Radio,
-  Bell,
-  Smartphone,
-  Award,
+  Search,
+  TrendingUp,
+  RotateCcw,
 } from 'lucide-react';
 import {
   TaskItem,
   TimeSession,
   HabitDailyLog,
   TaskCategory,
+  TaskMode,
   UserAccount,
   RealtimeSyncPayload,
   RetroactiveConfirmation,
@@ -38,15 +34,25 @@ import {
   calculateCheckpoint,
   countPendingSync,
   formatClockTime,
-  calculateExpectedEndTimestamp,
   formatDuration,
+  getEffectiveTargetDurationMs,
+  evaluateDailyRollover,
+  getMillisecondsUntilRollover,
 } from './utils/engine';
 import { soundEngine } from './utils/audio';
-import { loadStoredData, saveStoredData, syncDataToCloud } from './utils/storage';
+import {
+  loadStoredData,
+  saveStoredData,
+  syncDataToCloud,
+  getCleanStarterTasks,
+  getInitialSeedTasks,
+  exportFullBackupJSON,
+  parseFullBackupJSON,
+} from './utils/storage';
 import { useWakeLock } from './utils/useWakeLock';
 import { usePWAInstall } from './utils/usePWAInstall';
 import { notificationService } from './utils/notifications';
-import { realtimeManager, CURRENT_DEVICE_ID } from './utils/realtime';
+import { realtimeManager } from './utils/realtime';
 import { setupMediaSession } from './utils/mediaSession';
 
 import { Header } from './components/Header';
@@ -60,6 +66,7 @@ import { DevTestToolbar } from './components/DevTestToolbar';
 import { MilestoneUpgradeModal } from './components/MilestoneUpgradeModal';
 import { RetroactiveConfirmModal } from './components/RetroactiveConfirmModal';
 import { IdleDetectionModal } from './components/IdleDetectionModal';
+import { ZenFocusModal } from './components/ZenFocusModal';
 
 export default function App() {
   // App State
@@ -77,27 +84,33 @@ export default function App() {
   });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [wakeLockRequested, setWakeLockRequested] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+  const [devModeEnabled, setDevModeEnabled] = useState(false);
   const [isSimulatedOffline, setIsSimulatedOffline] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<'all' | TaskCategory>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Realtime cross-tab state tracking
   const [lastRealtimeMessage, setLastRealtimeMessage] = useState<string | null>(null);
 
   // Notification API permission state
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('default');
+  const [notificationPermission, setNotificationPermission] = useState<
+    NotificationPermission | 'unsupported'
+  >('default');
 
   // Modals state
   const [statsModalTaskId, setStatsModalTaskId] = useState<string | null>(null);
   const [breakStreakModalTaskId, setBreakStreakModalTaskId] = useState<string | null>(null);
   const [breakStreakMissedDays, setBreakStreakMissedDays] = useState<number>(1);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+  const [zenFocusTaskId, setZenFocusTaskId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isPWAGuideOpen, setIsPWAGuideOpen] = useState(false);
-  const [showInfoBanner, setShowInfoBanner] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Phase 3 Special Modals
+  // Special Psychology Modals
   const [milestoneTask, setMilestoneTask] = useState<TaskItem | null>(null);
   const [retroactiveItem, setRetroactiveItem] = useState<RetroactiveConfirmation | null>(null);
   const [idleDetectionTask, setIdleDetectionTask] = useState<TaskItem | null>(null);
@@ -120,15 +133,25 @@ export default function App() {
     }, 4000);
   }, []);
 
-  // Load from local storage on mount
+  // Load from local storage on mount + Run Daily Rollover & Retroactive checks
   useEffect(() => {
     const loaded = loadStoredData();
-    setTasks(loaded.tasks);
+    const now = Date.now();
+    const currentLogicalDate = getLogicalDate(now, 4);
+    const yesterdayDate = getPreviousLogicalDate(currentLogicalDate);
+
+    // Evaluate daily rollover (04:00 AM reset + automatic streak break detection)
+    const rollover = evaluateDailyRollover(loaded.tasks, currentLogicalDate, now);
+    const initialTasks = rollover.hasChanges ? rollover.updatedTasks : loaded.tasks;
+
+    setTasks(initialTasks);
     setSessions(loaded.sessions);
     setLogs(loaded.logs);
     setAccount(loaded.account);
     setSoundEnabled(loaded.settings.soundEnabled);
     setWakeLockRequested(loaded.settings.wakeLockRequested);
+    setDarkMode(!!loaded.settings.darkMode);
+    setDevModeEnabled(!!loaded.settings.devModeEnabled);
     setIsSimulatedOffline(loaded.simulatedOffline);
     soundEngine.setMuted(!loaded.settings.soundEnabled);
 
@@ -136,12 +159,13 @@ export default function App() {
       setNotificationPermission(notificationService.getPermission());
     }
 
-    // Check for Retroactive Confirmation (Habit finished yesterday but user fell asleep without confirming)
-    const now = Date.now();
-    const currentLogicalDate = getLogicalDate(now, 4);
-    const yesterdayDate = getPreviousLogicalDate(currentLogicalDate);
+    if (rollover.detectedBreak) {
+      setBreakStreakModalTaskId(rollover.detectedBreak.taskId);
+      setBreakStreakMissedDays(rollover.detectedBreak.missedDays);
+    }
 
-    const pendingYesterdayTask = loaded.tasks.find(
+    // Check for Retroactive Confirmation (Habit finished yesterday but user fell asleep without confirming)
+    const pendingYesterdayTask = initialTasks.find(
       (t) =>
         t.mode === 'habit' &&
         t.status === 'pending_confirmation' &&
@@ -163,6 +187,13 @@ export default function App() {
     setDataLoaded(true);
   }, []);
 
+  // Sync dark mode class on document.documentElement
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', darkMode);
+    }
+  }, [darkMode]);
+
   // Save to local storage whenever data changes
   useEffect(() => {
     if (!dataLoaded) return;
@@ -175,13 +206,41 @@ export default function App() {
         wakeLockRequested,
         dayRolloverHour: 4,
         notificationsEnabled: notificationPermission === 'granted',
+        darkMode,
+        devModeEnabled,
       },
       account,
       isSimulatedOffline
     );
-  }, [tasks, sessions, logs, soundEnabled, wakeLockRequested, account, isSimulatedOffline, notificationPermission, dataLoaded]);
+  }, [
+    tasks,
+    sessions,
+    logs,
+    soundEnabled,
+    wakeLockRequested,
+    darkMode,
+    devModeEnabled,
+    account,
+    isSimulatedOffline,
+    notificationPermission,
+    dataLoaded,
+  ]);
 
-  // Delta-Timestamp Engine: Update current time tick
+  // Delta-Timestamp Engine: Update current time tick & check live 04:00 AM rollover
+  const currentLogicalDate = getLogicalDate(currentTimeMs, 4);
+
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const rollover = evaluateDailyRollover(tasks, currentLogicalDate, Date.now());
+    if (rollover.hasChanges) {
+      setTasks(rollover.updatedTasks);
+      if (rollover.detectedBreak) {
+        setBreakStreakModalTaskId(rollover.detectedBreak.taskId);
+        setBreakStreakMissedDays(rollover.detectedBreak.missedDays);
+      }
+    }
+  }, [currentLogicalDate, dataLoaded, tasks]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTimeMs(Date.now());
@@ -258,8 +317,9 @@ export default function App() {
                   status: 'completed_today',
                   currentStreak: payload.newStreak ?? t.currentStreak + 1,
                   shields: payload.shields ?? t.shields,
+                  inCompensationQuest: false,
                   startedAtMs: null,
-                  accumulatedMs: t.targetDurationMs,
+                  accumulatedMs: getEffectiveTargetDurationMs(t),
                 }
               : t
           )
@@ -281,12 +341,11 @@ export default function App() {
   useEffect(() => {
     tasks.forEach((task) => {
       if (task.mode === 'habit' && task.status === 'running' && task.startedAtMs !== null) {
+        const effectiveTargetMs = getEffectiveTargetDurationMs(task);
         const elapsed = task.accumulatedMs + Math.max(0, currentTimeMs - task.startedAtMs);
-        if (elapsed >= task.targetDurationMs) {
-          // Reached 00:00!
+        if (elapsed >= effectiveTargetMs) {
           soundEngine.playBellChime(523.25);
 
-          // Trigger System Notification
           notificationService.sendNotification(
             `🔥 Bền Bỉ: ${task.name} đã hoàn thành!`,
             'Đồng hồ đếm ngược đã chạm 00:00. Nhấn giữ 0.8 giây để xác nhận chuỗi của bạn.'
@@ -298,10 +357,10 @@ export default function App() {
                 ? {
                     ...t,
                     status: 'pending_confirmation',
-                    accumulatedMs: t.targetDurationMs,
+                    accumulatedMs: getEffectiveTargetDurationMs(t),
                     startedAtMs: null,
                     timerEndedAtMs: currentTimeMs,
-                    sync_status: 1, // Atomic local write
+                    sync_status: 1,
                     updated_at_ms: Date.now(),
                   }
                 : t
@@ -318,7 +377,6 @@ export default function App() {
       if (task.mode === 'project' && task.status === 'running' && task.startedAtMs !== null) {
         const continuousRunMs = currentTimeMs - task.startedAtMs;
         if (continuousRunMs >= 180 * 60 * 1000) {
-          // Exceeded 180 minutes! Auto pause and trigger Idle Warning dialog
           const totalRawMs = task.accumulatedMs + continuousRunMs;
           soundEngine.playSoftChime(440, 0.2, 0.5);
 
@@ -345,6 +403,66 @@ export default function App() {
     });
   }, [currentTimeMs, tasks]);
 
+  // Toggle Timer (Single Tap) with Atomic Local Write & Realtime Broadcast
+  const handleToggleTimer = useCallback((taskId: string) => {
+    const now = Date.now();
+    setTasks((prev) => {
+      let broadcastAction: 'TIMER_START' | 'TIMER_PAUSE' = 'TIMER_START';
+      let targetStartedAt: number | null = now;
+      let targetAccumulated: number = 0;
+
+      const updated: TaskItem[] = prev.map((t): TaskItem => {
+        if (t.id !== taskId) return t;
+
+        if (t.status === 'running') {
+          soundEngine.playTap(false);
+          notificationService.cancelScheduledPush(t.id);
+          broadcastAction = 'TIMER_PAUSE';
+          const elapsed = t.startedAtMs ? now - t.startedAtMs : 0;
+          targetAccumulated = t.accumulatedMs + Math.max(0, elapsed);
+          targetStartedAt = null;
+
+          return {
+            ...t,
+            status: 'paused',
+            startedAtMs: null,
+            accumulatedMs: targetAccumulated,
+            sync_status: 1,
+            updated_at_ms: now,
+          };
+        } else {
+          soundEngine.playTap(true);
+          broadcastAction = 'TIMER_START';
+          targetAccumulated = t.accumulatedMs;
+          targetStartedAt = now;
+
+          if (t.mode === 'habit') {
+            const effectiveTargetMs = getEffectiveTargetDurationMs(t);
+            const remainingMs = Math.max(0, effectiveTargetMs - targetAccumulated);
+            notificationService.scheduleHabitEndPush(t.id, t.name, remainingMs);
+          }
+
+          return {
+            ...t,
+            status: 'running',
+            startedAtMs: now,
+            sync_status: 1,
+            updated_at_ms: now,
+          };
+        }
+      });
+
+      realtimeManager.publish({
+        type: broadcastAction,
+        taskId,
+        startedAtMs: targetStartedAt,
+        accumulatedMs: targetAccumulated,
+      });
+
+      return updated;
+    });
+  }, []);
+
   // Media Session API: Bind lock screen controls to active running task
   const runningTask = tasks.find((t) => t.status === 'running') || null;
   useEffect(() => {
@@ -356,73 +474,7 @@ export default function App() {
         if (runningTask) handleToggleTimer(runningTask.id);
       },
     });
-  }, [runningTask]);
-
-  // Toggle Timer (Single Tap) with Atomic Local Write & Realtime Broadcast
-  const handleToggleTimer = useCallback(
-    (taskId: string) => {
-      const now = Date.now();
-      setTasks((prev) => {
-        let broadcastAction: 'TIMER_START' | 'TIMER_PAUSE' = 'TIMER_START';
-        let targetStartedAt: number | null = now;
-        let targetAccumulated: number = 0;
-
-        const updated: TaskItem[] = prev.map((t): TaskItem => {
-          if (t.id !== taskId) return t;
-
-          if (t.status === 'running') {
-            // Pause
-            soundEngine.playTap(false);
-            notificationService.cancelScheduledPush(t.id);
-            broadcastAction = 'TIMER_PAUSE';
-            const elapsed = t.startedAtMs ? now - t.startedAtMs : 0;
-            targetAccumulated = t.accumulatedMs + Math.max(0, elapsed);
-            targetStartedAt = null;
-
-            return {
-              ...t,
-              status: 'paused',
-              startedAtMs: null,
-              accumulatedMs: targetAccumulated,
-              sync_status: 1, // Pending sync
-              updated_at_ms: now,
-            };
-          } else {
-            // Start
-            soundEngine.playTap(true);
-            broadcastAction = 'TIMER_START';
-            targetAccumulated = t.accumulatedMs;
-            targetStartedAt = now;
-
-            // If Habit, schedule Web Push notification
-            if (t.mode === 'habit') {
-              const remainingMs = Math.max(0, t.targetDurationMs - targetAccumulated);
-              notificationService.scheduleHabitEndPush(t.id, t.name, remainingMs);
-            }
-
-            return {
-              ...t,
-              status: 'running',
-              startedAtMs: now,
-              sync_status: 1, // Pending sync
-              updated_at_ms: now,
-            };
-          }
-        });
-
-        // Publish to other tabs in Realtime
-        realtimeManager.publish({
-          type: broadcastAction,
-          taskId,
-          startedAtMs: targetStartedAt,
-          accumulatedMs: targetAccumulated,
-        });
-
-        return updated;
-      });
-    },
-    []
-  );
+  }, [runningTask, handleToggleTimer]);
 
   // Reset Timer
   const handleResetTimer = useCallback((taskId: string) => {
@@ -458,10 +510,10 @@ export default function App() {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id !== taskId) return t;
+        const effectiveTargetMs = getEffectiveTargetDurationMs(t);
         const targetRemainMs = 5000;
-        const newAccumulated = Math.max(0, t.targetDurationMs - targetRemainMs);
+        const newAccumulated = Math.max(0, effectiveTargetMs - targetRemainMs);
 
-        // Schedule push for 5 seconds
         notificationService.scheduleHabitEndPush(t.id, t.name, targetRemainMs);
 
         const updatedTask: TaskItem = {
@@ -498,16 +550,22 @@ export default function App() {
       let updatedShields = 0;
       let targetMilestone = 30;
       let shouldTriggerMilestoneModal: TaskItem | null = null;
+      let wasInCompensation = false;
+      let completedDurationMs = 0;
 
       setTasks((prev) =>
         prev.map((t) => {
           if (t.id !== taskId) return t;
-          const newStreak = t.currentStreak + 1;
+          const alreadyCompletedToday = t.lastCompletedDate === logicalDate;
+          const newStreak = alreadyCompletedToday ? t.currentStreak : t.currentStreak + 1;
           const newBest = Math.max(t.bestStreak, newStreak);
           targetMilestone = t.targetMilestoneDays || 30;
+          wasInCompensation = !!t.inCompensationQuest;
+          completedDurationMs = getEffectiveTargetDurationMs(t);
 
-          // Shield Economy: +1 every 7 days, max capped by milestone (2 for 30d, 3 for 66d)
-          const { newShields, earned } = calculateEarnedShields(newStreak, t.shields, targetMilestone);
+          const { newShields, earned } = alreadyCompletedToday
+            ? { newShields: t.shields, earned: false }
+            : calculateEarnedShields(newStreak, t.shields, targetMilestone);
           updatedStreak = newStreak;
           updatedShields = newShields;
 
@@ -517,16 +575,16 @@ export default function App() {
             currentStreak: newStreak,
             bestStreak: newBest,
             shields: updatedShields,
-            inCompensationQuest: false,
+            inCompensationQuest: false, // Clears x2 compensation quest, restoring base targetDurationMs for tomorrow!
             startedAtMs: null,
             accumulatedMs: t.targetDurationMs,
             lastCompletedDate: logicalDate,
+            lastStreakCheckDate: logicalDate,
             timerEndedAtMs: undefined,
-            sync_status: 1, // Atomic write
+            sync_status: 1,
             updated_at_ms: now,
           };
 
-          // Check UCL 30-Day Milestone Upgrade
           if (newStreak === 30 && targetMilestone === 30) {
             shouldTriggerMilestoneModal = updatedTask;
           }
@@ -539,21 +597,21 @@ export default function App() {
         })
       );
 
-      // Add Habit Log with UUID and sync_status = 1
+      const targetTask = tasks.find((t) => t.id === taskId);
       const newLog: HabitDailyLog = {
         id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         taskId,
         logicalDate,
         completed: true,
-        actualDurationMs: tasks.find((t) => t.id === taskId)?.targetDurationMs || 0,
+        actualDurationMs:
+          completedDurationMs || (targetTask ? getEffectiveTargetDurationMs(targetTask) : 0),
         confirmedAt: now,
-        recoveryType: 'on_time',
+        recoveryType: wasInCompensation ? 'makeup' : 'on_time',
         sync_status: 1,
         updated_at_ms: now,
       };
       setLogs((prev) => [newLog, ...prev]);
 
-      // Broadcast habit confirmation
       realtimeManager.publish({
         type: 'HABIT_CONFIRM',
         taskId,
@@ -561,7 +619,11 @@ export default function App() {
         shields: updatedShields,
       });
 
-      showToast(`🔥 Đã hoàn thành thói quen hôm nay! Chuỗi tăng lên ${updatedStreak} ngày.`);
+      showToast(
+        wasInCompensation
+          ? `⚡ Đã hoàn thành Nhiệm vụ Đền bù x2! Chuỗi khôi phục và tăng lên ${updatedStreak} ngày.`
+          : `🔥 Đã hoàn thành thói quen hôm nay! Chuỗi tăng lên ${updatedStreak} ngày.`
+      );
 
       if (shouldTriggerMilestoneModal) {
         setMilestoneTask(shouldTriggerMilestoneModal);
@@ -593,7 +655,7 @@ export default function App() {
     [showToast]
   );
 
-  const handleKeep30Days = useCallback((taskId: string) => {
+  const handleKeep30Days = useCallback(() => {
     setMilestoneTask(null);
   }, []);
 
@@ -601,8 +663,8 @@ export default function App() {
   const handleConfirmYesterday = useCallback(
     (taskId: string) => {
       const now = Date.now();
-      const currentLogicalDate = getLogicalDate(now, 4);
-      const yesterdayDate = getPreviousLogicalDate(currentLogicalDate);
+      const currentLogical = getLogicalDate(now, 4);
+      const yesterdayDate = getPreviousLogicalDate(currentLogical);
 
       soundEngine.playSuccessChime();
 
@@ -615,11 +677,13 @@ export default function App() {
 
           return {
             ...t,
-            status: 'idle', // Ready for today's new session!
+            status: 'idle',
             currentStreak: newStreak,
             bestStreak: Math.max(t.bestStreak, newStreak),
             shields: newShields,
+            inCompensationQuest: false,
             lastCompletedDate: yesterdayDate,
+            lastStreakCheckDate: currentLogical,
             timerEndedAtMs: undefined,
             startedAtMs: null,
             accumulatedMs: 0,
@@ -629,7 +693,6 @@ export default function App() {
         })
       );
 
-      // Create retroactive habit log for yesterday
       const targetTask = tasks.find((t) => t.id === taskId);
       const newLog: HabitDailyLog = {
         id: `retro_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -700,6 +763,8 @@ export default function App() {
                 startedAtMs: null,
                 accumulatedMs: 0,
                 currentStreak: t.currentStreak + 1,
+                bestStreak: Math.max(t.bestStreak, t.currentStreak + 1),
+                lastCompletedDate: logicalDate,
                 isSuspectedIdle: false,
                 sync_status: 1,
                 updated_at_ms: now,
@@ -714,25 +779,28 @@ export default function App() {
     [idleRawDurationMs, showToast]
   );
 
-  const handleDiscardIdle = useCallback((taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              status: 'idle',
-              startedAtMs: null,
-              accumulatedMs: 0,
-              isSuspectedIdle: false,
-              sync_status: 1,
-              updated_at_ms: Date.now(),
-            }
-          : t
-      )
-    );
-    setIdleDetectionTask(null);
-    showToast('Đã hủy phiên làm việc chạy quá giờ.');
-  }, [showToast]);
+  const handleDiscardIdle = useCallback(
+    (taskId: string) => {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                status: 'idle',
+                startedAtMs: null,
+                accumulatedMs: 0,
+                isSuspectedIdle: false,
+                sync_status: 1,
+                updated_at_ms: Date.now(),
+              }
+            : t
+        )
+      );
+      setIdleDetectionTask(null);
+      showToast('Đã hủy phiên làm việc chạy quá giờ.');
+    },
+    [showToast]
+  );
 
   // Trim Session for Project Mode
   const handleTrimLatestSession = useCallback((taskId: string, trimMinutes: number) => {
@@ -770,7 +838,7 @@ export default function App() {
     });
   }, []);
 
-  // Complete Sprint Session for Project Mode
+  // Complete Sprint Session for Project Mode (works whether paused or currently running!)
   const handleCompleteSprintSession = useCallback(
     (taskId: string) => {
       const now = Date.now();
@@ -780,22 +848,27 @@ export default function App() {
       const targetTask = tasks.find((t) => t.id === taskId);
       if (!targetTask) return;
 
-      const sessionDuration = targetTask.accumulatedMs;
-      if (sessionDuration > 0) {
-        setSessions((prev) => [
-          {
-            id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            taskId: targetTask.id,
-            logicalDate,
-            startedAt: now - sessionDuration,
-            endedAt: now,
-            durationMs: sessionDuration,
-            sync_status: 1,
-            updated_at_ms: now,
-          },
-          ...prev,
-        ]);
-      }
+      const runningDelta =
+        targetTask.status === 'running' && targetTask.startedAtMs
+          ? Math.max(0, now - targetTask.startedAtMs)
+          : 0;
+      const sessionDuration = targetTask.accumulatedMs + runningDelta;
+
+      if (sessionDuration <= 0) return;
+
+      setSessions((prev) => [
+        {
+          id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          taskId: targetTask.id,
+          logicalDate,
+          startedAt: now - sessionDuration,
+          endedAt: now,
+          durationMs: sessionDuration,
+          sync_status: 1,
+          updated_at_ms: now,
+        },
+        ...prev,
+      ]);
 
       setTasks((prev) =>
         prev.map((t) =>
@@ -806,6 +879,8 @@ export default function App() {
                 startedAtMs: null,
                 accumulatedMs: 0,
                 currentStreak: t.currentStreak + 1,
+                bestStreak: Math.max(t.bestStreak, t.currentStreak + 1),
+                lastCompletedDate: logicalDate,
                 sync_status: 1,
                 updated_at_ms: now,
               }
@@ -813,119 +888,153 @@ export default function App() {
         )
       );
 
-      showToast(`Đã lưu phiên làm việc ${formatDuration(sessionDuration)} vào lịch sử.`);
+      showToast(`✅ Đã chốt & lưu phiên làm việc ${formatDuration(sessionDuration)} vào nhật ký dự án.`);
     },
     [tasks, showToast]
   );
 
-  // --- HÀM MỚI: Xóa Tác Vụ ---
-  const handleDeleteTask = useCallback((taskId: string) => {
-    if (window.confirm('Anh có chắc chắn muốn xóa tác vụ này? Toàn bộ lịch sử sẽ bị xóa vĩnh viễn.')) {
+  // Delete Task (In-app confirmation handled inside ProjectStatsModal)
+  const handleDeleteTask = useCallback(
+    (taskId: string) => {
       soundEngine.playTap(false);
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       setSessions((prev) => prev.filter((s) => s.taskId !== taskId));
       setLogs((prev) => prev.filter((l) => l.taskId !== taskId));
-      setStatsModalTaskId(null); // Đóng bảng báo cáo
+      setStatsModalTaskId(null);
       showToast('Đã xóa tác vụ thành công.');
-    }
-  }, [showToast]);
+    },
+    [showToast]
+  );
 
   // Streak Break Recoveries
-  const handleUseShield = useCallback((taskId: string) => {
-    soundEngine.playSoftChime(587.33, 0.3, 0.8);
-    const now = Date.now();
-    const logicalDate = getLogicalDate(now, 4);
+  const handleUseShield = useCallback(
+    (taskId: string) => {
+      soundEngine.playSoftChime(587.33, 0.3, 0.8);
+      const now = Date.now();
+      const logicalDate = getLogicalDate(now, 4);
+      const yesterdayDate = getPreviousLogicalDate(logicalDate);
 
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              shields: Math.max(0, t.shields - 1),
-              sync_status: 1,
-              updated_at_ms: now,
-            }
-          : t
-      )
-    );
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                shields: Math.max(0, t.shields - breakStreakMissedDays),
+                lastCompletedDate: yesterdayDate,
+                lastStreakCheckDate: logicalDate,
+                sync_status: 1,
+                updated_at_ms: now,
+              }
+            : t
+        )
+      );
 
-    // Record shielded log in history
-    const newLog: HabitDailyLog = {
-      id: `shield_log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      taskId,
-      logicalDate,
-      completed: true,
-      actualDurationMs: 0,
-      confirmedAt: now,
-      recoveryType: 'shield',
-      sync_status: 1,
-      updated_at_ms: now,
-    };
-    setLogs((prev) => [newLog, ...prev]);
+      const newLog: HabitDailyLog = {
+        id: `shield_log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        taskId,
+        logicalDate: yesterdayDate,
+        completed: true,
+        actualDurationMs: 0,
+        confirmedAt: now,
+        recoveryType: 'shield',
+        sync_status: 1,
+        updated_at_ms: now,
+      };
+      setLogs((prev) => [newLog, ...prev]);
 
-    showToast('🛡️ Đã sử dụng 1 Khiên Bền Bỉ để bảo vệ chuỗi (FROZEN_BY_SHIELD)!');
-  }, [showToast]);
+      showToast('🛡️ Đã sử dụng Khiên Bền Bỉ để bảo vệ chuỗi thành công!');
+    },
+    [breakStreakMissedDays, showToast]
+  );
 
-  const handleAcceptCompensation = useCallback((taskId: string) => {
-    soundEngine.playSoftChime(784, 0.3, 0.8);
-    const now = Date.now();
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              inCompensationQuest: true,
-              targetDurationMs: t.targetDurationMs * 2,
-              sync_status: 1,
-              updated_at_ms: now,
-            }
-          : t
-      )
-    );
-    showToast('⚡ Đã kích hoạt Nhiệm vụ Đền bù x2 cho ngày tiếp theo (MAKEUP_RECOVERED).');
-  }, [showToast]);
+  const handleAcceptCompensation = useCallback(
+    (taskId: string) => {
+      soundEngine.playSoftChime(784, 0.3, 0.8);
+      const now = Date.now();
+      const logicalDate = getLogicalDate(now, 4);
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                inCompensationQuest: true,
+                lastStreakCheckDate: logicalDate,
+                sync_status: 1,
+                updated_at_ms: now,
+              }
+            : t
+        )
+      );
+      showToast('⚡ Đã kích hoạt Nhiệm vụ Đền bù x2 thời gian cho hôm nay!');
+    },
+    [showToast]
+  );
 
-  const handleResetToCheckpoint = useCallback((taskId: string) => {
-    soundEngine.playTap(false);
-    const now = Date.now();
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        const checkpoint = calculateCheckpoint(t.currentStreak);
-        return {
-          ...t,
-          currentStreak: checkpoint,
-          inCompensationQuest: false,
-          sync_status: 1,
-          updated_at_ms: now,
-        };
-      })
-    );
-    showToast('Đã trở về cột mốc bảo lưu gần nhất.');
-  }, [showToast]);
+  const handleResetToCheckpoint = useCallback(
+    (taskId: string) => {
+      soundEngine.playTap(false);
+      const now = Date.now();
+      const logicalDate = getLogicalDate(now, 4);
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== taskId) return t;
+          const checkpoint = calculateCheckpoint(t.currentStreak);
+          return {
+            ...t,
+            currentStreak: checkpoint,
+            inCompensationQuest: false,
+            lastStreakCheckDate: logicalDate,
+            sync_status: 1,
+            updated_at_ms: now,
+          };
+        })
+      );
+      showToast('Đã trở về cột mốc bảo lưu gần nhất.');
+    },
+    [showToast]
+  );
 
-  const handleFullResetStreak = useCallback((taskId: string) => {
-    soundEngine.playTap(false);
-    const now = Date.now();
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              currentStreak: 0,
-              inCompensationQuest: false,
-              sync_status: 1,
-              updated_at_ms: now,
-            }
-          : t
-      )
-    );
-    showToast('Đã đặt lại chuỗi về Ngày 0.');
-  }, [showToast]);
+  const handleFullResetStreak = useCallback(
+    (taskId: string) => {
+      soundEngine.playTap(false);
+      const now = Date.now();
+      const logicalDate = getLogicalDate(now, 4);
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                currentStreak: 0,
+                inCompensationQuest: false,
+                lastStreakCheckDate: logicalDate,
+                sync_status: 1,
+                updated_at_ms: now,
+              }
+            : t
+        )
+      );
+      showToast('Đã đặt lại chuỗi về Ngày 0.');
+    },
+    [showToast]
+  );
 
   // Add Task with Max 24 limit enforcement
   const handleAddTask = useCallback(
-    (newTaskData: Omit<TaskItem, 'id' | 'currentStreak' | 'bestStreak' | 'shields' | 'status' | 'startedAtMs' | 'accumulatedMs' | 'historyStartTimestamp' | 'sync_status' | 'updated_at_ms'>) => {
+    (
+      newTaskData: Omit<
+        TaskItem,
+        | 'id'
+        | 'currentStreak'
+        | 'bestStreak'
+        | 'shields'
+        | 'status'
+        | 'startedAtMs'
+        | 'accumulatedMs'
+        | 'historyStartTimestamp'
+        | 'sync_status'
+        | 'updated_at_ms'
+      >
+    ) => {
       if (tasks.length >= 24) {
         showToast('⚠️ Đã đạt giới hạn tối đa 24 tác vụ. Vui lòng hoàn tất hoặc xóa bớt tác vụ.');
         return;
@@ -943,7 +1052,7 @@ export default function App() {
         startedAtMs: null,
         accumulatedMs: 0,
         historyStartTimestamp: now,
-        sync_status: 1, // Pending sync
+        sync_status: 1,
         updated_at_ms: now,
       };
       setTasks((prev) => [newTask, ...prev]);
@@ -951,6 +1060,108 @@ export default function App() {
     },
     [tasks.length, showToast]
   );
+
+  // Edit Existing Task
+  const handleEditTask = useCallback(
+    (
+      taskId: string,
+      updates: {
+        name: string;
+        mode: TaskMode;
+        category: TaskCategory;
+        targetDurationMs: number;
+        targetMilestoneDays?: number;
+        notes?: string;
+      }
+    ) => {
+      const now = Date.now();
+      soundEngine.playSoftChime(659.25, 0.2, 0.4);
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                ...updates,
+                sync_status: 1,
+                updated_at_ms: now,
+              }
+            : t
+        )
+      );
+      setEditingTask(null);
+      showToast(`Đã cập nhật tác vụ "${updates.name}".`);
+    },
+    [showToast]
+  );
+
+  // Backup & Restore JSON + Starter Reset Handlers
+  const handleExportBackupJSON = useCallback(() => {
+    const json = exportFullBackupJSON(tasks, sessions, logs, {
+      soundEnabled,
+      wakeLockRequested,
+      dayRolloverHour: 4,
+      notificationsEnabled: notificationPermission === 'granted',
+      darkMode,
+      devModeEnabled,
+    });
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ben-bi-backup-${getLogicalDate(Date.now(), 4)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('📦 Đã tải xuống file sao lưu dữ liệu (.json) thành công!');
+  }, [
+    tasks,
+    sessions,
+    logs,
+    soundEnabled,
+    wakeLockRequested,
+    notificationPermission,
+    darkMode,
+    devModeEnabled,
+    showToast,
+  ]);
+
+  const handleImportBackupJSON = useCallback(
+    (jsonStr: string): boolean => {
+      const parsed = parseFullBackupJSON(jsonStr);
+      if (!parsed) return false;
+      setTasks(parsed.tasks);
+      setSessions(parsed.sessions);
+      setLogs(parsed.logs);
+      if (parsed.settings) {
+        if (parsed.settings.darkMode !== undefined) setDarkMode(parsed.settings.darkMode);
+        if (parsed.settings.soundEnabled !== undefined) {
+          setSoundEnabled(parsed.settings.soundEnabled);
+          soundEngine.setMuted(!parsed.settings.soundEnabled);
+        }
+      }
+      soundEngine.playSuccessChime();
+      showToast('✅ Đã khôi phục toàn bộ dữ liệu từ bản sao lưu!');
+      return true;
+    },
+    [showToast]
+  );
+
+  const handleResetToCleanStarter = useCallback(() => {
+    const clean = getCleanStarterTasks();
+    setTasks(clean.tasks);
+    setSessions(clean.sessions);
+    setLogs(clean.logs);
+    soundEngine.playSoftChime(523.25, 0.25, 0.5);
+    showToast('🌱 Đã đặt lại toàn bộ chuỗi về Ngày 0 để bạn bắt đầu hành trình thực tế!');
+  }, [showToast]);
+
+  const handleLoadDemoSeed = useCallback(() => {
+    const seed = getInitialSeedTasks();
+    setTasks(seed.tasks);
+    setSessions(seed.sessions);
+    setLogs(seed.logs);
+    soundEngine.playSoftChime(659.25, 0.25, 0.5);
+    showToast('✨ Đã nạp bộ dữ liệu mẫu 21 ngày để trải nghiệm tính năng!');
+  }, [showToast]);
 
   // Cloud Sync Handler (Converts sync_status = 1 -> 0)
   const handleTriggerSyncNow = useCallback(async () => {
@@ -967,7 +1178,6 @@ export default function App() {
         soundEngine.playSoftChime(880, 0.15, 0.3);
         showToast(result.message);
 
-        // Broadcast to other tabs
         realtimeManager.publish({
           type: 'DATA_MERGE',
           dataSnapshot: {
@@ -1009,16 +1219,19 @@ export default function App() {
       setAccount(updatedAccount);
       soundEngine.playSuccessChime();
 
-      // Trigger auto-merge with cloud database
       setIsSyncing(true);
       try {
-        const result = await syncDataToCloud(updatedAccount, { tasks, sessions, logs }, isSimulatedOffline);
+        const result = await syncDataToCloud(
+          updatedAccount,
+          { tasks, sessions, logs },
+          isSimulatedOffline
+        );
         if (result.success) {
           setTasks(result.syncedTasks);
           setSessions(result.syncedSessions);
           setLogs(result.syncedLogs);
           setAccount(result.updatedAccount);
-          showToast(`Chào mừng ${email}! Đã tự động hợp nhất dữ liệu lên đám mây.`);
+          showToast(`Chào mừng ${email}! Đã tự động hợp nhất dữ liệu.`);
         }
       } finally {
         setIsSyncing(false);
@@ -1039,7 +1252,7 @@ export default function App() {
     };
     setAccount(anonymousAccount);
     soundEngine.playTap(false);
-    showToast('Đã đăng xuất. Dữ liệu trên thiết bị vẫn được bảo toàn ở chế độ Ẩn danh.');
+    showToast('Đã đăng xuất. Dữ liệu trên thiết bị vẫn được bảo toàn.');
   }, [showToast]);
 
   // Request Notification Permission
@@ -1057,7 +1270,6 @@ export default function App() {
     }
   }, [showToast]);
 
-  // Test Notification Trigger
   const handleTestNotification = useCallback(() => {
     notificationService.sendNotification(
       '🔔 Thử nghiệm thông báo Bền Bỉ',
@@ -1067,7 +1279,6 @@ export default function App() {
     showToast('Đã bắn thông báo thử nghiệm.');
   }, [showToast]);
 
-  // Realtime Broadcast Test Packet
   const handleBroadcastTestEvent = useCallback(() => {
     const now = Date.now();
     realtimeManager.publish({
@@ -1080,17 +1291,16 @@ export default function App() {
     showToast('Đã phát gói tin Realtime Broadcast sang các tab/thiết bị khác.');
   }, [tasks, showToast]);
 
-  // Phase 3 Quick Test Triggers for DevTestToolbar
+  // DevTestToolbar Triggers
   const handleTestMilestone30 = useCallback(() => {
     const habitTask = tasks.find((t) => t.mode === 'habit') || tasks[0];
     if (habitTask) {
-      const simulated: TaskItem = {
+      setMilestoneTask({
         ...habitTask,
         currentStreak: 30,
         bestStreak: Math.max(habitTask.bestStreak, 30),
         targetMilestoneDays: 30,
-      };
-      setMilestoneTask(simulated);
+      });
     }
   }, [tasks]);
 
@@ -1102,7 +1312,7 @@ export default function App() {
       setRetroactiveItem({
         taskId: habitTask.id,
         taskName: habitTask.name,
-        endedAtMs: now - 8 * 3600 * 1000, // 8 hours ago (late night)
+        endedAtMs: now - 8 * 3600 * 1000,
         logicalDate: yesterdayDate,
         accumulatedMs: habitTask.targetDurationMs,
       });
@@ -1112,9 +1322,8 @@ export default function App() {
   const handleTestIdleDetection = useCallback(() => {
     const projectTask = tasks.find((t) => t.mode === 'project') || tasks[0];
     if (projectTask) {
-      const simulatedRawMs = 195 * 60 * 1000; // 195 mins (3h 15m)
       setIdleDetectionTask(projectTask);
-      setIdleRawDurationMs(simulatedRawMs);
+      setIdleRawDurationMs(195 * 60 * 1000);
     }
   }, [tasks]);
 
@@ -1149,23 +1358,70 @@ export default function App() {
     setWakeLockRequested((prev) => !prev);
   }, []);
 
-  // Global counts
+  // Global counts & Daily Command Center Metrics
   const totalShields = tasks.reduce((acc, t) => acc + t.shields, 0);
   const totalActiveStreaks = tasks.filter((t) => t.currentStreak > 0).length;
-  const completedTodayCount = tasks.filter((t) => t.status === 'completed_today').length;
   const pendingSyncCount = countPendingSync(tasks, sessions, logs);
 
-  // Filter tasks
-  const filteredTasks = tasks.filter((t) => {
-    if (currentCategory === 'all') return true;
-    return t.category === currentCategory;
-  });
+  const habitTasks = tasks.filter((t) => t.mode === 'habit');
+  const completedHabitsToday = habitTasks.filter((t) => t.status === 'completed_today').length;
+  const dailyHabitProgressPercent =
+    habitTasks.length > 0 ? Math.round((completedHabitsToday / habitTasks.length) * 100) : 0;
+
+  // Total focused minutes today (across logs, sessions, and active timers)
+  const todayLogsMs = logs
+    .filter((l) => l.logicalDate === currentLogicalDate && l.completed)
+    .reduce((sum, l) => sum + (l.actualDurationMs || 0), 0);
+  const todaySessionsMs = sessions
+    .filter((s) => s.logicalDate === currentLogicalDate)
+    .reduce((sum, s) => sum + s.durationMs, 0);
+  const activeTimersMs = tasks
+    .filter((t) => t.status !== 'completed_today')
+    .reduce((sum, t) => {
+      const runningDelta =
+        t.status === 'running' && t.startedAtMs ? Math.max(0, currentTimeMs - t.startedAtMs) : 0;
+      return sum + t.accumulatedMs + runningDelta;
+    }, 0);
+  const totalFocusedTodayMinutes = Math.round((todayLogsMs + todaySessionsMs + activeTimersMs) / 60000);
+
+  const highestStreak = tasks.reduce((max, t) => Math.max(max, t.currentStreak), 0);
+  const msUntilRollover = getMillisecondsUntilRollover(currentTimeMs, 4);
+  const hoursUntilRollover = Math.floor(msUntilRollover / 3600000);
+  const minsUntilRollover = Math.floor((msUntilRollover % 3600000) / 60000);
+
+  // Filter & Sort tasks (Running first -> Pending confirmation -> Active/Idle -> Completed Today)
+  const filteredTasks = tasks
+    .filter((t) => {
+      if (currentCategory !== 'all' && t.category !== currentCategory) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          t.name.toLowerCase().includes(q) || (t.notes && t.notes.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const priority = (status: TaskItem['status']) => {
+        if (status === 'running') return 0;
+        if (status === 'pending_confirmation') return 1;
+        if (status === 'paused') return 2;
+        if (status === 'idle') return 3;
+        return 4; // completed_today
+      };
+      return priority(a.status) - priority(b.status);
+    });
 
   const selectedStatsTask = tasks.find((t) => t.id === statsModalTaskId);
   const selectedBreakStreakTask = tasks.find((t) => t.id === breakStreakModalTaskId);
+  const selectedZenTask = tasks.find((t) => t.id === zenFocusTaskId) || null;
 
   return (
-    <div className="min-h-screen bg-[#F4F7FA] text-slate-800 flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white pb-24">
+    <div
+      className={`min-h-screen flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white pb-24 transition-colors ${
+        darkMode ? 'bg-[#0B1324] text-slate-100' : 'bg-[#F4F7FA] text-slate-800'
+      }`}
+    >
       {/* Top Header */}
       <Header
         wakeLockActive={wakeLockActive}
@@ -1173,9 +1429,24 @@ export default function App() {
         onToggleWakeLock={handleToggleWakeLock}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
+        darkMode={darkMode}
+        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+        devModeEnabled={devModeEnabled}
+        onToggleDevMode={() => {
+          const next = !devModeEnabled;
+          setDevModeEnabled(next);
+          showToast(
+            next
+              ? '🧪 Đã bật Chế độ Nhà phát triển (Dev/Test Toolbar).'
+              : '✨ Đã ẩn công cụ kiểm thử (Giao diện chuẩn Production).'
+          );
+        }}
         totalShields={totalShields}
         totalActiveStreaks={totalActiveStreaks}
-        onOpenAddTask={() => setIsAddTaskModalOpen(true)}
+        onOpenAddTask={() => {
+          setEditingTask(null);
+          setIsAddTaskModalOpen(true);
+        }}
         onTestSound={() => soundEngine.playBellChime(523.25)}
         account={account}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
@@ -1199,7 +1470,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setToastMessage(null)}
-              className="text-white/70 hover:text-white font-bold"
+              className="text-white/70 hover:text-white font-bold cursor-pointer"
             >
               ✕
             </button>
@@ -1208,17 +1479,144 @@ export default function App() {
       )}
 
       {/* Main Container */}
-      <main className="max-w-6xl mx-auto w-full px-4 pt-5 sm:pt-7 flex-1">
-        
-        {/* Category Filter Tabs */}
+      <main className="max-w-6xl mx-auto w-full px-4 pt-5 sm:pt-6 flex-1">
+        {/* Daily Command Center Banner */}
+        <section
+          aria-label="Tổng quan tiến độ kỷ luật hôm nay"
+          className={`mb-6 rounded-2xl p-4 sm:p-5 border shadow-xs transition-colors ${
+            darkMode
+              ? 'bg-slate-900/90 border-slate-800 text-slate-100'
+              : 'bg-white border-slate-200/90 text-slate-800'
+          }`}
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* Metric 1: Daily Habit Progress */}
+            <div
+              className={`p-3.5 rounded-xl border ${
+                darkMode
+                  ? 'bg-slate-800/70 border-slate-700/80'
+                  : 'bg-[#F4F7FA] border-slate-200/70'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#81C995]" />
+                  <span>Thói quen hôm nay</span>
+                </span>
+                <span className="font-mono font-bold text-[#FF6B00]">
+                  {dailyHabitProgressPercent}%
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-baseline justify-between">
+                <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
+                  {completedHabitsToday}/{habitTasks.length}
+                </span>
+                <span className="text-[11px] text-slate-400">đã hoàn tất</span>
+              </div>
+              <div className="mt-2 w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#FF6B00] to-[#81C995] transition-all duration-500"
+                  style={{ width: `${dailyHabitProgressPercent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Metric 2: Total Focused Time Today */}
+            <div
+              className={`p-3.5 rounded-xl border ${
+                darkMode
+                  ? 'bg-slate-800/70 border-slate-700/80'
+                  : 'bg-[#F4F7FA] border-slate-200/70'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <TrendingUp className="w-3.5 h-3.5 text-[#3B6998]" />
+                <span>Tổng tập trung hôm nay</span>
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
+                  {totalFocusedTodayMinutes}
+                </span>
+                <span className="text-xs font-semibold text-slate-400">phút</span>
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">
+                {(totalFocusedTodayMinutes / 60).toFixed(1)} giờ tích lũy trong ngày
+              </div>
+            </div>
+
+            {/* Metric 3: Highest Active Streak */}
+            <div
+              className={`p-3.5 rounded-xl border ${
+                darkMode
+                  ? 'bg-slate-800/70 border-slate-700/80'
+                  : 'bg-[#F4F7FA] border-slate-200/70'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <Flame className="w-3.5 h-3.5 text-[#FF6B00] fill-[#FF6B00]" />
+                <span>Chuỗi dẫn đầu</span>
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl font-black font-mono tabular-nums text-[#FF6B00]">
+                  {highestStreak}
+                </span>
+                <span className="text-xs font-semibold text-slate-400">ngày liên tiếp</span>
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400 flex items-center justify-between">
+                <span>Đang duy trì {totalActiveStreaks} chuỗi</span>
+                {highestStreak > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="text-[#3B6998] dark:text-sky-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                    title="Đặt lại về Ngày 0 hoặc Sao lưu dữ liệu"
+                  >
+                    <RotateCcw className="w-2.5 h-2.5" />
+                    <span>Đặt lại</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Metric 4: Biological Rollover Countdown (04:00 AM) */}
+            <div
+              className={`p-3.5 rounded-xl border ${
+                darkMode
+                  ? 'bg-slate-800/70 border-slate-700/80'
+                  : 'bg-[#F4F7FA] border-slate-200/70'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <Clock className="w-3.5 h-3.5 text-[#FCC934]" />
+                <span>Quỹ thời gian ngày sinh học</span>
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
+                  {hoursUntilRollover}g {String(minsUntilRollover).padStart(2, '0')}p
+                </span>
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">
+                Chuyển sang ngày mới lúc 04:00 sáng
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Category Filter Tabs & Search Bar */}
         <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-          <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-x-auto max-w-full">
+          <div
+            className={`flex items-center gap-1.5 p-1 rounded-xl border shadow-2xs overflow-x-auto max-w-full ${
+              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/90'
+            }`}
+          >
             <button
               type="button"
               onClick={() => setCurrentCategory('all')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'all'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
+                  : darkMode
+                  ? 'text-slate-300 hover:bg-slate-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
@@ -1235,12 +1633,18 @@ export default function App() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'health'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
+                  : darkMode
+                  ? 'text-slate-300 hover:bg-slate-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
               <span>Sức khoẻ</span>
-              <span className="text-xs px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700">
+              <span
+                className={`text-xs px-1.5 py-0.2 rounded-full ${
+                  darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
                 {tasks.filter((t) => t.category === 'health').length}
               </span>
             </button>
@@ -1251,12 +1655,18 @@ export default function App() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'work'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
+                  : darkMode
+                  ? 'text-slate-300 hover:bg-slate-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <Briefcase className="w-3.5 h-3.5 text-[#3B6998]" />
               <span>Công việc</span>
-              <span className="text-xs px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700">
+              <span
+                className={`text-xs px-1.5 py-0.2 rounded-full ${
+                  darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
                 {tasks.filter((t) => t.category === 'work').length}
               </span>
             </button>
@@ -1267,12 +1677,18 @@ export default function App() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'study'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
+                  : darkMode
+                  ? 'text-slate-300 hover:bg-slate-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+              <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
               <span>Học hành</span>
-              <span className="text-xs px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700">
+              <span
+                className={`text-xs px-1.5 py-0.2 rounded-full ${
+                  darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
                 {tasks.filter((t) => t.category === 'study').length}
               </span>
             </button>
@@ -1283,31 +1699,54 @@ export default function App() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'habit'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
+                  : darkMode
+                  ? 'text-slate-300 hover:bg-slate-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />
               <span>Thói quen</span>
-              <span className="text-xs px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700">
+              <span
+                className={`text-xs px-1.5 py-0.2 rounded-full ${
+                  darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
                 {tasks.filter((t) => t.category === 'habit').length}
               </span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <div className="relative flex-1 sm:w-52">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm kiếm tác vụ..."
+                className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-[#FF6B00] ${
+                  darkMode
+                    ? 'bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500'
+                    : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'
+                }`}
+              />
+            </div>
+
             <div
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono border flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono border flex items-center gap-1.5 shrink-0 ${
                 tasks.length >= 24
                   ? 'bg-red-50 text-red-700 border-red-300'
+                  : darkMode
+                  ? 'bg-slate-900 text-sky-300 border-slate-800'
                   : 'bg-[#E8F0FE] text-[#1E3A5F] border-[#3B6998]/30'
               }`}
             >
-              <span>{tasks.length}/24 tác vụ</span>
+              <span>{tasks.length}/24</span>
             </div>
           </div>
         </div>
 
-        {/* --- GRID HIỂN THỊ ĐÃ ĐƯỢC CHỈNH THÀNH 2 CỘT TRÊN ĐIỆN THOẠI --- */}
+        {/* Task Grid */}
         {filteredTasks.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
             {filteredTasks.map((task) => (
@@ -1315,10 +1754,18 @@ export default function App() {
                 key={task.id}
                 task={task}
                 currentTimeMs={currentTimeMs}
+                devModeEnabled={devModeEnabled}
+                darkMode={darkMode}
                 onToggleTimer={handleToggleTimer}
                 onResetTimer={handleResetTimer}
                 onConfirmHabit={handleConfirmHabit}
+                onCompleteSprintSession={handleCompleteSprintSession}
                 onOpenProjectStats={(id) => setStatsModalTaskId(id)}
+                onOpenEditTask={(t) => {
+                  setEditingTask(t);
+                  setIsAddTaskModalOpen(true);
+                }}
+                onOpenZenFocus={(id) => setZenFocusTaskId(id)}
                 onSimulateBreakStreak={(id) => {
                   setBreakStreakModalTaskId(id);
                   setBreakStreakMissedDays(1);
@@ -1328,15 +1775,26 @@ export default function App() {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
+          <div
+            className={`rounded-2xl p-12 text-center border ${
+              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+            }`}
+          >
             <div className="w-12 h-12 rounded-full bg-[#E8F0FE] text-[#1E3A5F] flex items-center justify-center mx-auto mb-3">
               <Filter className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-slate-800 text-sm">Chưa có tác vụ nào trong danh mục này</h3>
+            <h3 className="font-bold text-sm">
+              {searchQuery
+                ? `Không tìm thấy tác vụ nào khớp với "${searchQuery}"`
+                : 'Chưa có tác vụ nào trong danh mục này'}
+            </h3>
             <button
               type="button"
               disabled={tasks.length >= 24}
-              onClick={() => setIsAddTaskModalOpen(true)}
+              onClick={() => {
+                setEditingTask(null);
+                setIsAddTaskModalOpen(true);
+              }}
               className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF6B00] hover:bg-[#E65100] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -1346,7 +1804,7 @@ export default function App() {
         )}
       </main>
 
-      {/* 3-Tier Deep Report & Share Card Modal (BỔ SUNG HÀM XÓA VÀO ĐÂY) */}
+      {/* 3-Tier Deep Report & Share Card Modal */}
       {selectedStatsTask && (
         <ProjectStatsModal
           task={selectedStatsTask}
@@ -1358,8 +1816,23 @@ export default function App() {
           onTrimLatestSession={handleTrimLatestSession}
           onCompleteSprintSession={handleCompleteSprintSession}
           onDeleteTask={handleDeleteTask}
+          onEditTask={(t) => {
+            setEditingTask(t);
+            setIsAddTaskModalOpen(true);
+          }}
         />
       )}
+
+      {/* Zen Focus Fullscreen Modal */}
+      <ZenFocusModal
+        task={selectedZenTask}
+        isOpen={!!zenFocusTaskId}
+        currentTimeMs={currentTimeMs}
+        onClose={() => setZenFocusTaskId(null)}
+        onToggleTimer={handleToggleTimer}
+        onConfirmHabit={handleConfirmHabit}
+        onCompleteSprintSession={handleCompleteSprintSession}
+      />
 
       {selectedBreakStreakTask && (
         <StreakBreakModal
@@ -1404,8 +1877,13 @@ export default function App() {
 
       <AddTaskModal
         isOpen={isAddTaskModalOpen}
-        onClose={() => setIsAddTaskModalOpen(false)}
+        onClose={() => {
+          setIsAddTaskModalOpen(false);
+          setEditingTask(null);
+        }}
         onAddTask={handleAddTask}
+        editingTask={editingTask}
+        onEditTask={handleEditTask}
         taskCount={tasks.length}
       />
 
@@ -1417,6 +1895,10 @@ export default function App() {
         onLogout={handleLogout}
         onTriggerSyncNow={handleTriggerSyncNow}
         isSyncing={isSyncing}
+        onExportBackupJSON={handleExportBackupJSON}
+        onImportBackupJSON={handleImportBackupJSON}
+        onResetToCleanStarter={handleResetToCleanStarter}
+        onLoadDemoSeed={handleLoadDemoSeed}
       />
 
       <PWAInstallGuideModal
@@ -1427,32 +1909,35 @@ export default function App() {
         isIOS={isIOS}
       />
 
-      <DevTestToolbar
-        isSimulatedOffline={isSimulatedOffline}
-        onToggleSimulatedOffline={() => {
-          setIsSimulatedOffline((prev) => !prev);
-          showToast(
-            !isSimulatedOffline
-              ? 'Đã chuyển sang chế độ Mất mạng (Offline).'
-              : 'Đã khôi phục kết nối mạng (Online).'
-          );
-        }}
-        pendingSyncCount={pendingSyncCount}
-        onTriggerSyncNow={handleTriggerSyncNow}
-        isSyncing={isSyncing}
-        onBroadcastTestEvent={handleBroadcastTestEvent}
-        lastRealtimeEventMessage={lastRealtimeMessage}
-        onTestNotification={handleTestNotification}
-        notificationPermission={notificationPermission}
-        onRequestNotificationPermission={handleRequestNotificationPermission}
-        onOpenPWAGuide={() => setIsPWAGuideOpen(true)}
-        isPWAInstallable={isPWAInstallable}
-        onTestMilestone30={handleTestMilestone30}
-        onTestRetroactiveConfirm={handleTestRetroactiveConfirm}
-        onTestIdleDetection={handleTestIdleDetection}
-        onTestStreakBreak1Day={handleTestStreakBreak1Day}
-        onTestStreakBreak2Days={handleTestStreakBreak2Days}
-      />
+      {/* DevTestToolbar only visible when Dev Mode is enabled */}
+      {devModeEnabled && (
+        <DevTestToolbar
+          isSimulatedOffline={isSimulatedOffline}
+          onToggleSimulatedOffline={() => {
+            setIsSimulatedOffline((prev) => !prev);
+            showToast(
+              !isSimulatedOffline
+                ? 'Đã chuyển sang chế độ Mất mạng (Offline).'
+                : 'Đã khôi phục kết nối mạng (Online).'
+            );
+          }}
+          pendingSyncCount={pendingSyncCount}
+          onTriggerSyncNow={handleTriggerSyncNow}
+          isSyncing={isSyncing}
+          onBroadcastTestEvent={handleBroadcastTestEvent}
+          lastRealtimeEventMessage={lastRealtimeMessage}
+          onTestNotification={handleTestNotification}
+          notificationPermission={notificationPermission}
+          onRequestNotificationPermission={handleRequestNotificationPermission}
+          onOpenPWAGuide={() => setIsPWAGuideOpen(true)}
+          isPWAInstallable={isPWAInstallable}
+          onTestMilestone30={handleTestMilestone30}
+          onTestRetroactiveConfirm={handleTestRetroactiveConfirm}
+          onTestIdleDetection={handleTestIdleDetection}
+          onTestStreakBreak1Day={handleTestStreakBreak1Day}
+          onTestStreakBreak2Days={handleTestStreakBreak2Days}
+        />
+      )}
     </div>
   );
 }

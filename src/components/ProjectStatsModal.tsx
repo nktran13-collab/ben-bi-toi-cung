@@ -15,6 +15,8 @@ import {
   Flame,
   Award,
   Trash2,
+  Pencil,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   TaskItem,
@@ -27,6 +29,7 @@ import {
   generateCSVExport,
   generateMarkdownExport,
   MatrixDayStatus,
+  getLogicalDate,
 } from '../utils/engine';
 
 interface ProjectStatsModalProps {
@@ -39,6 +42,7 @@ interface ProjectStatsModalProps {
   onTrimLatestSession?: (taskId: string, trimMinutes: number) => void;
   onCompleteSprintSession?: (taskId: string) => void;
   onDeleteTask?: (taskId: string) => void;
+  onEditTask?: (task: TaskItem) => void;
 }
 
 export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
@@ -51,10 +55,12 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   onTrimLatestSession,
   onCompleteSprintSession,
   onDeleteTask,
+  onEditTask,
 }) => {
   const [trimMinutes, setTrimMinutes] = useState(15);
   const [trimSuccessMessage, setTrimSuccessMessage] = useState<string | null>(null);
   const [shareCardGenerating, setShareCardGenerating] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   if (!isOpen) return null;
@@ -87,12 +93,13 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     ? Math.round(totalDurationMs / activeDaysCount / 60000)
     : 0;
 
-  // Group durations by last 14 days for Project bar chart
+  // Group durations by last 14 logical days (04:00 AM rollover) for Project bar chart
   const last14Days: { dateStr: string; label: string; durationMinutes: number }[] = [];
   for (let i = 13; i >= 0; i--) {
-    const d = new Date(now - i * DAY_MS);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const dayName = i === 0 ? 'Nay' : `${d.getDate()}/${d.getMonth() + 1}`;
+    const targetTime = now - i * DAY_MS;
+    const dateStr = getLogicalDate(targetTime, 4);
+    const parts = dateStr.split('-');
+    const dayName = i === 0 ? 'Nay' : `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}`;
     const minutes = Math.round(
       taskSessions
         .filter((s) => s.logicalDate === dateStr)
@@ -276,7 +283,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     ctx.textAlign = 'right';
     ctx.font = 'bold 16px sans-serif';
     ctx.fillStyle = '#3B6998';
-    ctx.fillText('app.benbi.ai', 1100, 525);
+    ctx.fillText('ben-bi-toi-cung.vercel.app', 1100, 525);
     ctx.textAlign = 'left';
 
     // Download PNG
@@ -326,14 +333,27 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
             </h2>
           </div>
           
-          {/* Top-Right Action Buttons: Delete & Close */}
+          {/* Top-Right Action Buttons: Edit, Delete & Close */}
           <div className="flex items-center gap-2">
+            {onEditTask && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEditTask(task);
+                }}
+                title="Chỉnh sửa thông tin tác vụ"
+                className="w-9 h-9 rounded-full bg-white/15 text-white font-bold hover:bg-[#3B6998] transition-colors flex items-center justify-center cursor-pointer"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
             {onDeleteTask && (
               <button
                 type="button"
-                onClick={() => onDeleteTask(task.id)}
+                onClick={() => setConfirmingDelete((prev) => !prev)}
                 title="Xóa tác vụ này vĩnh viễn"
-                className="w-9 h-9 rounded-full bg-red-500/20 text-red-300 font-bold hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center"
+                className="w-9 h-9 rounded-full bg-red-500/20 text-red-300 font-bold hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -342,12 +362,57 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
               type="button"
               onClick={onClose}
               title="Đóng bảng báo cáo"
-              className="w-9 h-9 rounded-full bg-[#3B6998] text-white font-bold hover:bg-[#FF6B00] transition-colors flex items-center justify-center"
+              className="w-9 h-9 rounded-full bg-[#3B6998] text-white font-bold hover:bg-[#FF6B00] transition-colors flex items-center justify-center cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
+
+        {/* In-App Delete Confirmation Banner */}
+        {confirmingDelete && onDeleteTask && (
+          <div className="bg-red-50 border-b border-red-200 px-5 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="text-xs text-red-800">
+              <strong>Xác nhận xóa vĩnh viễn:</strong> Bạn có chắc chắn muốn xóa tác vụ{' '}
+              <strong>"{task.name}"</strong> cùng toàn bộ lịch sử phiên làm việc?
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => onDeleteTask(task.id)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+              >
+                Xóa vĩnh viễn
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Active Unsaved Sprint Session Banner for Project Mode */}
+        {task.mode === 'project' && task.accumulatedMs > 0 && onCompleteSprintSession && (
+          <div className="bg-emerald-50 border-b border-emerald-200 px-5 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="text-xs text-emerald-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                Đang có phiên làm việc tích lũy <strong>{formatDuration(task.accumulatedMs, true)}</strong> chưa chốt vào nhật ký.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onCompleteSprintSession(task.id)}
+              className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+            >
+              Chốt & Lưu Phiên Này
+            </button>
+          </div>
+        )}
 
         {/* Content Body */}
         <div className="p-5 sm:p-6 space-y-6">
