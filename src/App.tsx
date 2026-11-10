@@ -235,13 +235,13 @@ export default function App() {
     }
     fetchCloudData(account.email).then((cloud) => {
       if (cloud.found && cloud.data) {
-        const merged = mergeLocalAndCloudData(
-          { tasks, sessions, logs },
-          cloud.data
-        );
-        setTasks(merged.tasks);
-        setSessions(merged.sessions);
-        setLogs(merged.logs);
+        const cloudTasks = cloud.data.tasks || [];
+        const cloudSessions = cloud.data.sessions || [];
+        const cloudLogs = cloud.data.logs || [];
+        setTasks(cloudTasks);
+        setSessions(cloudSessions);
+        setLogs(cloudLogs);
+        saveStoredData(cloudTasks, cloudSessions, cloudLogs, undefined, account, false);
       }
     }).catch((e) => console.warn('Background sync on mount failed', e));
   }, [account.email, account.isAnonymous, dataLoaded, isSimulatedOffline]);
@@ -962,13 +962,25 @@ export default function App() {
   const handleDeleteTask = useCallback(
     (taskId: string) => {
       soundEngine.playTap(false);
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
-      setSessions((prev) => prev.filter((s) => s.taskId !== taskId));
-      setLogs((prev) => prev.filter((l) => l.taskId !== taskId));
+      const remainingTasks = tasks.filter((t) => t.id !== taskId);
+      const remainingSessions = sessions.filter((s) => s.taskId !== taskId);
+      const remainingLogs = logs.filter((l) => l.taskId !== taskId);
+
+      setTasks(remainingTasks);
+      setSessions(remainingSessions);
+      setLogs(remainingLogs);
       setStatsModalTaskId(null);
       showToast('Đã xóa tác vụ thành công.');
+
+      if (!account.isAnonymous && account.email && !isSimulatedOffline) {
+        syncDataToCloud(
+          account,
+          { tasks: remainingTasks, sessions: remainingSessions, logs: remainingLogs },
+          false
+        ).catch(console.warn);
+      }
     },
-    [showToast]
+    [tasks, sessions, logs, account, isSimulatedOffline, showToast]
   );
 
   // Streak Break Recoveries
@@ -1217,7 +1229,15 @@ export default function App() {
     setLogs(clean.logs);
     soundEngine.playSoftChime(523.25, 0.25, 0.5);
     showToast('🌱 Đã đặt lại toàn bộ chuỗi về Ngày 0 để bạn bắt đầu hành trình thực tế!');
-  }, [showToast]);
+
+    if (!account.isAnonymous && account.email && !isSimulatedOffline) {
+      syncDataToCloud(
+        account,
+        { tasks: clean.tasks, sessions: clean.sessions, logs: clean.logs },
+        false
+      ).catch(console.warn);
+    }
+  }, [account, isSimulatedOffline, showToast]);
 
   const handleLoadDemoSeed = useCallback(() => {
     const seed = getInitialSeedTasks();
@@ -1226,7 +1246,15 @@ export default function App() {
     setLogs(seed.logs);
     soundEngine.playSoftChime(659.25, 0.25, 0.5);
     showToast('✨ Đã nạp bộ dữ liệu mẫu 21 ngày để trải nghiệm tính năng!');
-  }, [showToast]);
+
+    if (!account.isAnonymous && account.email && !isSimulatedOffline) {
+      syncDataToCloud(
+        account,
+        { tasks: seed.tasks, sessions: seed.sessions, logs: seed.logs },
+        false
+      ).catch(console.warn);
+    }
+  }, [account, isSimulatedOffline, showToast]);
 
   // Cloud Sync Handler (Converts sync_status = 1 -> 0)
   const handleTriggerSyncNow = useCallback(async () => {
@@ -1293,34 +1321,53 @@ export default function App() {
         };
 
         if (cloudResult.found && cloudResult.data) {
-          // Cloud data exists! Intelligently merge local + cloud
-          const merged = mergeLocalAndCloudData(
-            { tasks, sessions, logs },
-            cloudResult.data
+          // Cloud data exists for this email!
+          // Restore user's real cloud account data, without polluting it with default mock seed data from Device B
+          const seedIds = new Set([
+            'task-read-30-uuid',
+            'task-meditation-15-uuid',
+            'task-project-frontend-uuid',
+            'task-pushups-core-uuid',
+            'task-project-english-uuid',
+          ]);
+
+          const cloudTasks = cloudResult.data.tasks || [];
+          const cloudSessions = cloudResult.data.sessions || [];
+          const cloudLogs = cloudResult.data.logs || [];
+
+          // Only merge local tasks if user actually created a brand new custom task while anonymous
+          const cloudTaskIds = new Set(cloudTasks.map((t: TaskItem) => t.id));
+          const localCustomTasks = tasks.filter(
+            (t) => !seedIds.has(t.id) && !cloudTaskIds.has(t.id)
           );
-          finalTasks = merged.tasks;
-          finalSessions = merged.sessions;
-          finalLogs = merged.logs;
+
+          const finalTasks = [...cloudTasks, ...localCustomTasks];
+          const finalSessions = cloudSessions;
+          const finalLogs = cloudLogs;
 
           setTasks(finalTasks);
           setSessions(finalSessions);
           setLogs(finalLogs);
           setAccount(updatedAccount);
+          saveStoredData(finalTasks, finalSessions, finalLogs, undefined, updatedAccount, false);
           soundEngine.playSuccessChime();
 
           showToast(
             `🎉 Chào mừng trở lại! Đã khôi phục thành công ${finalTasks.length} tác vụ từ tài khoản ${normalizedEmail}.`
           );
 
-          // Push merged snapshot back to ensure cloud is fresh
-          await syncDataToCloud(
-            updatedAccount,
-            { tasks: finalTasks, sessions: finalSessions, logs: finalLogs },
-            isSimulatedOffline
-          );
+          // If there were new local custom tasks merged in, sync back to cloud
+          if (localCustomTasks.length > 0) {
+            await syncDataToCloud(
+              updatedAccount,
+              { tasks: finalTasks, sessions: finalSessions, logs: finalLogs },
+              isSimulatedOffline
+            );
+          }
         } else {
           // First time this email logs in: upload current local tasks to cloud!
           setAccount(updatedAccount);
+          saveStoredData(tasks, sessions, logs, undefined, updatedAccount, false);
           soundEngine.playSuccessChime();
 
           const syncRes = await syncDataToCloud(

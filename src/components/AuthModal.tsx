@@ -3,7 +3,6 @@ import {
   X,
   Cloud,
   Mail,
-  Shield,
   LogOut,
   Send,
   RefreshCw,
@@ -15,6 +14,7 @@ import {
   Laptop,
   CheckCircle2,
   ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 import { UserAccount, formatClockTime } from '../utils/engine';
 
@@ -51,17 +51,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLoadDemoSeed,
 }) => {
   const [email, setEmail] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [step, setStep] = useState<'enter_email' | 'enter_otp'>('enter_email');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [confirmCleanReset, setConfirmCleanReset] = useState(false);
-  const [isCheckingCloud, setIsCheckingCloud] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
@@ -70,46 +68,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     setError(null);
-    setIsCheckingCloud(true);
+    setIsSubmitting(true);
 
     try {
-      // Check if user already exists on cloud
-      const res = await fetch(`/api/sync?email=${encodeURIComponent(cleanEmail)}`);
-      const json = await res.json();
-      if (json.found) {
-        setInfo(`Đã tìm thấy dữ liệu đám mây của ${cleanEmail} (${json.data?.tasks?.length || 0} tác vụ). Nhập mã OTP 123456 để khôi phục ngay.`);
-      } else {
-        setInfo(`Email mới hợp lệ. Nhập mã xác nhận nhanh 123456 để kích hoạt lưu trữ đám mây cho ${cleanEmail}.`);
-      }
+      onLoginSuccess(cleanEmail, 'email_sync');
+      onClose();
     } catch {
-      setInfo(`Đã gửi mã xác nhận 6 số đến ${cleanEmail}. (Mã xác thực nhanh: 123456)`);
+      setError('Đã có lỗi xảy ra khi đăng nhập. Vui lòng thử lại.');
     } finally {
-      setIsCheckingCloud(false);
-      setStep('enter_otp');
+      setIsSubmitting(false);
     }
-  };
-
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanEmail = email.trim().toLowerCase();
-    if (otpCode.trim() !== '123456' && otpCode.trim() !== '999999') {
-      setError('Mã xác thực không đúng. Bạn hãy nhập mã nhanh: 123456');
-      return;
-    }
-    setError(null);
-    onLoginSuccess(cleanEmail, 'email_sync');
-    onClose();
-  };
-
-  const handleQuickLoginWithoutOtp = () => {
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-      setError('Vui lòng nhập địa chỉ Email hợp lệ.');
-      return;
-    }
-    setError(null);
-    onLoginSuccess(cleanEmail, 'email_sync');
-    onClose();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,11 +110,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                {account.isAnonymous ? 'Đồng Bộ & Lưu Trữ Đám Mây' : 'Hồ Sơ Đám Mây Của Bạn'}
+                {account.isAnonymous ? 'Đăng Nhập & Đồng Bộ Đám Mây' : 'Hồ Sơ Đám Mây Của Bạn'}
               </h2>
               <p className="text-xs text-[#E8F0FE]/80">
                 {account.isAnonymous
-                  ? 'Đăng nhập email để chuyển đổi giữa Điện thoại & Máy tính mà không mất dữ liệu'
+                  ? 'Lưu trữ theo email cá nhân — Đổi máy chỉ cần nhập đúng email này là xong'
                   : `Đang liên kết: ${account.email}`}
               </p>
             </div>
@@ -172,9 +140,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div className="text-xs text-slate-700 leading-relaxed">
               <strong className="text-slate-900 block font-semibold mb-0.5">
-                Bảo toàn dữ liệu xuyên suốt đa thiết bị
+                Bảo vệ toàn vẹn dữ liệu đa thiết bị
               </strong>
-              Chỉ cần đăng nhập đúng email trên điện thoại hoặc máy tính mới, toàn bộ chuỗi streak, khiên và thời gian bấm giờ sẽ tự động khôi phục về máy bạn.
+              Dữ liệu của bạn được gắn chặt với địa chỉ Email. Khi chuyển sang điện thoại hay máy tính mới, chỉ cần nhập đúng email này, toàn bộ tác vụ và chuỗi streak sẽ được tự động khôi phục.
             </div>
           </div>
 
@@ -190,7 +158,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <div className="text-sm font-bold text-slate-900">{account.email}</div>
                     <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-emerald-700 font-medium">Đã kết nối Đám mây Vercel Cloud</span>
+                      <span className="text-emerald-700 font-medium">Đã kết nối Vercel Cloud Store</span>
                     </div>
                   </div>
                 </div>
@@ -201,7 +169,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   className="flex items-center gap-1.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-95 text-white px-3 py-2 rounded-xl text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer transition-all"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}</span>
+                  <span>{isSyncing ? 'Đang lưu...' : 'Lưu lên Đám mây'}</span>
                 </button>
               </div>
 
@@ -228,7 +196,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
-          {/* If Anonymous: Login Form */}
+          {/* If Anonymous: 1-Click Email Login Form */}
           {account.isAnonymous && (
             <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center gap-2">
@@ -236,7 +204,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <Mail className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                  Đăng nhập bằng Email của bạn
+                  Nhập Email để Đăng nhập & Lưu Dữ Liệu
                 </span>
               </div>
 
@@ -253,96 +221,46 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               )}
 
-              {step === 'enter_email' ? (
-                <form onSubmit={handleSendOtp} className="space-y-3.5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Địa chỉ Email
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="nhap-email-cua-ban@gmail.com"
-                        className="w-full text-xs sm:text-sm pl-9 pr-3 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] focus:border-transparent transition-all"
-                      />
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1.5">
-                      💡 Khi đổi điện thoại hoặc mở tab mới, chỉ cần nhập lại đúng email này là dữ liệu tự nạp lại.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                    <button
-                      type="submit"
-                      disabled={isCheckingCloud}
-                      className="flex-1 py-3 bg-[#FF6B00] hover:bg-[#E65100] active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-                    >
-                      {isCheckingCloud ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Đang kiểm tra đám mây...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" />
-                          <span>Tiếp tục với Email này</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleQuickLoginWithoutOtp}
-                      disabled={isCheckingCloud}
-                      className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-700 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>Vào nhanh</span>
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOtp} className="space-y-3.5">
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-xs font-bold text-slate-700">
-                        Nhập mã xác thực 6 số
-                      </label>
-                      <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-                        Mã nhanh: 123456
-                      </span>
-                    </div>
+              <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Địa chỉ Email của bạn
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
                     <input
-                      type="text"
-                      maxLength={6}
+                      type="email"
                       required
                       autoFocus
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      placeholder="123456"
-                      className="w-full text-center tracking-widest text-xl font-mono font-bold py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#FF6B00] transition-all"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="nhap-email-cua-ban@gmail.com"
+                      className="w-full text-xs sm:text-sm pl-9 pr-3 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] focus:border-transparent transition-all"
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setStep('enter_email')}
-                      className="w-1/3 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-                    >
-                      Quay lại
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 py-2.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle2 className="w-4 h-4 text-[#FCC934]" />
-                      <span>Xác thực & Đồng bộ dữ liệu</span>
-                    </button>
-                  </div>
-                </form>
-              )}
+                  <p className="text-[11px] text-slate-500 mt-1.5">
+                    💡 Nếu email đã có dữ liệu trước đó, hệ thống sẽ khôi phục về máy này. Nếu là email mới, dữ liệu hiện tại sẽ được lưu thành tài khoản của bạn.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-[#FF6B00] hover:bg-[#E65100] active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Đang kết nối đám mây...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Đăng nhập & Đồng bộ dữ liệu ngay</span>
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
           )}
 
@@ -352,8 +270,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <span className="text-xs font-bold text-[#1E3A5F] uppercase tracking-wider">
                 Sao lưu & Khôi phục Tệp (.JSON)
               </span>
-              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                An toàn 100%
+              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" />
+                <span>An toàn 100%</span>
               </span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">

@@ -9,64 +9,6 @@ interface SyncPayload {
   updatedAtMs?: number;
 }
 
-function mergeData(
-  local: { tasks: any[]; sessions: any[]; logs: any[] },
-  cloud: { tasks: any[]; sessions: any[]; logs: any[] }
-) {
-  const taskMap = new Map<string, any>();
-  for (const c of cloud.tasks || []) {
-    taskMap.set(c.id, { ...c, sync_status: 0 });
-  }
-  for (const l of local.tasks || []) {
-    const existing = taskMap.get(l.id);
-    if (!existing) {
-      taskMap.set(l.id, { ...l, sync_status: 0 });
-    } else {
-      const mergedStreak = Math.max(existing.currentStreak || 0, l.currentStreak || 0);
-      const mergedBest = Math.max(existing.bestStreak || 0, l.bestStreak || 0);
-      const mergedShields = Math.max(existing.shields || 0, l.shields || 0);
-      const isLocalRunning = l.status === 'running';
-      const useLocal = isLocalRunning || (l.updated_at_ms || 0) >= (existing.updated_at_ms || 0);
-
-      taskMap.set(l.id, {
-        ...(useLocal ? l : existing),
-        currentStreak: mergedStreak,
-        bestStreak: mergedBest,
-        shields: mergedShields,
-        sync_status: 0,
-        updated_at_ms: Math.max(existing.updated_at_ms || 0, l.updated_at_ms || 0),
-      });
-    }
-  }
-
-  const sessionMap = new Map<string, any>();
-  for (const s of cloud.sessions || []) {
-    sessionMap.set(s.id, { ...s, sync_status: 0 });
-  }
-  for (const s of local.sessions || []) {
-    if (!sessionMap.has(s.id)) {
-      sessionMap.set(s.id, { ...s, sync_status: 0 });
-    }
-  }
-
-  const logMap = new Map<string, any>();
-  for (const l of cloud.logs || []) {
-    logMap.set(l.id || `${l.taskId}-${l.logicalDate}`, { ...l, sync_status: 0 });
-  }
-  for (const l of local.logs || []) {
-    const key = l.id || `${l.taskId}-${l.logicalDate}`;
-    if (!logMap.has(key)) {
-      logMap.set(key, { ...l, sync_status: 0 });
-    }
-  }
-
-  return {
-    tasks: Array.from(taskMap.values()),
-    sessions: Array.from(sessionMap.values()).sort((a, b) => b.startedAt - a.startedAt),
-    logs: Array.from(logMap.values()),
-  };
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -112,31 +54,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'POST') {
       const incoming = req.body || {};
-      const localData = {
-        tasks: Array.isArray(incoming.tasks) ? incoming.tasks : [],
-        sessions: Array.isArray(incoming.sessions) ? incoming.sessions : [],
-        logs: Array.isArray(incoming.logs) ? incoming.logs : [],
-      };
+      const incomingTasks = Array.isArray(incoming.tasks) ? incoming.tasks : [];
+      const incomingSessions = Array.isArray(incoming.sessions) ? incoming.sessions : [];
+      const incomingLogs = Array.isArray(incoming.logs) ? incoming.logs : [];
 
-      // Fetch existing cloud data if exists
-      let existingData: SyncPayload = { tasks: [], sessions: [], logs: [] };
-      try {
-        const existingFile = await get(blobPath, { access: 'private', useCache: false });
-        if (existingFile && existingFile.statusCode === 200) {
-          const text = await new Response(existingFile.stream).text();
-          existingData = JSON.parse(text);
-        }
-      } catch {
-        // file doesn't exist yet, proceed with empty cloud base
-      }
+      // Clean sync_status = 0 for cloud storage
+      const cleanTasks = incomingTasks.map((t: any) => ({ ...t, sync_status: 0 }));
+      const cleanSessions = incomingSessions.map((s: any) => ({ ...s, sync_status: 0 }));
+      const cleanLogs = incomingLogs.map((l: any) => ({ ...l, sync_status: 0 }));
 
-      const merged = mergeData(localData, existingData);
       const now = Date.now();
       const payloadToSave: SyncPayload = {
-        tasks: merged.tasks,
-        sessions: merged.sessions,
-        logs: merged.logs,
-        settings: incoming.settings || existingData.settings,
+        tasks: cleanTasks,
+        sessions: cleanSessions,
+        logs: cleanLogs,
+        settings: incoming.settings,
         updatedAtMs: now,
       };
 
