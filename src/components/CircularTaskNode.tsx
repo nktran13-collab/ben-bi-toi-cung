@@ -163,13 +163,13 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
   const renderCategoryIcon = () => {
     switch (task.category) {
       case 'health':
-        return <HeartPulse className="w-3.5 h-3.5 text-rose-500" />;
+        return <HeartPulse className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-500 shrink-0" />;
       case 'work':
-        return <Briefcase className="w-3.5 h-3.5 text-[#3B6998]" />;
+        return <Briefcase className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#3B6998] shrink-0" />;
       case 'study':
-        return <BookOpen className="w-3.5 h-3.5 text-indigo-500" />;
+        return <BookOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-500 shrink-0" />;
       default:
-        return <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />;
+        return <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#FF6B00] shrink-0" />;
     }
   };
 
@@ -179,7 +179,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
 
   return (
     <div
-      className={`relative rounded-2xl p-4 sm:p-5 border transition-all shadow-sm hover:shadow-md flex flex-col items-center justify-between min-h-[345px] sm:min-h-[390px] ${
+      className={`relative rounded-2xl p-2.5 sm:p-5 border transition-all shadow-sm hover:shadow-md flex flex-col items-center justify-between min-h-[300px] sm:min-h-[390px] w-full min-w-0 box-border ${
         isPendingConfirmation
           ? 'border-[#FF6B00] ring-4 ring-[#FF6B00]/20 bg-[#FFF3E0]/30 dark:bg-[#FF6B00]/10 animate-pulse'
           : isCompleted
@@ -190,16 +190,16 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
       }`}
     >
       {/* Top Bar: Category & Pill Badge */}
-      <div className="w-full flex items-center justify-between gap-1.5 mb-2">
+      <div className="w-full flex items-center justify-between gap-1 mb-2 min-w-0">
         <div
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] sm:text-xs font-semibold ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full border text-[10px] sm:text-xs font-semibold min-w-0 shrink max-w-[55%] ${
             darkMode
               ? 'bg-slate-800 border-slate-700 text-slate-300'
               : 'bg-[#F4F7FA] border-slate-200 text-slate-700'
           }`}
         >
           {renderCategoryIcon()}
-          <span className="capitalize">
+          <span className="truncate capitalize">
             {task.category === 'health'
               ? 'Sức khoẻ'
               : task.category === 'work'
@@ -210,16 +210,16 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
           </span>
           {task.sync_status === 1 && (
             <span
-              className="w-2 h-2 rounded-full bg-[#FF6B00]"
+              className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] shrink-0"
               title="Đang chờ đồng bộ đám mây"
             />
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           {isHabit ? (
             <div
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold tracking-tight shadow-xs ${
+              className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold tracking-tight shadow-xs whitespace-nowrap shrink-0 ${
                 isCompleted
                   ? 'bg-[#81C995] text-slate-950'
                   : task.inCompensationQuest
@@ -234,22 +234,26 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                   : `Chuỗi hiện tại: ${task.currentStreak} ngày / Mục tiêu ${task.targetMilestoneDays || 30} ngày`
               }
             >
-              <Flame className="w-3.5 h-3.5 fill-current" />
+              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current shrink-0" />
               <span>
                 {task.currentStreak}/{task.targetMilestoneDays || 30}
               </span>
             </div>
           ) : (
             <div
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold tracking-tight border shadow-xs ${
+              className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold tracking-tight border shadow-xs whitespace-nowrap shrink-0 ${
                 darkMode
                   ? 'bg-slate-800 text-sky-300 border-sky-500/30'
                   : 'bg-[#E8F0FE] text-[#1E3A5F] border-[#3B6998]/30'
               }`}
               title={`Đã tích lũy qua ${task.currentStreak} phiên/ngày`}
             >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{task.currentStreak} phiên</span>
+              <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span>
+                {task.currentStreak}{' '}
+                <span className="hidden sm:inline">phiên</span>
+                <span className="sm:hidden">p</span>
+              </span>
             </div>
           )}
         </div>
@@ -257,7 +261,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
 
       {/* SVG Circular Node */}
       <div
-        className="relative w-32 h-32 sm:w-44 sm:h-44 flex items-center justify-center rounded-full my-1 cursor-pointer select-none group transition-transform active:scale-95"
+        className="relative w-28 h-28 sm:w-44 sm:h-44 flex items-center justify-center rounded-full my-1 cursor-pointer select-none group transition-transform active:scale-95 shrink-0"
         onClick={() => {
           if (!isPendingConfirmation && !isCompleted) {
             onToggleTimer(task.id);
@@ -314,14 +318,14 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
         </svg>
 
         {/* Center of Circle */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center pointer-events-none">
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-2 sm:p-3 text-center pointer-events-none">
           {isCompleted ? (
             <div className="flex flex-col items-center">
-              <CheckCircle2 className="w-8 h-8 sm:w-9 sm:h-9 text-[#81C995] mb-1" />
-              <span className="text-[10px] sm:text-xs font-bold text-[#81C995] uppercase tracking-wider">
+              <CheckCircle2 className="w-6 h-6 sm:w-9 sm:h-9 text-[#81C995] mb-0.5 sm:mb-1" />
+              <span className="text-[9px] sm:text-xs font-bold text-[#81C995] uppercase tracking-wider">
                 Đã hoàn thành
               </span>
-              <span className="text-[10px] text-slate-400 font-mono mt-0.5">Hôm nay</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-mono">Hôm nay</span>
             </div>
           ) : isPendingConfirmation ? (
             <div className="flex flex-col items-center">
@@ -339,39 +343,39 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
           ) : isRunning ? (
             <div className="flex flex-col items-center">
               <span
-                className={`text-lg sm:text-[1.75rem] font-extrabold font-mono tracking-tight tabular-nums ${
+                className={`text-base sm:text-[1.75rem] font-extrabold font-mono tracking-tight tabular-nums ${
                   darkMode ? 'text-white' : 'text-slate-900'
                 }`}
               >
                 {displayTime}
               </span>
-              <span className="text-[10px] sm:text-xs font-semibold text-emerald-500 flex items-center gap-1 mt-0.5">
-                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span className="text-[9px] sm:text-xs font-semibold text-emerald-500 flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                 Đang chạy
               </span>
             </div>
           ) : task.accumulatedMs > 0 ? (
             <div className="flex flex-col items-center">
               <span
-                className={`text-lg sm:text-[1.75rem] font-extrabold font-mono tracking-tight tabular-nums ${
+                className={`text-base sm:text-[1.75rem] font-extrabold font-mono tracking-tight tabular-nums ${
                   darkMode ? 'text-slate-200' : 'text-slate-700'
                 }`}
               >
                 {displayTime}
               </span>
-              <span className="text-[10px] sm:text-xs font-semibold text-amber-500">Tạm dừng</span>
+              <span className="text-[9px] sm:text-xs font-semibold text-amber-500">Tạm dừng</span>
             </div>
           ) : (
-            <div className="flex flex-col items-center max-w-[100px] sm:max-w-[130px] px-1">
+            <div className="flex flex-col items-center max-w-[85px] sm:max-w-[130px] px-1">
               <span
-                className={`text-sm sm:text-base font-bold line-clamp-2 leading-tight ${
+                className={`text-xs sm:text-base font-bold line-clamp-2 leading-tight ${
                   darkMode ? 'text-slate-100' : 'text-slate-800'
                 }`}
               >
                 {task.name}
               </span>
               <span
-                className={`text-[10px] sm:text-xs font-semibold mt-1.5 px-2 sm:px-2.5 py-0.5 rounded-full border ${
+                className={`text-[9px] sm:text-xs font-semibold mt-1 px-1.5 sm:px-2.5 py-0.5 rounded-full border ${
                   task.inCompensationQuest
                     ? 'bg-red-50 text-red-700 border-red-200'
                     : darkMode
@@ -388,16 +392,16 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
       </div>
 
       {/* Task Title & Status Details */}
-      <div className="w-full text-center mt-1">
+      <div className="w-full text-center mt-1 px-0.5 min-w-0">
         <h3
-          className={`font-bold text-[13px] sm:text-sm line-clamp-1 ${
+          className={`font-bold text-xs sm:text-sm line-clamp-1 truncate ${
             darkMode ? 'text-slate-100' : 'text-slate-900'
           }`}
           title={task.name}
         >
           {task.name}
         </h3>
-        <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 line-clamp-1">
+        <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 line-clamp-1 truncate">
           {task.notes
             ? task.notes
             : isHabit
@@ -407,9 +411,9 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
 
         {/* Scheduled Web Push Notification Badge */}
         {isHabit && isRunning && expectedEndFormatted && (
-          <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-[#FF6B00] bg-[#FFF3E0] dark:bg-[#FF6B00]/15 px-2 py-0.5 rounded-md border border-[#FF6B00]/30 animate-pulse">
-            <Bell className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-            <span className="truncate max-w-[120px] sm:max-w-none">Đích: {expectedEndFormatted}</span>
+          <div className="mt-1 inline-flex items-center gap-1 text-[9px] sm:text-xs font-semibold text-[#FF6B00] bg-[#FFF3E0] dark:bg-[#FF6B00]/15 px-1.5 sm:px-2 py-0.5 rounded-md border border-[#FF6B00]/30 animate-pulse max-w-full">
+            <Bell className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="truncate max-w-[100px] sm:max-w-none">Đích: {expectedEndFormatted}</span>
           </div>
         )}
       </div>
@@ -449,7 +453,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
       {/* Normal Action Bar */}
       {!isPendingConfirmation && (
         <div
-          className={`w-full mt-2 sm:mt-2.5 pt-2 sm:pt-2.5 border-t flex flex-wrap sm:flex-nowrap items-center justify-between gap-1.5 ${
+          className={`w-full mt-2 sm:mt-2.5 pt-2 sm:pt-2.5 border-t flex items-center justify-between gap-1 sm:gap-1.5 min-w-0 ${
             darkMode ? 'border-slate-800' : 'border-slate-100'
           }`}
         >
@@ -457,7 +461,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             <button
               type="button"
               onClick={() => onToggleTimer(task.id)}
-              className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold shadow-xs transition-colors cursor-pointer ${
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-1.5 sm:px-3 rounded-lg text-[10px] sm:text-xs font-bold shadow-xs transition-colors cursor-pointer truncate ${
                 isRunning
                   ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
                   : 'bg-[#1E3A5F] hover:bg-[#152a45] text-white'
@@ -465,33 +469,33 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             >
               {isRunning ? (
                 <>
-                  <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-                  <span>Dừng</span>
+                  <Pause className="w-3 h-3 sm:w-4 sm:h-4 fill-current shrink-0" />
+                  <span className="truncate">Dừng</span>
                 </>
               ) : (
                 <>
-                  <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-                  <span>{task.accumulatedMs > 0 ? 'Tiếp' : 'Bắt đầu'}</span>
+                  <Play className="w-3 h-3 sm:w-4 sm:h-4 fill-current shrink-0" />
+                  <span className="truncate">{task.accumulatedMs > 0 ? 'Tiếp' : 'Bắt đầu'}</span>
                 </>
               )}
             </button>
           ) : (
-            <div className="flex-1 text-center py-1.5 sm:py-2 px-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-lg text-[11px] sm:text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500" />
-              <span>Đã ghi nhận</span>
+            <div className="flex-1 min-w-0 text-center py-1.5 sm:py-2 px-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] sm:text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-0.5 sm:gap-1">
+              <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+              <span className="truncate">Đã ghi nhận</span>
             </div>
           )}
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             {/* Save / Complete Sprint Session button for Project Mode when there is accumulated time */}
             {!isHabit && currentElapsedMs >= 10000 && onCompleteSprintSession && (
               <button
                 type="button"
                 onClick={() => onCompleteSprintSession(task.id)}
-                className="p-1.5 sm:p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-2xs"
+                className="p-1 sm:p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0"
                 title="Chốt & Lưu phiên làm việc này vào lịch sử dự án"
               >
-                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Check className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             )}
 
@@ -500,14 +504,14 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenZenFocus(task.id)}
-                className={`p-1.5 sm:p-2 rounded-lg transition-colors border cursor-pointer ${
+                className={`p-1 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
                   darkMode
                     ? 'text-slate-300 border-slate-700 hover:bg-slate-800'
                     : 'text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
                 title="Mở không gian tập trung toàn màn hình (Zen Focus & Sóng âm)"
               >
-                <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Maximize2 className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             )}
 
@@ -516,10 +520,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onResetTimer(task.id)}
-                className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                className="p-1 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer shrink-0"
                 title="Đặt lại đồng hồ về 0"
               >
-                <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             )}
 
@@ -528,14 +532,14 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenEditTask(task)}
-                className={`p-1.5 sm:p-2 rounded-lg transition-colors cursor-pointer hidden sm:flex ${
+                className={`p-1 sm:p-2 rounded-lg transition-colors cursor-pointer hidden sm:flex shrink-0 ${
                   darkMode
                     ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                     : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
                 }`}
                 title="Chỉnh sửa thông tin tác vụ"
               >
-                <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Pencil className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             )}
 
@@ -543,14 +547,14 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             <button
               type="button"
               onClick={() => onOpenProjectStats(task.id)}
-              className={`p-1.5 sm:p-2 rounded-lg transition-colors border cursor-pointer ${
+              className={`p-1 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
                 darkMode
                   ? 'text-sky-300 border-sky-500/30 hover:bg-slate-800'
                   : 'text-[#1E3A5F] hover:bg-[#E8F0FE] border-[#3B6998]/30'
               }`}
               title="Xem báo cáo 3 tầng, ma trận chuỗi & tạo thẻ vinh danh"
             >
-              <BarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <BarChart2 className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
 
             {/* Dev Mode Only: Simulate Break Streak & Fast Forward 5s */}
@@ -558,10 +562,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onSimulateBreakStreak(task.id)}
-                className="p-1.5 sm:p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 cursor-pointer"
+                className="p-1 sm:p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 cursor-pointer shrink-0"
                 title="[Dev] Giả lập đứt chuỗi"
               >
-                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             )}
 
@@ -569,10 +573,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onFastForward5s(task.id)}
-                className="p-1.5 sm:p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-xs font-mono border border-amber-200 cursor-pointer hidden sm:block"
+                className="p-1 sm:p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-xs font-mono border border-amber-200 cursor-pointer hidden sm:block shrink-0"
                 title="[Dev] Tua nhanh còn 5 giây"
               >
-                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             )}
           </div>
@@ -582,10 +586,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
       {/* Shield info badge on top-left if available */}
       {isHabit && task.shields > 0 && (
         <div
-          className="absolute -top-2 -left-2 bg-[#FCC934] text-slate-900 font-extrabold text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm border border-amber-400"
+          className="absolute -top-2 -left-1 sm:-left-2 bg-[#FCC934] text-slate-900 font-extrabold text-[9px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 rounded-full flex items-center gap-0.5 sm:gap-1 shadow-sm border border-amber-400 z-10"
           title={`${task.shields} Khiên Bền Bỉ sẵn sàng cứu chuỗi`}
         >
-          <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-slate-900" />
+          <Shield className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 fill-slate-900 shrink-0" />
           <span>{task.shields} khiên</span>
         </div>
       )}

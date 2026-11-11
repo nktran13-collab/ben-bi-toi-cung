@@ -1658,7 +1658,7 @@ export default function App() {
       )}
 
       {/* Main Container */}
-      <main className="max-w-6xl mx-auto w-full px-4 pt-5 sm:pt-6 flex-1">
+      <main className="max-w-6xl mx-auto w-full px-3 sm:px-4 pt-5 sm:pt-6 flex-1">
         {/* Daily Command Center Banner */}
         <section
           aria-label="Tổng quan tiến độ kỷ luật hôm nay"
@@ -1927,7 +1927,7 @@ export default function App() {
 
         {/* Task Grid */}
         {filteredTasks.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
             {filteredTasks.map((task) => (
               <CircularTaskNode
                 key={task.id}
