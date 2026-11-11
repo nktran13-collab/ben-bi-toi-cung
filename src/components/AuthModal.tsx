@@ -27,7 +27,7 @@ interface AuthModalProps {
     provider: 'email_sync' | 'mock_otp' | 'supabase',
     supabaseUrl?: string,
     supabaseAnonKey?: string
-  ) => void;
+  ) => Promise<void> | void;
   onLogout: () => void;
   onTriggerSyncNow: () => void;
   isSyncing: boolean;
@@ -71,7 +71,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      onLoginSuccess(cleanEmail, 'email_sync');
+      await onLoginSuccess(cleanEmail, 'email_sync');
       onClose();
     } catch {
       setError('Đã có lỗi xảy ra khi đăng nhập. Vui lòng thử lại.');
