@@ -69,6 +69,7 @@ import { MilestoneUpgradeModal } from './components/MilestoneUpgradeModal';
 import { RetroactiveConfirmModal } from './components/RetroactiveConfirmModal';
 import { IdleDetectionModal } from './components/IdleDetectionModal';
 import { ZenFocusModal } from './components/ZenFocusModal';
+import { WelcomeModal } from './components/WelcomeModal';
 
 export default function App() {
   // App State
@@ -110,6 +111,7 @@ export default function App() {
   const [zenFocusTaskId, setZenFocusTaskId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isPWAGuideOpen, setIsPWAGuideOpen] = useState(false);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Special Psychology Modals
@@ -185,6 +187,14 @@ export default function App() {
         accumulatedMs: pendingYesterdayTask.accumulatedMs,
       });
     }
+
+    // First-time user welcome guide check
+    try {
+      const showWelcomePref = localStorage.getItem('benbi_show_welcome_modal_v2');
+      if (showWelcomePref !== 'false') {
+        setIsWelcomeModalOpen(true);
+      }
+    } catch {}
 
     setDataLoaded(true);
   }, []);
@@ -1256,6 +1266,17 @@ export default function App() {
     }
   }, [account, isSimulatedOffline, showToast]);
 
+  const handleCloseWelcomeModal = useCallback((dontShowAgain: boolean) => {
+    setIsWelcomeModalOpen(false);
+    try {
+      if (dontShowAgain) {
+        localStorage.setItem('benbi_show_welcome_modal_v2', 'false');
+      } else {
+        localStorage.setItem('benbi_show_welcome_modal_v2', 'true');
+      }
+    } catch {}
+  }, []);
+
   // Cloud Sync Handler (Converts sync_status = 1 -> 0)
   const handleTriggerSyncNow = useCallback(async () => {
     if (isSyncing) return;
@@ -1614,6 +1635,7 @@ export default function App() {
         isPWAInstallable={isPWAInstallable}
         onPromptInstall={promptInstall}
         onOpenPWAGuide={() => setIsPWAGuideOpen(true)}
+        onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
       />
 
       {/* Toast Alert Banner */}
@@ -2064,6 +2086,12 @@ export default function App() {
         isInstallable={isPWAInstallable}
         onTriggerNativeInstall={promptInstall}
         isIOS={isIOS}
+      />
+
+      <WelcomeModal
+        isOpen={isWelcomeModalOpen}
+        onClose={handleCloseWelcomeModal}
+        onOpenQuickStart={() => setIsAddTaskModalOpen(true)}
       />
 
       {/* DevTestToolbar only visible when Dev Mode is enabled */}

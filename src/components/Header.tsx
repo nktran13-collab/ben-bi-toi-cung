@@ -16,6 +16,7 @@ import {
   User,
   FlaskConical,
   Eye,
+  HelpCircle,
 } from 'lucide-react';
 import { getLogicalDate, UserAccount } from '../utils/engine';
 
@@ -42,6 +43,7 @@ interface HeaderProps {
   isPWAInstallable: boolean;
   onPromptInstall: () => void;
   onOpenPWAGuide: () => void;
+  onOpenWelcomeModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -65,6 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
   isPWAInstallable,
   onPromptInstall,
   onOpenPWAGuide,
+  onOpenWelcomeModal,
 }) => {
   const logicalDate = getLogicalDate(Date.now(), 4);
   const now = new Date();
@@ -209,6 +212,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
+
+          {/* App Guide / Welcome Info */}
+          {onOpenWelcomeModal && (
+            <button
+              type="button"
+              onClick={onOpenWelcomeModal}
+              className="p-1.5 rounded-lg border border-[#3B6998]/60 bg-[#152a45] text-[#FCC934] hover:bg-[#3B6998] transition-colors cursor-pointer"
+              title="Xem Giới thiệu & Hướng dẫn sử dụng ứng dụng"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+          )}
 
           {/* PWA Install Button */}
           <button
