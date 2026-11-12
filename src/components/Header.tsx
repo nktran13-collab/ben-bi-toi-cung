@@ -262,9 +262,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenAddTask}
-            className="flex items-center gap-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 text-white text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded-lg shadow-sm transition-all cursor-pointer"
+            title="Thêm tác vụ mới"
           >
             <Plus className="w-4 h-4" />
+            <span className="inline sm:hidden">Tác vụ</span>
             <span className="hidden sm:inline">Thêm tác vụ</span>
           </button>
         </div>

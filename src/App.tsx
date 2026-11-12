@@ -238,7 +238,7 @@ export default function App() {
     dataLoaded,
   ]);
 
-  // Background refresh on startup: pull any changes made on other devices
+  // Background refresh on startup: pull any changes made on other devices without wiping pending local items
   useEffect(() => {
     if (!dataLoaded || account.isAnonymous || !account.email || isSimulatedOffline) {
       return;
@@ -248,10 +248,38 @@ export default function App() {
         const cloudTasks = cloud.data.tasks || [];
         const cloudSessions = cloud.data.sessions || [];
         const cloudLogs = cloud.data.logs || [];
-        setTasks(cloudTasks);
+
+        setTasks((prevTasks) => {
+          const cloudTaskIds = new Set(cloudTasks.map((t: TaskItem) => t.id));
+          const pendingOrNewLocal = prevTasks.filter(
+            (t) => t.sync_status === 1 || !cloudTaskIds.has(t.id)
+          );
+
+          const localMap = new Map(prevTasks.map((t) => [t.id, t]));
+          const resolvedCloudTasks = cloudTasks.map((ct: TaskItem) => {
+            const local = localMap.get(ct.id);
+            if (local && (local.updated_at_ms || 0) > (ct.updated_at_ms || 0)) {
+              return local;
+            }
+            return ct;
+          });
+
+          const mergedTasks = [...resolvedCloudTasks, ...pendingOrNewLocal];
+          saveStoredData(mergedTasks, cloudSessions, cloudLogs, undefined, account, false);
+
+          if (pendingOrNewLocal.length > 0) {
+            syncDataToCloud(
+              account,
+              { tasks: mergedTasks, sessions: cloudSessions, logs: cloudLogs },
+              false
+            ).catch(console.warn);
+          }
+
+          return mergedTasks;
+        });
+
         setSessions(cloudSessions);
         setLogs(cloudLogs);
-        saveStoredData(cloudTasks, cloudSessions, cloudLogs, undefined, account, false);
       }
     }).catch((e) => console.warn('Background sync on mount failed', e));
   }, [account.email, account.isAnonymous, dataLoaded, isSimulatedOffline]);
@@ -1122,11 +1150,6 @@ export default function App() {
         | 'updated_at_ms'
       >
     ) => {
-      if (tasks.length >= 24) {
-        showToast('⚠️ Đã đạt giới hạn tối đa 24 tác vụ. Vui lòng hoàn tất hoặc xóa bớt tác vụ.');
-        return;
-      }
-
       soundEngine.playSoftChime(659.25, 0.25, 0.5);
       const now = Date.now();
       const newTask: TaskItem = {
@@ -1142,10 +1165,42 @@ export default function App() {
         sync_status: 1,
         updated_at_ms: now,
       };
-      setTasks((prev) => [newTask, ...prev]);
+
+      let didAdd = false;
+      let updatedTasksList: TaskItem[] = [];
+
+      setTasks((prev) => {
+        if (prev.length >= 24) {
+          showToast('⚠️ Đã đạt giới hạn tối đa 24 tác vụ. Vui lòng hoàn tất hoặc xóa bớt tác vụ.');
+          return prev;
+        }
+        didAdd = true;
+        updatedTasksList = [newTask, ...prev];
+        return updatedTasksList;
+      });
+
+      if (!didAdd) return;
+
+      // Persist immediately to localStorage
+      saveStoredData(updatedTasksList, sessions, logs, undefined, account, isSimulatedOffline);
+
+      // Reset category filter & search query so the newly created task is always visible immediately
+      setCurrentCategory('all');
+      setSearchQuery('');
+
       showToast(`Đã tạo tác vụ "${newTask.name}".`);
+
+      // If signed in with email, sync immediately to cloud without waiting for debounce
+      if (!account.isAnonymous && account.email && !isSimulatedOffline) {
+        syncDataToCloud(account, { tasks: updatedTasksList, sessions, logs }, false).then((res) => {
+          if (res.success) {
+            setTasks(res.syncedTasks);
+            setAccount(res.updatedAccount);
+          }
+        }).catch(console.warn);
+      }
     },
-    [tasks.length, showToast]
+    [sessions, logs, account, isSimulatedOffline, showToast]
   );
 
   // Edit Existing Task
@@ -1922,6 +1977,20 @@ export default function App() {
             >
               <span>{tasks.length}/24</span>
             </div>
+
+            <button
+              type="button"
+              disabled={tasks.length >= 24}
+              onClick={() => {
+                setEditingTask(null);
+                setIsAddTaskModalOpen(true);
+              }}
+              className="px-3.5 py-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              title="Thêm tác vụ mới"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Thêm tác vụ</span>
+            </button>
           </div>
         </div>
 
@@ -1982,6 +2051,21 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Floating Action Button (FAB) for Instant Quick Add on Mobile */}
+      <button
+        type="button"
+        disabled={tasks.length >= 24}
+        onClick={() => {
+          setEditingTask(null);
+          setIsAddTaskModalOpen(true);
+        }}
+        className="sm:hidden fixed bottom-6 right-5 z-40 bg-gradient-to-r from-[#FF6B00] to-[#E65100] text-white p-3.5 rounded-full shadow-2xl hover:shadow-[#FF6B00]/40 active:scale-90 transition-all flex items-center justify-center border-2 border-white/20 cursor-pointer disabled:opacity-40"
+        aria-label="Thêm tác vụ mới"
+        title="Thêm tác vụ mới"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {/* 3-Tier Deep Report & Share Card Modal */}
       {selectedStatsTask && (
