@@ -19,11 +19,11 @@ import {
   getEffectiveTargetDurationMs,
 } from '../utils/engine';
 import { soundEngine } from '../utils/audio';
+import { useNow } from '../utils/useNow';
 
 interface ZenFocusModalProps {
   task: TaskItem | null;
   isOpen: boolean;
-  currentTimeMs: number;
   onClose: () => void;
   onToggleTimer: (taskId: string) => void;
   onConfirmHabit: (taskId: string) => void;
@@ -33,7 +33,6 @@ interface ZenFocusModalProps {
 export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
   task,
   isOpen,
-  currentTimeMs,
   onClose,
   onToggleTimer,
   onConfirmHabit,
@@ -43,6 +42,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
   const [holdingProgress, setHoldingProgress] = useState(0);
   const holdStartTimeRef = useRef<number | null>(null);
   const holdAnimFrameRef = useRef<number | null>(null);
+  const currentTimeMs = useNow(1000, isOpen && task?.status === 'running');
 
   useEffect(() => {
     setAmbientPlaying(soundEngine.getIsAmbientPlaying());

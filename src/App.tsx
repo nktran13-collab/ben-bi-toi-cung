@@ -4,36 +4,16 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  Sparkles,
-  HeartPulse,
-  Briefcase,
-  BookOpen,
-  Filter,
-  CheckCircle2,
-  Clock,
-  Flame,
-  Layers,
-  Plus,
-  Search,
-  TrendingUp,
-  RotateCcw,
-} from 'lucide-react';
+import { Filter, Plus } from 'lucide-react';
 import {
   TaskItem,
-  HabitDailyLog,
   TaskCategory,
-  TaskMode,
   RetroactiveConfirmation,
   getLogicalDate,
   getPreviousLogicalDate,
-  calculateEarnedShields,
-  calculateCheckpoint,
-  formatClockTime,
-  formatDuration,
-  getEffectiveTargetDurationMs,
   evaluateDailyRollover,
   getMillisecondsUntilRollover,
+  formatClockTime,
 } from './utils/engine';
 import { soundEngine } from './utils/audio';
 import {
@@ -44,6 +24,8 @@ import {
   parseFullBackupJSON,
 } from './utils/storage';
 import { useCloudSync } from './utils/useCloudSync';
+import { useTimerWatchdogs } from './utils/useTimerWatchdogs';
+import { useTaskActions } from './utils/useTaskActions';
 import { useWakeLock } from './utils/useWakeLock';
 import { usePWAInstall } from './utils/usePWAInstall';
 import { notificationService } from './utils/notifications';
@@ -52,6 +34,10 @@ import { setupMediaSession } from './utils/mediaSession';
 
 import { Header } from './components/Header';
 import { CircularTaskNode } from './components/CircularTaskNode';
+import { DailyCommandCenter } from './components/DailyCommandCenter';
+import { TaskFilterBar } from './components/TaskFilterBar';
+import { ToastBanner } from './components/ToastBanner';
+import { AccountLoadingOverlay } from './components/AccountLoadingOverlay';
 import { ProjectStatsModal } from './components/ProjectStatsModal';
 import { StreakBreakModal } from './components/StreakBreakModal';
 import { AddTaskModal } from './components/AddTaskModal';
@@ -151,8 +137,10 @@ export default function App() {
   // Screen Wake Lock API integration
   const { isActive: wakeLockActive } = useWakeLock(wakeLockRequested);
 
-  // Real-time clock tick for smooth SVG animation and tabular-nums timer
-  const [currentTimeMs, setCurrentTimeMs] = useState(Date.now());
+  // Low-frequency clock for minute-level metrics (NOT the per-second timer display:
+  // running cards own their own 1s clock so App no longer re-renders 6x/second).
+  const [metricsNowMs, setMetricsNowMs] = useState(Date.now());
+  const [currentLogicalDate, setCurrentLogicalDate] = useState(() => getLogicalDate(Date.now(), 4));
 
   // Show auto-dismissing toast notification
   const showToast = useCallback((msg: string) => {
@@ -184,10 +172,10 @@ export default function App() {
   // The hook provides cached data immediately; run initial rollover and welcome checks once.
   useEffect(() => {
     const now = Date.now();
-    const currentLogicalDate = getLogicalDate(now, 4);
-    const yesterdayDate = getPreviousLogicalDate(currentLogicalDate);
+    const initialLogicalDate = getLogicalDate(now, 4);
+    const yesterdayDate = getPreviousLogicalDate(initialLogicalDate);
 
-    const rollover = evaluateDailyRollover(tasks, currentLogicalDate, now);
+    const rollover = evaluateDailyRollover(tasks, initialLogicalDate, now);
     const initialTasks = rollover.hasChanges ? rollover.updatedTasks : tasks;
     if (rollover.hasChanges) setTasks(initialTasks);
 
@@ -243,8 +231,25 @@ export default function App() {
     soundEngine.setMuted(!soundEnabled);
   }, [soundEnabled]);
 
-  // Delta-Timestamp Engine: Update current time tick & check live 04:00 AM rollover
-  const currentLogicalDate = getLogicalDate(currentTimeMs, 4);
+  // Minute-level clock: refresh metrics and detect the 04:00 logical-day rollover.
+  useEffect(() => {
+    const tick = () => {
+      setMetricsNowMs(Date.now());
+      const nextDate = getLogicalDate(Date.now(), 4);
+      setCurrentLogicalDate((prev) => (prev === nextDate ? prev : nextDate));
+    };
+    const interval = setInterval(tick, 30_000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!dataLoaded || isLoadingAccount) return;
@@ -258,151 +263,56 @@ export default function App() {
     }
   }, [currentLogicalDate, dataLoaded, isLoadingAccount, tasks, setTasks]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTimeMs(Date.now());
-    }, 150);
+  // Countdown completion and idle-session watchdogs (event-driven, no render per tick).
+  useTimerWatchdogs({
+    tasks,
+    dataLoaded,
+    isLoadingAccount,
+    setTasks,
+    onIdleDetected: (task, totalRawMs) => {
+      setIdleDetectionTask(task);
+      setIdleRawDurationMs(totalRawMs);
+    },
+  });
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        setCurrentTimeMs(Date.now());
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  // Habit countdown completion detector: 00:00 -> PENDING_CONFIRMATION + FM Chime + Push Notification!
-  useEffect(() => {
-    if (!dataLoaded || isLoadingAccount) return;
-    tasks.forEach((task) => {
-      if (task.mode === 'habit' && task.status === 'running' && task.startedAtMs !== null) {
-        const effectiveTargetMs = getEffectiveTargetDurationMs(task);
-        const elapsed = task.accumulatedMs + Math.max(0, currentTimeMs - task.startedAtMs);
-        if (elapsed >= effectiveTargetMs) {
-          soundEngine.playBellChime(523.25);
-
-          notificationService.sendNotification(
-            `🔥 Bền Bỉ: ${task.name} đã hoàn thành!`,
-            'Đồng hồ đếm ngược đã chạm 00:00. Nhấn giữ 0.8 giây để xác nhận chuỗi của bạn.'
-          );
-
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === task.id
-                ? {
-                    ...t,
-                    status: 'pending_confirmation',
-                    accumulatedMs: getEffectiveTargetDurationMs(t),
-                    startedAtMs: null,
-                    timerEndedAtMs: currentTimeMs,
-                    sync_status: 1,
-                    updated_at_ms: Date.now(),
-                  }
-                : t
-            )
-          );
-        }
-      }
-    });
-  }, [currentTimeMs, tasks, dataLoaded, isLoadingAccount, setTasks]);
-
-  // Idle Timer Detection (> 180 min continuous session for Project mode)
-  useEffect(() => {
-    if (!dataLoaded || isLoadingAccount) return;
-    tasks.forEach((task) => {
-      if (task.mode === 'project' && task.status === 'running' && task.startedAtMs !== null) {
-        const continuousRunMs = currentTimeMs - task.startedAtMs;
-        if (continuousRunMs >= 180 * 60 * 1000) {
-          const totalRawMs = task.accumulatedMs + continuousRunMs;
-          soundEngine.playSoftChime(440, 0.2, 0.5);
-
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === task.id
-                ? {
-                    ...t,
-                    status: 'paused',
-                    startedAtMs: null,
-                    accumulatedMs: totalRawMs,
-                    isSuspectedIdle: true,
-                    sync_status: 1,
-                    updated_at_ms: Date.now(),
-                  }
-                : t
-            )
-          );
-
-          setIdleDetectionTask(task);
-          setIdleRawDurationMs(totalRawMs);
-        }
-      }
-    });
-  }, [currentTimeMs, tasks, dataLoaded, isLoadingAccount, setTasks]);
-
-  // Toggle Timer (Single Tap) with Atomic Local Write & Realtime Broadcast
-  const handleToggleTimer = useCallback((taskId: string) => {
-    const now = Date.now();
-    setTasks((prev) => {
-      let broadcastAction: 'TIMER_START' | 'TIMER_PAUSE' = 'TIMER_START';
-      let targetStartedAt: number | null = now;
-      let targetAccumulated: number = 0;
-
-      const updated: TaskItem[] = prev.map((t): TaskItem => {
-        if (t.id !== taskId) return t;
-
-        if (t.status === 'running') {
-          soundEngine.playTap(false);
-          notificationService.cancelScheduledPush(t.id);
-          broadcastAction = 'TIMER_PAUSE';
-          const elapsed = t.startedAtMs ? now - t.startedAtMs : 0;
-          targetAccumulated = t.accumulatedMs + Math.max(0, elapsed);
-          targetStartedAt = null;
-
-          return {
-            ...t,
-            status: 'paused',
-            startedAtMs: null,
-            accumulatedMs: targetAccumulated,
-            sync_status: 1,
-            updated_at_ms: now,
-          };
-        } else {
-          soundEngine.playTap(true);
-          broadcastAction = 'TIMER_START';
-          targetAccumulated = t.accumulatedMs;
-          targetStartedAt = now;
-
-          if (t.mode === 'habit') {
-            const effectiveTargetMs = getEffectiveTargetDurationMs(t);
-            const remainingMs = Math.max(0, effectiveTargetMs - targetAccumulated);
-            notificationService.scheduleHabitEndPush(t.id, t.name, remainingMs);
-          }
-
-          return {
-            ...t,
-            status: 'running',
-            startedAtMs: now,
-            sync_status: 1,
-            updated_at_ms: now,
-          };
-        }
-      });
-
-      realtimeManager.publish({
-        type: broadcastAction,
-        taskId,
-        startedAtMs: targetStartedAt,
-        accumulatedMs: targetAccumulated,
-      });
-
-      return updated;
-    });
-  }, []);
+  const {
+    handleToggleTimer,
+    handleResetTimer,
+    handleFastForward5s,
+    handleConfirmHabit,
+    handleUpgradeTo66Days,
+    handleConfirmYesterday,
+    handleDiscardYesterday,
+    handleSaveIdleTrimmed,
+    handleDiscardIdle,
+    handleTrimLatestSession,
+    handleCompleteSprintSession,
+    handleDeleteTask,
+    handleUseShield,
+    handleAcceptCompensation,
+    handleResetToCheckpoint,
+    handleFullResetStreak,
+    handleAddTask,
+    handleEditTask,
+  } = useTaskActions({
+    tasks,
+    sessions,
+    logs,
+    setTasks,
+    setSessions,
+    setLogs,
+    showToast,
+    breakStreakMissedDays,
+    idleRawDurationMs,
+    setMilestoneTask,
+    setRetroactiveItem,
+    setIdleDetectionTask,
+    setIdleRawDurationMs,
+    setStatsModalTaskId,
+    setEditingTask,
+    setCurrentCategory,
+    setSearchQuery,
+  });
 
   // Media Session API: Bind lock screen controls to active running task
   const runningTask = isLoadingAccount ? null : tasks.find((t) => t.status === 'running') || null;
@@ -417,632 +327,9 @@ export default function App() {
     });
   }, [runningTask, handleToggleTimer]);
 
-  // Reset Timer
-  const handleResetTimer = useCallback((taskId: string) => {
-    soundEngine.playTap(false);
-    notificationService.cancelScheduledPush(taskId);
-
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              status: 'idle',
-              startedAtMs: null,
-              accumulatedMs: 0,
-              sync_status: 1,
-              updated_at_ms: Date.now(),
-            }
-          : t
-      )
-    );
-
-    realtimeManager.publish({
-      type: 'TIMER_RESET',
-      taskId,
-    });
-  }, []);
-
-  // Fast-Forward to 5s remaining (Testing Helper)
-  const handleFastForward5s = useCallback((taskId: string) => {
-    const now = Date.now();
-    soundEngine.playSoftChime(880, 0.2, 0.3);
-
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        const effectiveTargetMs = getEffectiveTargetDurationMs(t);
-        const targetRemainMs = 5000;
-        const newAccumulated = Math.max(0, effectiveTargetMs - targetRemainMs);
-
-        notificationService.scheduleHabitEndPush(t.id, t.name, targetRemainMs);
-
-        const updatedTask: TaskItem = {
-          ...t,
-          status: 'running',
-          startedAtMs: now,
-          accumulatedMs: newAccumulated,
-          sync_status: 1,
-          updated_at_ms: now,
-        };
-
-        realtimeManager.publish({
-          type: 'TIMER_START',
-          taskId,
-          startedAtMs: now,
-          accumulatedMs: newAccumulated,
-        });
-
-        return updatedTask;
-      })
-    );
-  }, []);
-
-  // Confirm Habit (After Long-Press 0.8s or confirmation button)
-  const handleConfirmHabit = useCallback(
-    (taskId: string) => {
-      const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
-
-      soundEngine.playSuccessChime();
-      notificationService.cancelScheduledPush(taskId);
-
-      let updatedStreak = 0;
-      let updatedShields = 0;
-      let targetMilestone = 30;
-      let shouldTriggerMilestoneModal: TaskItem | null = null;
-      let wasInCompensation = false;
-      let completedDurationMs = 0;
-
-      setTasks((prev) =>
-        prev.map((t) => {
-          if (t.id !== taskId) return t;
-          const alreadyCompletedToday = t.lastCompletedDate === logicalDate;
-          const newStreak = alreadyCompletedToday ? t.currentStreak : t.currentStreak + 1;
-          const newBest = Math.max(t.bestStreak, newStreak);
-          targetMilestone = t.targetMilestoneDays || 30;
-          wasInCompensation = !!t.inCompensationQuest;
-          completedDurationMs = getEffectiveTargetDurationMs(t);
-
-          const { newShields, earned } = alreadyCompletedToday
-            ? { newShields: t.shields, earned: false }
-            : calculateEarnedShields(newStreak, t.shields, targetMilestone);
-          updatedStreak = newStreak;
-          updatedShields = newShields;
-
-          const updatedTask: TaskItem = {
-            ...t,
-            status: 'completed_today',
-            currentStreak: newStreak,
-            bestStreak: newBest,
-            shields: updatedShields,
-            inCompensationQuest: false, // Clears x2 compensation quest, restoring base targetDurationMs for tomorrow!
-            startedAtMs: null,
-            accumulatedMs: t.targetDurationMs,
-            lastCompletedDate: logicalDate,
-            lastStreakCheckDate: logicalDate,
-            timerEndedAtMs: undefined,
-            sync_status: 1,
-            updated_at_ms: now,
-          };
-
-          if (newStreak === 30 && targetMilestone === 30) {
-            shouldTriggerMilestoneModal = updatedTask;
-          }
-
-          if (earned) {
-            showToast(`🛡️ Bạn vừa được thưởng +1 Khiên Bền Bỉ vì chuỗi ${newStreak} ngày!`);
-          }
-
-          return updatedTask;
-        })
-      );
-
-      const targetTask = tasks.find((t) => t.id === taskId);
-      const newLog: HabitDailyLog = {
-        id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        taskId,
-        logicalDate,
-        completed: true,
-        actualDurationMs:
-          completedDurationMs || (targetTask ? getEffectiveTargetDurationMs(targetTask) : 0),
-        confirmedAt: now,
-        recoveryType: wasInCompensation ? 'makeup' : 'on_time',
-        sync_status: 1,
-        updated_at_ms: now,
-      };
-      setLogs((prev) => [newLog, ...prev]);
-
-      realtimeManager.publish({
-        type: 'HABIT_CONFIRM',
-        taskId,
-        newStreak: updatedStreak,
-        shields: updatedShields,
-      });
-
-      showToast(
-        wasInCompensation
-          ? `⚡ Đã hoàn thành Nhiệm vụ Đền bù x2! Chuỗi khôi phục và tăng lên ${updatedStreak} ngày.`
-          : `🔥 Đã hoàn thành thói quen hôm nay! Chuỗi tăng lên ${updatedStreak} ngày.`
-      );
-
-      if (shouldTriggerMilestoneModal) {
-        setMilestoneTask(shouldTriggerMilestoneModal);
-      }
-    },
-    [tasks, showToast]
-  );
-
-  // Upgrade Habit to UCL 66-day milestone
-  const handleUpgradeTo66Days = useCallback(
-    (taskId: string) => {
-      const now = Date.now();
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                targetMilestoneDays: 66,
-                sync_status: 1,
-                updated_at_ms: now,
-              }
-            : t
-        )
-      );
-      setMilestoneTask(null);
-      soundEngine.playSuccessChime();
-      showToast('🚀 Đã nâng cấp mục tiêu lên 66 ngày! Phản xạ thần kinh đang dần tự động hóa.');
-    },
-    [showToast]
-  );
-
   const handleKeep30Days = useCallback(() => {
     setMilestoneTask(null);
   }, []);
-
-  // Retroactive Confirmation Handlers
-  const handleConfirmYesterday = useCallback(
-    (taskId: string) => {
-      const now = Date.now();
-      const currentLogical = getLogicalDate(now, 4);
-      const yesterdayDate = getPreviousLogicalDate(currentLogical);
-
-      soundEngine.playSuccessChime();
-
-      setTasks((prev) =>
-        prev.map((t) => {
-          if (t.id !== taskId) return t;
-          const newStreak = t.currentStreak + 1;
-          const targetMilestone = t.targetMilestoneDays || 30;
-          const { newShields } = calculateEarnedShields(newStreak, t.shields, targetMilestone);
-
-          return {
-            ...t,
-            status: 'idle',
-            currentStreak: newStreak,
-            bestStreak: Math.max(t.bestStreak, newStreak),
-            shields: newShields,
-            inCompensationQuest: false,
-            lastCompletedDate: yesterdayDate,
-            lastStreakCheckDate: currentLogical,
-            timerEndedAtMs: undefined,
-            startedAtMs: null,
-            accumulatedMs: 0,
-            sync_status: 1,
-            updated_at_ms: now,
-          };
-        })
-      );
-
-      const targetTask = tasks.find((t) => t.id === taskId);
-      const newLog: HabitDailyLog = {
-        id: `retro_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        taskId,
-        logicalDate: yesterdayDate,
-        completed: true,
-        actualDurationMs: targetTask?.targetDurationMs || 0,
-        confirmedAt: now,
-        recoveryType: 'on_time',
-        sync_status: 1,
-        updated_at_ms: now,
-      };
-      setLogs((prev) => [newLog, ...prev]);
-
-      setRetroactiveItem(null);
-      showToast('✅ Đã truy lĩnh và bảo toàn chuỗi ngày hôm qua thành công!');
-    },
-    [tasks, showToast]
-  );
-
-  const handleDiscardYesterday = useCallback((taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              status: 'idle',
-              timerEndedAtMs: undefined,
-              startedAtMs: null,
-              accumulatedMs: 0,
-              sync_status: 1,
-              updated_at_ms: Date.now(),
-            }
-          : t
-      )
-    );
-    setRetroactiveItem(null);
-  }, []);
-
-  // Idle Timer Resolution Handlers
-  const handleSaveIdleTrimmed = useCallback(
-    (taskId: string, trimmedDurationMs: number) => {
-      const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
-      soundEngine.playSuccessChime();
-
-      setSessions((prev) => [
-        {
-          id: `idle_session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          taskId,
-          logicalDate,
-          startedAt: now - trimmedDurationMs,
-          endedAt: now,
-          durationMs: trimmedDurationMs,
-          trimmedMs: Math.max(0, idleRawDurationMs - trimmedDurationMs),
-          sync_status: 1,
-          updated_at_ms: now,
-        },
-        ...prev,
-      ]);
-
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                status: 'idle',
-                startedAtMs: null,
-                accumulatedMs: 0,
-                currentStreak: t.currentStreak + 1,
-                bestStreak: Math.max(t.bestStreak, t.currentStreak + 1),
-                lastCompletedDate: logicalDate,
-                isSuspectedIdle: false,
-                sync_status: 1,
-                updated_at_ms: now,
-              }
-            : t
-        )
-      );
-
-      setIdleDetectionTask(null);
-      showToast(`Đã lưu phiên làm việc ${formatDuration(trimmedDurationMs, true)} sau khi cắt gọt.`);
-    },
-    [idleRawDurationMs, showToast]
-  );
-
-  const handleDiscardIdle = useCallback(
-    (taskId: string) => {
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                status: 'idle',
-                startedAtMs: null,
-                accumulatedMs: 0,
-                isSuspectedIdle: false,
-                sync_status: 1,
-                updated_at_ms: Date.now(),
-              }
-            : t
-        )
-      );
-      setIdleDetectionTask(null);
-      showToast('Đã hủy phiên làm việc chạy quá giờ.');
-    },
-    [showToast]
-  );
-
-  // Trim Session for Project Mode
-  const handleTrimLatestSession = useCallback((taskId: string, trimMinutes: number) => {
-    soundEngine.playSoftChime(440, 0.2, 0.4);
-    const trimMs = trimMinutes * 60 * 1000;
-    const now = Date.now();
-
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        return {
-          ...t,
-          accumulatedMs: Math.max(0, t.accumulatedMs - trimMs),
-          sync_status: 1,
-          updated_at_ms: now,
-        };
-      })
-    );
-
-    setSessions((prev) => {
-      const rev = [...prev].reverse();
-      const latest = rev.find((s) => s.taskId === taskId);
-      if (!latest) return prev;
-      return prev.map((s) =>
-        s.id === latest.id
-          ? {
-              ...s,
-              durationMs: Math.max(0, s.durationMs - trimMs),
-              trimmedMs: (s.trimmedMs || 0) + trimMs,
-              sync_status: 1,
-              updated_at_ms: now,
-            }
-          : s
-      );
-    });
-  }, []);
-
-  // Complete Sprint Session for Project Mode (works whether paused or currently running!)
-  const handleCompleteSprintSession = useCallback(
-    (taskId: string) => {
-      const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
-      soundEngine.playSuccessChime();
-
-      const targetTask = tasks.find((t) => t.id === taskId);
-      if (!targetTask) return;
-
-      const runningDelta =
-        targetTask.status === 'running' && targetTask.startedAtMs
-          ? Math.max(0, now - targetTask.startedAtMs)
-          : 0;
-      const sessionDuration = targetTask.accumulatedMs + runningDelta;
-
-      if (sessionDuration <= 0) return;
-
-      setSessions((prev) => [
-        {
-          id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          taskId: targetTask.id,
-          logicalDate,
-          startedAt: now - sessionDuration,
-          endedAt: now,
-          durationMs: sessionDuration,
-          sync_status: 1,
-          updated_at_ms: now,
-        },
-        ...prev,
-      ]);
-
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                status: 'idle',
-                startedAtMs: null,
-                accumulatedMs: 0,
-                currentStreak: t.currentStreak + 1,
-                bestStreak: Math.max(t.bestStreak, t.currentStreak + 1),
-                lastCompletedDate: logicalDate,
-                sync_status: 1,
-                updated_at_ms: now,
-              }
-            : t
-        )
-      );
-
-      showToast(`✅ Đã chốt & lưu phiên làm việc ${formatDuration(sessionDuration)} vào nhật ký dự án.`);
-    },
-    [tasks, showToast]
-  );
-
-  // Delete Task (In-app confirmation handled inside ProjectStatsModal)
-  const handleDeleteTask = useCallback(
-    (taskId: string) => {
-      soundEngine.playTap(false);
-      const remainingTasks = tasks.filter((t) => t.id !== taskId);
-      const remainingSessions = sessions.filter((s) => s.taskId !== taskId);
-      const remainingLogs = logs.filter((l) => l.taskId !== taskId);
-
-      setTasks(remainingTasks);
-      setSessions(remainingSessions);
-      setLogs(remainingLogs);
-      setStatsModalTaskId(null);
-      showToast('Đã xóa tác vụ thành công.');
-    },
-    [tasks, sessions, logs, setTasks, setSessions, setLogs, showToast]
-  );
-
-  // Streak Break Recoveries
-  const handleUseShield = useCallback(
-    (taskId: string) => {
-      soundEngine.playSoftChime(587.33, 0.3, 0.8);
-      const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
-      const yesterdayDate = getPreviousLogicalDate(logicalDate);
-
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                shields: Math.max(0, t.shields - breakStreakMissedDays),
-                lastCompletedDate: yesterdayDate,
-                lastStreakCheckDate: logicalDate,
-                sync_status: 1,
-                updated_at_ms: now,
-              }
-            : t
-        )
-      );
-
-      const newLog: HabitDailyLog = {
-        id: `shield_log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        taskId,
-        logicalDate: yesterdayDate,
-        completed: true,
-        actualDurationMs: 0,
-        confirmedAt: now,
-        recoveryType: 'shield',
-        sync_status: 1,
-        updated_at_ms: now,
-      };
-      setLogs((prev) => [newLog, ...prev]);
-
-      showToast('🛡️ Đã sử dụng Khiên Bền Bỉ để bảo vệ chuỗi thành công!');
-    },
-    [breakStreakMissedDays, showToast]
-  );
-
-  const handleAcceptCompensation = useCallback(
-    (taskId: string) => {
-      soundEngine.playSoftChime(784, 0.3, 0.8);
-      const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                inCompensationQuest: true,
-                lastStreakCheckDate: logicalDate,
-                sync_status: 1,
-                updated_at_ms: now,
-              }
-            : t
-        )
-      );
-      showToast('⚡ Đã kích hoạt Nhiệm vụ Đền bù x2 thời gian cho hôm nay!');
-    },
-    [showToast]
-  );
-
-  const handleResetToCheckpoint = useCallback(
-    (taskId: string) => {
-      soundEngine.playTap(false);
-      const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
-      setTasks((prev) =>
-        prev.map((t) => {
-          if (t.id !== taskId) return t;
-          const checkpoint = calculateCheckpoint(t.currentStreak);
-          return {
-            ...t,
-            currentStreak: checkpoint,
-            inCompensationQuest: false,
-            lastStreakCheckDate: logicalDate,
-            sync_status: 1,
-            updated_at_ms: now,
-          };
-        })
-      );
-      showToast('Đã trở về cột mốc bảo lưu gần nhất.');
-    },
-    [showToast]
-  );
-
-  const handleFullResetStreak = useCallback(
-    (taskId: string) => {
-      soundEngine.playTap(false);
-      const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                currentStreak: 0,
-                inCompensationQuest: false,
-                lastStreakCheckDate: logicalDate,
-                sync_status: 1,
-                updated_at_ms: now,
-              }
-            : t
-        )
-      );
-      showToast('Đã đặt lại chuỗi về Ngày 0.');
-    },
-    [showToast]
-  );
-
-  // Add Task with Max 24 limit enforcement
-  const handleAddTask = useCallback(
-    (
-      newTaskData: Omit<
-        TaskItem,
-        | 'id'
-        | 'currentStreak'
-        | 'bestStreak'
-        | 'shields'
-        | 'status'
-        | 'startedAtMs'
-        | 'accumulatedMs'
-        | 'historyStartTimestamp'
-        | 'sync_status'
-        | 'updated_at_ms'
-      >
-    ) => {
-      if (tasks.length >= 24) {
-        showToast('Đã đạt giới hạn tối đa 24 tác vụ. Vui lòng hoàn tất hoặc xóa bớt tác vụ.');
-        return;
-      }
-      soundEngine.playSoftChime(659.25, 0.25, 0.5);
-      const now = Date.now();
-      const newTask: TaskItem = {
-        ...newTaskData,
-        id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        currentStreak: 0,
-        bestStreak: 0,
-        shields: 0,
-        status: 'idle',
-        startedAtMs: null,
-        accumulatedMs: 0,
-        historyStartTimestamp: now,
-        sync_status: 1,
-        updated_at_ms: now,
-      };
-
-      setTasks((prev) => [newTask, ...prev]);
-
-      // Reset category filter & search query so the newly created task is always visible immediately
-      setCurrentCategory('all');
-      setSearchQuery('');
-
-      showToast(`Đã tạo tác vụ "${newTask.name}".`);
-    },
-    [tasks, setTasks, showToast]
-  );
-
-  // Edit Existing Task
-  const handleEditTask = useCallback(
-    (
-      taskId: string,
-      updates: {
-        name: string;
-        mode: TaskMode;
-        category: TaskCategory;
-        targetDurationMs: number;
-        targetMilestoneDays?: number;
-        notes?: string;
-      }
-    ) => {
-      const now = Date.now();
-      soundEngine.playSoftChime(659.25, 0.2, 0.4);
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                ...updates,
-                sync_status: 1,
-                updated_at_ms: now,
-              }
-            : t
-        )
-      );
-      setEditingTask(null);
-      showToast(`Đã cập nhật tác vụ "${updates.name}".`);
-    },
-    [showToast]
-  );
 
   // Backup & Restore JSON + Starter Reset Handlers
   const handleExportBackupJSON = useCallback(() => {
@@ -1264,13 +551,13 @@ export default function App() {
     .filter((t) => t.status !== 'completed_today')
     .reduce((sum, t) => {
       const runningDelta =
-        t.status === 'running' && t.startedAtMs ? Math.max(0, currentTimeMs - t.startedAtMs) : 0;
+        t.status === 'running' && t.startedAtMs ? Math.max(0, metricsNowMs - t.startedAtMs) : 0;
       return sum + t.accumulatedMs + runningDelta;
     }, 0);
   const totalFocusedTodayMinutes = Math.round((todayLogsMs + todaySessionsMs + activeTimersMs) / 60000);
 
   const highestStreak = tasks.reduce((max, t) => Math.max(max, t.currentStreak), 0);
-  const msUntilRollover = getMillisecondsUntilRollover(currentTimeMs, 4);
+  const msUntilRollover = getMillisecondsUntilRollover(metricsNowMs, 4);
   const hoursUntilRollover = Math.floor(msUntilRollover / 3600000);
   const minsUntilRollover = Math.floor((msUntilRollover % 3600000) / 60000);
 
@@ -1300,6 +587,11 @@ export default function App() {
   const selectedStatsTask = tasks.find((t) => t.id === statsModalTaskId);
   const selectedBreakStreakTask = tasks.find((t) => t.id === breakStreakModalTaskId);
   const selectedZenTask = tasks.find((t) => t.id === zenFocusTaskId) || null;
+
+  const openAddTaskModal = () => {
+    setEditingTask(null);
+    setIsAddTaskModalOpen(true);
+  };
 
   return (
     <>
@@ -1332,10 +624,7 @@ export default function App() {
         }}
         totalShields={totalShields}
         totalActiveStreaks={totalActiveStreaks}
-        onOpenAddTask={() => {
-          setEditingTask(null);
-          setIsAddTaskModalOpen(true);
-        }}
+        onOpenAddTask={openAddTaskModal}
         onTestSound={() => soundEngine.playBellChime(523.25)}
         account={account}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
@@ -1350,304 +639,32 @@ export default function App() {
         needsReauth={needsAuthentication}
       />
 
-      {/* Toast Alert Banner */}
-      {toastMessage && (
-        <div className="sticky top-[var(--app-header-h,64px)] z-40 max-w-xl mx-auto w-full px-4 mt-2">
-          <div className="bg-[#1E3A5F] text-white text-xs px-4 py-2.5 rounded-xl shadow-lg border border-[#3B6998] flex items-center justify-between gap-3 animate-fade-in">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#FCC934] shrink-0" />
-              <span>{toastMessage}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setToastMessage(null)}
-              className="text-white/70 hover:text-white font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+      <ToastBanner message={toastMessage} onDismiss={() => setToastMessage(null)} />
 
       {/* Main Container */}
       <main className="max-w-6xl mx-auto w-full px-3 sm:px-4 pt-5 sm:pt-6 flex-1">
-        {/* Daily Command Center Banner */}
-        <section
-          aria-label="Tổng quan tiến độ kỷ luật hôm nay"
-          className={`mb-6 rounded-2xl p-3 sm:p-5 border shadow-xs transition-colors ${
-            darkMode
-              ? 'bg-slate-900/90 border-slate-800 text-slate-100'
-              : 'bg-white border-slate-200/90 text-slate-800'
-          }`}
-        >
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            {/* Metric 1: Daily Habit Progress */}
-            <div
-              className={`p-3 sm:p-3.5 rounded-xl border ${
-                darkMode
-                  ? 'bg-slate-800/70 border-slate-700/80'
-                  : 'bg-[#F4F7FA] border-slate-200/70'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#81C995]" />
-                <span className="sm:hidden">Thói quen</span>
-                <span className="hidden sm:inline">Thói quen hôm nay</span>
-              </div>
-              <div className="mt-1.5 flex items-baseline justify-between gap-2">
-                <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
-                  {completedHabitsToday}/{habitTasks.length}
-                </span>
-                <span className="font-mono text-sm font-bold text-[#FF6B00]">
-                  {dailyHabitProgressPercent}%
-                </span>
-              </div>
-              <div className="mt-2 w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-[#FF6B00] to-[#81C995] transition-all duration-500"
-                  style={{ width: `${dailyHabitProgressPercent}%` }}
-                />
-              </div>
-            </div>
+        <DailyCommandCenter
+          darkMode={darkMode}
+          completedHabitsToday={completedHabitsToday}
+          habitCount={habitTasks.length}
+          dailyHabitProgressPercent={dailyHabitProgressPercent}
+          totalFocusedTodayMinutes={totalFocusedTodayMinutes}
+          highestStreak={highestStreak}
+          totalActiveStreaks={totalActiveStreaks}
+          hoursUntilRollover={hoursUntilRollover}
+          minsUntilRollover={minsUntilRollover}
+          onOpenResetOptions={() => setIsAuthModalOpen(true)}
+        />
 
-            {/* Metric 2: Total Focused Time Today */}
-            <div
-              className={`p-3 sm:p-3.5 rounded-xl border ${
-                darkMode
-                  ? 'bg-slate-800/70 border-slate-700/80'
-                  : 'bg-[#F4F7FA] border-slate-200/70'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
-                <TrendingUp className="h-3.5 w-3.5 shrink-0 text-[#3B6998]" />
-                <span>Tập trung hôm nay</span>
-              </div>
-              <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
-                  {totalFocusedTodayMinutes}
-                </span>
-                <span className="text-xs font-semibold text-slate-400">phút</span>
-              </div>
-              <div className="mt-1 text-[11px] leading-tight text-slate-400">
-                {(totalFocusedTodayMinutes / 60).toFixed(1)} giờ tích lũy
-              </div>
-            </div>
-
-            {/* Metric 3: Highest Active Streak */}
-            <div
-              className={`p-3 sm:p-3.5 rounded-xl border ${
-                darkMode
-                  ? 'bg-slate-800/70 border-slate-700/80'
-                  : 'bg-[#F4F7FA] border-slate-200/70'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
-                <Flame className="h-3.5 w-3.5 shrink-0 text-[#FF6B00] fill-[#FF6B00]" />
-                <span>Chuỗi dẫn đầu</span>
-              </div>
-              <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-black font-mono tabular-nums text-[#FF6B00]">
-                  {highestStreak}
-                </span>
-                <span className="text-xs font-semibold text-slate-400">ngày liên tiếp</span>
-              </div>
-              <div className="mt-1 text-[11px] leading-tight text-slate-400 flex items-center justify-between gap-1">
-                <span>Đang duy trì {totalActiveStreaks} chuỗi</span>
-                {highestStreak > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setIsAuthModalOpen(true)}
-                    className="text-[#3B6998] dark:text-sky-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
-                    title="Đặt lại về Ngày 0 hoặc Sao lưu dữ liệu"
-                  >
-                    <RotateCcw className="w-2.5 h-2.5" />
-                    <span>Đặt lại</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Metric 4: Biological Rollover Countdown (04:00 AM) */}
-            <div
-              className={`p-3 sm:p-3.5 rounded-xl border ${
-                darkMode
-                  ? 'bg-slate-800/70 border-slate-700/80'
-                  : 'bg-[#F4F7FA] border-slate-200/70'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
-                <Clock className="h-3.5 w-3.5 shrink-0 text-[#FCC934]" />
-                <span>Quỹ thời gian</span>
-              </div>
-              <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
-                  {hoursUntilRollover}g {String(minsUntilRollover).padStart(2, '0')}p
-                </span>
-              </div>
-              <div className="mt-1 text-[11px] leading-tight text-slate-400">
-                Mốc 04:00 sáng
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Category Filter Tabs & Search Bar */}
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-          <div
-            className={`flex w-full flex-wrap items-center gap-1 rounded-xl border p-1 shadow-2xs sm:w-auto sm:flex-nowrap sm:gap-1.5 sm:overflow-x-auto ${
-              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/90'
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setCurrentCategory('all')}
-              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                currentCategory === 'all'
-                  ? 'bg-[#1E3A5F] text-white shadow-xs'
-                  : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Layers className="hidden h-3.5 w-3.5 sm:block" />
-              <span>Tất cả</span>
-              <span className="text-[11px] leading-none px-1.5 py-0.5 rounded-full bg-white/20">
-                {tasks.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentCategory('health')}
-              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                currentCategory === 'health'
-                  ? 'bg-[#1E3A5F] text-white shadow-xs'
-                  : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <HeartPulse className="hidden h-3.5 w-3.5 text-rose-500 sm:block" />
-              <span>Sức khoẻ</span>
-              <span
-                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full ${
-                  darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
-                }`}
-              >
-                {tasks.filter((t) => t.category === 'health').length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentCategory('work')}
-              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                currentCategory === 'work'
-                  ? 'bg-[#1E3A5F] text-white shadow-xs'
-                  : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Briefcase className="hidden h-3.5 w-3.5 text-[#3B6998] sm:block" />
-              <span>Công việc</span>
-              <span
-                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full ${
-                  darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
-                }`}
-              >
-                {tasks.filter((t) => t.category === 'work').length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentCategory('study')}
-              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                currentCategory === 'study'
-                  ? 'bg-[#1E3A5F] text-white shadow-xs'
-                  : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <BookOpen className="hidden h-3.5 w-3.5 text-indigo-500 sm:block" />
-              <span>Học hành</span>
-              <span
-                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full ${
-                  darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
-                }`}
-              >
-                {tasks.filter((t) => t.category === 'study').length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentCategory('habit')}
-              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                currentCategory === 'habit'
-                  ? 'bg-[#1E3A5F] text-white shadow-xs'
-                  : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Sparkles className="hidden h-3.5 w-3.5 text-[#FF6B00] sm:block" />
-              <span>Thói quen</span>
-              <span
-                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full ${
-                  darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
-                }`}
-              >
-                {tasks.filter((t) => t.category === 'habit').length}
-              </span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <div className="relative flex-1 sm:w-52">
-              <Search className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm kiếm tác vụ..."
-                className={`w-full min-h-11 sm:min-h-0 pl-8 pr-3 py-2 sm:py-1.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-[#FF6B00] ${
-                  darkMode
-                    ? 'bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500'
-                    : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'
-                }`}
-              />
-            </div>
-
-            <div
-              className={`min-h-11 sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold font-mono border flex items-center justify-center gap-1.5 shrink-0 ${
-                tasks.length >= 24
-                  ? 'bg-red-50 text-red-700 border-red-300'
-                  : darkMode
-                  ? 'bg-slate-900 text-sky-300 border-slate-800'
-                  : 'bg-[#E8F0FE] text-[#1E3A5F] border-[#3B6998]/30'
-              }`}
-            >
-              <span>{tasks.length}/24</span>
-            </div>
-
-            <button
-              type="button"
-              disabled={tasks.length >= 24}
-              onClick={() => {
-                setEditingTask(null);
-                setIsAddTaskModalOpen(true);
-              }}
-              className="hidden min-h-11 sm:flex sm:min-h-0 px-3.5 py-2 sm:py-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-xs transition-all items-center gap-1.5 cursor-pointer shrink-0"
-              title="Thêm tác vụ mới"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Thêm tác vụ</span>
-            </button>
-          </div>
-        </div>
+        <TaskFilterBar
+          tasks={tasks}
+          darkMode={darkMode}
+          currentCategory={currentCategory}
+          onSelectCategory={setCurrentCategory}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAddTask={openAddTaskModal}
+        />
 
         {/* Task Grid */}
         {filteredTasks.length > 0 ? (
@@ -1656,7 +673,6 @@ export default function App() {
               <CircularTaskNode
                 key={task.id}
                 task={task}
-                currentTimeMs={currentTimeMs}
                 devModeEnabled={devModeEnabled}
                 darkMode={darkMode}
                 onToggleTimer={handleToggleTimer}
@@ -1694,10 +710,7 @@ export default function App() {
             <button
               type="button"
               disabled={tasks.length >= 24}
-              onClick={() => {
-                setEditingTask(null);
-                setIsAddTaskModalOpen(true);
-              }}
+              onClick={openAddTaskModal}
               className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF6B00] hover:bg-[#E65100] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -1730,7 +743,6 @@ export default function App() {
       <ZenFocusModal
         task={selectedZenTask}
         isOpen={!!zenFocusTaskId}
-        currentTimeMs={currentTimeMs}
         onClose={() => setZenFocusTaskId(null)}
         onToggleTimer={handleToggleTimer}
         onConfirmHabit={handleConfirmHabit}
@@ -1854,55 +866,27 @@ export default function App() {
         />
       )}
     </div>
-    {isLoadingAccount && (
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="account-loading-title"
-        aria-describedby="account-loading-description"
-        className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/95 p-4"
-      >
-        <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl">
-          <h2 id="account-loading-title" className="text-lg font-bold">
-            {syncError ? 'Chưa tải được dữ liệu tài khoản' : 'Đang tải dữ liệu tài khoản'}
-          </h2>
-          <p id="account-loading-description" className="mt-3 text-sm text-slate-300" role={syncError ? 'alert' : 'status'}>
-            {syncError || 'Vui lòng chờ xác thực và tải dữ liệu trước khi tiếp tục.'}
-          </p>
-          {accountActionError && <p role="alert" className="mt-3 text-sm text-red-300">{accountActionError}</p>}
-          {(syncError || accountActionError) && (
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                disabled={isSyncing || isLoggingOut}
-                onClick={() => {
-                  setAccountActionError(null);
-                  void syncNow();
-                }}
-                className="rounded-lg bg-[#FF6B00] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-              >
-                {isSyncing ? 'Đang thử lại...' : 'Thử lại đồng bộ'}
-              </button>
-              <button
-                type="button"
-                disabled={isSyncing || isLoggingOut}
-                onClick={async () => {
-                  setAccountActionError(null);
-                  try {
-                    await handleLogout();
-                  } catch (error) {
-                    setAccountActionError(error instanceof Error ? error.message : 'Không đăng xuất được. Vui lòng thử lại.');
-                  }
-                }}
-                className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold disabled:opacity-50"
-              >
-                {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    )}
+    <AccountLoadingOverlay
+      isLoadingAccount={isLoadingAccount}
+      syncError={syncError}
+      accountActionError={accountActionError}
+      isSyncing={isSyncing}
+      isLoggingOut={isLoggingOut}
+      onRetrySync={() => {
+        setAccountActionError(null);
+        void syncNow();
+      }}
+      onLogout={async () => {
+        setAccountActionError(null);
+        try {
+          await handleLogout();
+        } catch (error) {
+          setAccountActionError(
+            error instanceof Error ? error.message : 'Không đăng xuất được. Vui lòng thử lại.'
+          );
+        }
+      }}
+    />
     </>
   );
 }

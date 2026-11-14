@@ -28,10 +28,10 @@ import {
   calculateExpectedEndTimestamp,
   getEffectiveTargetDurationMs,
 } from '../utils/engine';
+import { useNow } from '../utils/useNow';
 
 interface CircularTaskNodeProps {
   task: TaskItem;
-  currentTimeMs: number;
   devModeEnabled?: boolean;
   darkMode?: boolean;
   onToggleTimer: (taskId: string) => void;
@@ -47,7 +47,6 @@ interface CircularTaskNodeProps {
 
 export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
   task,
-  currentTimeMs,
   devModeEnabled = false,
   darkMode = false,
   onToggleTimer,
@@ -61,6 +60,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
   onFastForward5s,
 }) => {
   const isRunning = task.status === 'running';
+  const currentTimeMs = useNow(1000, isRunning);
   const isHabit = task.mode === 'habit';
   const isCompleted = task.status === 'completed_today';
   const isPendingConfirmation = task.status === 'pending_confirmation';

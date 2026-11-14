@@ -1,7 +1,7 @@
 import { RealtimeSyncPayload } from './engine';
 
 const CHANNEL_NAME = 'benbi_realtime_sync_v2';
-export const CURRENT_DEVICE_ID = `device_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`;
+export const CURRENT_DEVICE_ID = `device_${crypto.randomUUID()}`;
 
 class RealtimeSyncManager {
   private accountId = 'guest';
