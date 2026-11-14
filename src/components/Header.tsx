@@ -30,6 +30,7 @@ interface HeaderProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
   devModeEnabled: boolean;
+  devToolsUnlocked?: boolean;
   onToggleDevMode: () => void;
   totalShields: number;
   totalActiveStreaks: number;
@@ -78,6 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
   darkMode,
   onToggleDarkMode,
   devModeEnabled,
+  devToolsUnlocked = false,
   onToggleDevMode,
   totalShields,
   onOpenAddTask,
@@ -323,23 +325,25 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden xl:inline">Cài App</span>
               </button>
 
-              {/* Dev Mode Toggle */}
-              <button
-                type="button"
-                onClick={onToggleDevMode}
-                className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                  devModeEnabled
-                    ? 'bg-[#FF6B00]/20 text-[#FCC934] border-[#FF6B00]'
-                    : 'bg-[#152a45] text-[#E8F0FE]/50 border-[#3B6998]/40 hover:text-white'
-                }`}
-                title={
-                  devModeEnabled
-                    ? 'Đang bật Chế độ Nhà phát triển (Dev/Test Toolbar) — Bấm để ẩn'
-                    : 'Bật công cụ kiểm thử dành cho Nhà phát triển (Dev Mode)'
-                }
-              >
-                <FlaskConical className="w-4 h-4" />
-              </button>
+              {/* Dev Mode Toggle (hidden unless unlocked or already enabled) */}
+              {(devModeEnabled || devToolsUnlocked) && (
+                <button
+                  type="button"
+                  onClick={onToggleDevMode}
+                  className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                    devModeEnabled
+                      ? 'bg-[#FF6B00]/20 text-[#FCC934] border-[#FF6B00]'
+                      : 'bg-[#152a45] text-[#E8F0FE]/50 border-[#3B6998]/40 hover:text-white'
+                  }`}
+                  title={
+                    devModeEnabled
+                      ? 'Đang bật Chế độ Nhà phát triển (Dev/Test Toolbar) — Bấm để ẩn'
+                      : 'Bật công cụ kiểm thử dành cho Nhà phát triển (Dev Mode)'
+                  }
+                >
+                  <FlaskConical className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
             {/* Primary Action Button */}
@@ -414,12 +418,14 @@ export const Header: React.FC<HeaderProps> = ({
             label={isPWAInstallable ? 'Cài ứng dụng ra màn hình chính' : 'Cách cài ứng dụng'}
             onClick={runAndClose(isPWAInstallable ? onPromptInstall : onOpenPWAGuide)}
           />
-          <MenuItem
-            icon={<FlaskConical className="w-4 h-4 text-slate-400" />}
-            label="Chế độ nhà phát triển"
-            hint={devModeEnabled ? 'Bật' : 'Tắt'}
-            onClick={runAndClose(onToggleDevMode)}
-          />
+          {(devModeEnabled || devToolsUnlocked) && (
+            <MenuItem
+              icon={<FlaskConical className="w-4 h-4 text-slate-400" />}
+              label="Chế độ nhà phát triển"
+              hint={devModeEnabled ? 'Bật' : 'Tắt'}
+              onClick={runAndClose(onToggleDevMode)}
+            />
+          )}
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
           <div className="flex items-center justify-between px-3 py-2 text-[11px] font-semibold text-slate-400">
             <span>Chuỗi đang duy trì</span>

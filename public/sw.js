@@ -1,7 +1,7 @@
 // Service Worker for "Bền bỉ tới cùng" (Persistence To The End)
 // Public shell/asset caching, Web Push & Notification handling
 
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 const CACHE_NAME = `ben-bi-cache-v${CACHE_VERSION}`;
 const PRECACHE_ASSETS = [
   '/',
@@ -9,6 +9,8 @@ const PRECACHE_ASSETS = [
   '/icon.svg',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
+  '/maskable-192x192.png',
+  '/maskable-512x512.png',
   '/apple-touch-icon.png'
 ];
 
@@ -90,6 +92,28 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
+
+  // Google Fonts: cache-first at runtime so typography survives offline after the first visit.
+  const isFontCss = url.hostname === 'fonts.googleapis.com' && url.pathname.startsWith('/css2');
+  const isFontFile = url.hostname === 'fonts.gstatic.com';
+  if (req.method === 'GET' && (isFontCss || isFontFile)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      const response = await fetch(req);
+      // no-cors stylesheet/font responses are opaque (status 0) but still usable.
+      if (response.ok || response.type === 'opaque') {
+        try {
+          await cache.put(req, response.clone());
+        } catch (err) {
+          console.warn('[SW] Font cache write failure:', err);
+        }
+      }
+      return response;
+    })());
+    return;
+  }
 
   // Private/API requests and development modules must go straight to the network.
   // Query-bearing URLs may contain auth codes or Vite import/HMR parameters.

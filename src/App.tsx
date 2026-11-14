@@ -102,6 +102,18 @@ export default function App() {
       devModeEnabled: typeof value === 'function' ? value(!!current.devModeEnabled) : value,
     }));
   }, [setSettings]);
+  // Dev tools stay hidden for regular users; open ?dev=1 once to reveal the toggle.
+  const [devToolsUnlocked] = useState(() => {
+    try {
+      if (new URLSearchParams(window.location.search).has('dev')) {
+        localStorage.setItem('benbi_dev_unlock_v1', '1');
+        return true;
+      }
+      return localStorage.getItem('benbi_dev_unlock_v1') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [currentCategory, setCurrentCategory] = useState<'all' | TaskCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -1308,6 +1320,7 @@ export default function App() {
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode((prev) => !prev)}
         devModeEnabled={devModeEnabled}
+        devToolsUnlocked={devToolsUnlocked}
         onToggleDevMode={() => {
           const next = !devModeEnabled;
           setDevModeEnabled(next);
