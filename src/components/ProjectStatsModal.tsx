@@ -312,7 +312,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+    <div className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
       <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col">
         {/* Header Ribbon */}
         <div className="bg-[#1E3A5F] text-white p-5 flex flex-wrap gap-3 items-center justify-between sticky top-0 z-10 shadow-sm">

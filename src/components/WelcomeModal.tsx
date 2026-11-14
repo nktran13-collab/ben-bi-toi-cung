@@ -45,7 +45,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/65 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/65 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-xl max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col text-slate-800 dark:text-slate-100 transition-all">
         {/* Header Banner */}
         <div className="bg-gradient-to-r from-[#1E3A5F] via-[#2A4D7A] to-[#FF6B00] text-white p-5 sm:p-6 relative overflow-hidden shrink-0">

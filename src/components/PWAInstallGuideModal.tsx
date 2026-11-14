@@ -19,7 +19,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between">

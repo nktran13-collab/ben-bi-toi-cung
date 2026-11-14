@@ -200,7 +200,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col text-slate-800 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between sticky top-0 z-10 shadow-sm">

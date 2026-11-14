@@ -1294,7 +1294,7 @@ export default function App() {
     <div
       inert={isLoadingAccount}
       aria-hidden={isLoadingAccount || undefined}
-      className={`min-h-screen flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white pb-12 transition-colors ${
+      className={`min-h-screen flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white app-shell transition-colors ${
         darkMode ? 'bg-[#0B1324] text-slate-100' : 'bg-[#F4F7FA] text-slate-800'
       }`}
     >
@@ -1490,7 +1490,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentCategory('all')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'all'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1508,7 +1508,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentCategory('health')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'health'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1530,7 +1530,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentCategory('work')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'work'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1552,7 +1552,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentCategory('study')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'study'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1574,7 +1574,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentCategory('habit')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'habit'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1596,13 +1596,13 @@ export default function App() {
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <div className="relative flex-1 sm:w-52">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm kiếm tác vụ..."
-                className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-[#FF6B00] ${
+                className={`w-full min-h-11 sm:min-h-0 pl-8 pr-3 py-2 sm:py-1.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-[#FF6B00] ${
                   darkMode
                     ? 'bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500'
                     : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'
@@ -1611,7 +1611,7 @@ export default function App() {
             </div>
 
             <div
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono border flex items-center gap-1.5 shrink-0 ${
+              className={`min-h-11 sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold font-mono border flex items-center justify-center gap-1.5 shrink-0 ${
                 tasks.length >= 24
                   ? 'bg-red-50 text-red-700 border-red-300'
                   : darkMode
@@ -1629,7 +1629,7 @@ export default function App() {
                 setEditingTask(null);
                 setIsAddTaskModalOpen(true);
               }}
-              className="px-3.5 py-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="min-h-11 sm:min-h-0 px-3.5 py-2 sm:py-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
               title="Thêm tác vụ mới"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -1640,7 +1640,7 @@ export default function App() {
 
         {/* Task Grid */}
         {filteredTasks.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
             {filteredTasks.map((task) => (
               <CircularTaskNode
                 key={task.id}

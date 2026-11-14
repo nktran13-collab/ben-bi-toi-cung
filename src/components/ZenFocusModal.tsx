@@ -144,7 +144,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-[#0B1528] via-[#132542] to-[#1E3A5F] text-white flex flex-col justify-between p-6 sm:p-10 select-none animate-fade-in">
+    <div className="safe-fullscreen fixed inset-0 z-50 bg-gradient-to-br from-[#0B1528] via-[#132542] to-[#1E3A5F] text-white flex flex-col justify-between p-6 sm:p-10 select-none animate-fade-in">
       {/* Top Bar */}
       <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
         <div className="flex items-center gap-3">

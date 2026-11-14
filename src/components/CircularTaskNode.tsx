@@ -426,7 +426,8 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             onPointerDown={startHold}
             onPointerUp={cancelHold}
             onPointerLeave={cancelHold}
-            className="relative w-full overflow-hidden bg-gradient-to-r from-[#FF6B00] to-[#E65100] text-white text-[11px] sm:text-xs font-bold py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl shadow-md active:scale-98 transition-transform select-none cursor-pointer"
+            onPointerCancel={cancelHold}
+            className="relative w-full overflow-hidden bg-gradient-to-r from-[#FF6B00] to-[#E65100] text-white text-[11px] sm:text-xs font-bold min-h-11 py-2 sm:min-h-0 sm:py-2.5 px-2 sm:px-3 rounded-xl shadow-md active:scale-98 transition-transform select-none cursor-pointer"
           >
             <div
               className="absolute left-0 top-0 bottom-0 bg-[#FCC934]/40 transition-all duration-75"
@@ -443,7 +444,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
           <button
             type="button"
             onClick={() => onConfirmHabit(task.id)}
-            className="w-full text-center text-[10px] sm:text-xs font-semibold text-[#FF6B00] hover:underline cursor-pointer py-1"
+            className="w-full text-center text-[10px] sm:text-xs font-semibold text-[#FF6B00] hover:underline cursor-pointer min-h-11 sm:min-h-0 py-2 sm:py-1"
           >
             Xác nhận nhanh
           </button>
@@ -461,7 +462,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             <button
               type="button"
               onClick={() => onToggleTimer(task.id)}
-              className={`flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-1.5 sm:px-3 rounded-lg text-[10px] sm:text-xs font-bold shadow-xs transition-colors cursor-pointer truncate ${
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 min-h-11 py-2 sm:min-h-0 sm:py-2 px-1.5 sm:px-3 rounded-lg text-[10px] sm:text-xs font-bold shadow-xs transition-colors cursor-pointer truncate ${
                 isRunning
                   ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
                   : 'bg-[#1E3A5F] hover:bg-[#152a45] text-white'
@@ -480,7 +481,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               )}
             </button>
           ) : (
-            <div className="flex-1 min-w-0 text-center py-1.5 sm:py-2 px-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] sm:text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-0.5 sm:gap-1">
+            <div className="flex-1 min-w-0 text-center min-h-11 py-2 sm:min-h-0 sm:py-2 px-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] sm:text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-0.5 sm:gap-1">
               <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
               <span className="truncate">Đã ghi nhận</span>
             </div>
@@ -492,7 +493,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onCompleteSprintSession(task.id)}
-                className="p-1 sm:p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0"
+                className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0"
                 title="Chốt & Lưu phiên làm việc này vào lịch sử dự án"
               >
                 <Check className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -504,7 +505,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenZenFocus(task.id)}
-                className={`p-1 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
+                className={`min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
                   darkMode
                     ? 'text-slate-300 border-slate-700 hover:bg-slate-800'
                     : 'text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -520,7 +521,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onResetTimer(task.id)}
-                className="p-1 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer shrink-0"
+                className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer shrink-0"
                 title="Đặt lại đồng hồ về 0"
               >
                 <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -532,7 +533,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenEditTask(task)}
-                className={`p-1 sm:p-2 rounded-lg transition-colors cursor-pointer hidden sm:flex shrink-0 ${
+                className={`min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 rounded-lg transition-colors cursor-pointer hidden sm:flex shrink-0 ${
                   darkMode
                     ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                     : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
@@ -547,7 +548,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             <button
               type="button"
               onClick={() => onOpenProjectStats(task.id)}
-              className={`p-1 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
+              className={`min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
                 darkMode
                   ? 'text-sky-300 border-sky-500/30 hover:bg-slate-800'
                   : 'text-[#1E3A5F] hover:bg-[#E8F0FE] border-[#3B6998]/30'
@@ -562,7 +563,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onSimulateBreakStreak(task.id)}
-                className="p-1 sm:p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 cursor-pointer shrink-0"
+                className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 cursor-pointer shrink-0"
                 title="[Dev] Giả lập đứt chuỗi"
               >
                 <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -573,7 +574,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onFastForward5s(task.id)}
-                className="p-1 sm:p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-xs font-mono border border-amber-200 cursor-pointer hidden sm:block shrink-0"
+                className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-xs font-mono border border-amber-200 cursor-pointer hidden sm:block shrink-0"
                 title="[Dev] Tua nhanh còn 5 giây"
               >
                 <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
