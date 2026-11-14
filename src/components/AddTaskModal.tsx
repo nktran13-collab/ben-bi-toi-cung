@@ -18,7 +18,7 @@ interface AddTaskModalProps {
       | 'historyStartTimestamp'
       | 'sync_status'
       | 'updated_at_ms'
-    >
+    >,
   ) => void;
   editingTask?: TaskItem | null;
   onEditTask?: (
@@ -30,7 +30,7 @@ interface AddTaskModalProps {
       targetDurationMs: number;
       targetMilestoneDays?: number;
       notes?: string;
-    }
+    },
   ) => void;
   taskCount?: number;
 }
@@ -168,9 +168,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
           )}
           {error && (
-            <div className="bg-rose-50 text-rose-700 text-xs p-3 rounded-lg border border-rose-200">
-              {error}
-            </div>
+            <div className="bg-rose-50 text-rose-700 text-xs p-3 rounded-lg border border-rose-200">{error}</div>
           )}
 
           {/* Task Name */}
@@ -194,9 +192,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
           {/* Mode Selection */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Chế độ tác vụ
-            </label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Chế độ tác vụ</label>
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
@@ -238,9 +234,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
           {/* Category Selection */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Nhóm danh mục
-            </label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Nhóm danh mục</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
                 { id: 'health', label: 'Sức khoẻ', icon: HeartPulse, color: 'text-rose-500' },
@@ -272,9 +266,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           {/* Target Duration */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Định mức mục tiêu (phút)
-              </label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Định mức mục tiêu (phút)</label>
               <span className="text-xs font-bold font-mono text-[#FF6B00]">
                 {durationMinutes} phút ({Math.floor(durationMinutes / 60)}h {durationMinutes % 60}p)
               </span>

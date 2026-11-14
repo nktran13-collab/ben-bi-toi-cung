@@ -53,41 +53,72 @@ import { WelcomeModal } from './components/WelcomeModal';
 export default function App() {
   // The sync hook owns the canonical data and per-account offline cache.
   const {
-    tasks, sessions, logs, settings, account,
-    setTasks, setSessions, setLogs, setSettings, replaceData,
-    isSyncing, syncError, syncNow, sendOtp, verifyOtp, logout, cloudEnabled,
-    isOffline, isSimulatedOffline, setIsSimulatedOffline, isLoadingAccount, pendingSyncCount,
-    needsAuthentication, recoveryAvailable,
+    tasks,
+    sessions,
+    logs,
+    settings,
+    account,
+    setTasks,
+    setSessions,
+    setLogs,
+    setSettings,
+    replaceData,
+    isSyncing,
+    syncError,
+    syncNow,
+    sendOtp,
+    verifyOtp,
+    logout,
+    cloudEnabled,
+    isOffline,
+    isSimulatedOffline,
+    setIsSimulatedOffline,
+    isLoadingAccount,
+    pendingSyncCount,
+    needsAuthentication,
+    recoveryAvailable,
   } = useCloudSync();
   const [dataLoaded, setDataLoaded] = useState(false);
   const soundEnabled = settings.soundEnabled;
   const wakeLockRequested = settings.wakeLockRequested;
   const darkMode = !!settings.darkMode;
   const devModeEnabled = !!settings.devModeEnabled;
-  const setSoundEnabled = useCallback((value: React.SetStateAction<boolean>) => {
-    setSettings((current) => ({
-      ...current,
-      soundEnabled: typeof value === 'function' ? value(current.soundEnabled) : value,
-    }));
-  }, [setSettings]);
-  const setWakeLockRequested = useCallback((value: React.SetStateAction<boolean>) => {
-    setSettings((current) => ({
-      ...current,
-      wakeLockRequested: typeof value === 'function' ? value(current.wakeLockRequested) : value,
-    }));
-  }, [setSettings]);
-  const setDarkMode = useCallback((value: React.SetStateAction<boolean>) => {
-    setSettings((current) => ({
-      ...current,
-      darkMode: typeof value === 'function' ? value(!!current.darkMode) : value,
-    }));
-  }, [setSettings]);
-  const setDevModeEnabled = useCallback((value: React.SetStateAction<boolean>) => {
-    setSettings((current) => ({
-      ...current,
-      devModeEnabled: typeof value === 'function' ? value(!!current.devModeEnabled) : value,
-    }));
-  }, [setSettings]);
+  const setSoundEnabled = useCallback(
+    (value: React.SetStateAction<boolean>) => {
+      setSettings((current) => ({
+        ...current,
+        soundEnabled: typeof value === 'function' ? value(current.soundEnabled) : value,
+      }));
+    },
+    [setSettings],
+  );
+  const setWakeLockRequested = useCallback(
+    (value: React.SetStateAction<boolean>) => {
+      setSettings((current) => ({
+        ...current,
+        wakeLockRequested: typeof value === 'function' ? value(current.wakeLockRequested) : value,
+      }));
+    },
+    [setSettings],
+  );
+  const setDarkMode = useCallback(
+    (value: React.SetStateAction<boolean>) => {
+      setSettings((current) => ({
+        ...current,
+        darkMode: typeof value === 'function' ? value(!!current.darkMode) : value,
+      }));
+    },
+    [setSettings],
+  );
+  const setDevModeEnabled = useCallback(
+    (value: React.SetStateAction<boolean>) => {
+      setSettings((current) => ({
+        ...current,
+        devModeEnabled: typeof value === 'function' ? value(!!current.devModeEnabled) : value,
+      }));
+    },
+    [setSettings],
+  );
   // Dev tools stay hidden for regular users; open ?dev=1 once to reveal the toggle.
   const [devToolsUnlocked] = useState(() => {
     try {
@@ -107,9 +138,9 @@ export default function App() {
   const [lastRealtimeMessage, setLastRealtimeMessage] = useState<string | null>(null);
 
   // Notification API permission state
-  const [notificationPermission, setNotificationPermission] = useState<
-    NotificationPermission | 'unsupported'
-  >('default');
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(
+    'default',
+  );
 
   // Modals state
   const [statsModalTaskId, setStatsModalTaskId] = useState<string | null>(null);
@@ -132,7 +163,7 @@ export default function App() {
   const [idleRawDurationMs, setIdleRawDurationMs] = useState<number>(0);
 
   // PWA Installability hook
-  const { isInstallable: isPWAInstallable, isIOS, promptInstall } = usePWAInstall();
+  const { isInstallable: isPWAInstallable, promptInstall } = usePWAInstall();
 
   // Screen Wake Lock API integration
   const { isActive: wakeLockActive } = useWakeLock(wakeLockRequested);
@@ -195,7 +226,7 @@ export default function App() {
         t.status === 'pending_confirmation' &&
         t.timerEndedAtMs &&
         t.timerEndedAtMs < now &&
-        getLogicalDate(t.timerEndedAtMs, 4) === yesterdayDate
+        getLogicalDate(t.timerEndedAtMs, 4) === yesterdayDate,
     );
 
     if (pendingYesterdayTask && pendingYesterdayTask.timerEndedAtMs) {
@@ -307,7 +338,6 @@ export default function App() {
     setMilestoneTask,
     setRetroactiveItem,
     setIdleDetectionTask,
-    setIdleRawDurationMs,
     setStatsModalTaskId,
     setEditingTask,
     setCurrentCategory,
@@ -363,7 +393,7 @@ export default function App() {
       showToast('✅ Đã khôi phục toàn bộ dữ liệu từ bản sao lưu!');
       return true;
     },
-    [replaceData, showToast]
+    [replaceData, showToast],
   );
 
   const handleResetToCleanStarter = useCallback(() => {
@@ -407,8 +437,8 @@ export default function App() {
           !cloudEnabled
             ? 'Chưa cấu hình đồng bộ đám mây. Dữ liệu chỉ nằm trên thiết bị.'
             : isOffline
-            ? 'Đang ngoại tuyến. Thay đổi đang chờ đồng bộ trên thiết bị.'
-            : 'Chưa đồng bộ được. Xem lỗi trong phần tài khoản và thử lại.'
+              ? 'Đang ngoại tuyến. Thay đổi đang chờ đồng bộ trên thiết bị.'
+              : 'Chưa đồng bộ được. Xem lỗi trong phần tài khoản và thử lại.',
         );
       }
     } catch (error) {
@@ -435,7 +465,7 @@ export default function App() {
     if (result === 'granted') {
       notificationService.sendNotification(
         '🔔 Bền Bỉ Tới Cùng',
-        'Đã bật thông báo thành công! Bạn sẽ nhận được chuông báo khi hoàn thành thói quen.'
+        'Đã bật thông báo thành công! Bạn sẽ nhận được chuông báo khi hoàn thành thói quen.',
       );
       showToast('Đã cấp quyền thông báo hệ thống.');
     } else {
@@ -446,7 +476,7 @@ export default function App() {
   const handleTestNotification = useCallback(() => {
     notificationService.sendNotification(
       '🔔 Thử nghiệm thông báo Bền Bỉ',
-      'Hệ thống thông báo đẩy đang hoạt động hoàn hảo ngay cả khi khóa màn hình.'
+      'Hệ thống thông báo đẩy đang hoạt động hoàn hảo ngay cả khi khóa màn hình.',
     );
     soundEngine.playSoftChime(659.25, 0.25, 0.4);
     showToast('Đã bắn thông báo thử nghiệm.');
@@ -550,8 +580,7 @@ export default function App() {
   const activeTimersMs = tasks
     .filter((t) => t.status !== 'completed_today')
     .reduce((sum, t) => {
-      const runningDelta =
-        t.status === 'running' && t.startedAtMs ? Math.max(0, metricsNowMs - t.startedAtMs) : 0;
+      const runningDelta = t.status === 'running' && t.startedAtMs ? Math.max(0, metricsNowMs - t.startedAtMs) : 0;
       return sum + t.accumulatedMs + runningDelta;
     }, 0);
   const totalFocusedTodayMinutes = Math.round((todayLogsMs + todaySessionsMs + activeTimersMs) / 60000);
@@ -567,9 +596,7 @@ export default function App() {
       if (currentCategory !== 'all' && t.category !== currentCategory) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        return (
-          t.name.toLowerCase().includes(q) || (t.notes && t.notes.toLowerCase().includes(q))
-        );
+        return t.name.toLowerCase().includes(q) || (t.notes && t.notes.toLowerCase().includes(q));
       }
       return true;
     })
@@ -595,298 +622,295 @@ export default function App() {
 
   return (
     <>
-    <div
-      inert={isLoadingAccount}
-      aria-hidden={isLoadingAccount || undefined}
-      className={`min-h-screen flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white app-shell transition-colors ${
-        darkMode ? 'bg-[#0B1324] text-slate-100' : 'bg-[#F4F7FA] text-slate-800'
-      }`}
-    >
-      {/* Top Header */}
-      <Header
-        wakeLockActive={wakeLockActive}
-        wakeLockRequested={wakeLockRequested}
-        onToggleWakeLock={handleToggleWakeLock}
-        soundEnabled={soundEnabled}
-        onToggleSound={handleToggleSound}
-        darkMode={darkMode}
-        onToggleDarkMode={() => setDarkMode((prev) => !prev)}
-        devModeEnabled={devModeEnabled}
-        devToolsUnlocked={devToolsUnlocked}
-        onToggleDevMode={() => {
-          const next = !devModeEnabled;
-          setDevModeEnabled(next);
-          showToast(
-            next
-              ? '🧪 Đã bật Chế độ Nhà phát triển (Dev/Test Toolbar).'
-              : '✨ Đã ẩn công cụ kiểm thử (Giao diện chuẩn Production).'
-          );
-        }}
-        totalShields={totalShields}
-        totalActiveStreaks={totalActiveStreaks}
-        onOpenAddTask={openAddTaskModal}
-        onTestSound={() => soundEngine.playBellChime(523.25)}
-        account={account}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
-        pendingSyncCount={pendingSyncCount}
-        isSimulatedOffline={isOffline}
-        onTriggerSyncNow={handleTriggerSyncNow}
-        isSyncing={isSyncing}
-        isPWAInstallable={isPWAInstallable}
-        onPromptInstall={promptInstall}
-        onOpenPWAGuide={() => setIsPWAGuideOpen(true)}
-        onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
-        needsReauth={needsAuthentication}
-      />
-
-      <ToastBanner message={toastMessage} onDismiss={() => setToastMessage(null)} />
-
-      {/* Main Container */}
-      <main className="max-w-6xl mx-auto w-full px-3 sm:px-4 pt-5 sm:pt-6 flex-1">
-        <DailyCommandCenter
+      <div
+        inert={isLoadingAccount}
+        aria-hidden={isLoadingAccount || undefined}
+        className={`min-h-screen flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white app-shell transition-colors ${
+          darkMode ? 'bg-[#0B1324] text-slate-100' : 'bg-[#F4F7FA] text-slate-800'
+        }`}
+      >
+        {/* Top Header */}
+        <Header
+          wakeLockActive={wakeLockActive}
+          wakeLockRequested={wakeLockRequested}
+          onToggleWakeLock={handleToggleWakeLock}
+          soundEnabled={soundEnabled}
+          onToggleSound={handleToggleSound}
           darkMode={darkMode}
-          completedHabitsToday={completedHabitsToday}
-          habitCount={habitTasks.length}
-          dailyHabitProgressPercent={dailyHabitProgressPercent}
-          totalFocusedTodayMinutes={totalFocusedTodayMinutes}
-          highestStreak={highestStreak}
-          totalActiveStreaks={totalActiveStreaks}
-          hoursUntilRollover={hoursUntilRollover}
-          minsUntilRollover={minsUntilRollover}
-          onOpenResetOptions={() => setIsAuthModalOpen(true)}
-        />
-
-        <TaskFilterBar
-          tasks={tasks}
-          darkMode={darkMode}
-          currentCategory={currentCategory}
-          onSelectCategory={setCurrentCategory}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onAddTask={openAddTaskModal}
-        />
-
-        {/* Task Grid */}
-        {filteredTasks.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
-            {filteredTasks.map((task) => (
-              <CircularTaskNode
-                key={task.id}
-                task={task}
-                devModeEnabled={devModeEnabled}
-                darkMode={darkMode}
-                onToggleTimer={handleToggleTimer}
-                onResetTimer={handleResetTimer}
-                onConfirmHabit={handleConfirmHabit}
-                onCompleteSprintSession={handleCompleteSprintSession}
-                onOpenProjectStats={(id) => setStatsModalTaskId(id)}
-                onOpenEditTask={(t) => {
-                  setEditingTask(t);
-                  setIsAddTaskModalOpen(true);
-                }}
-                onOpenZenFocus={(id) => setZenFocusTaskId(id)}
-                onSimulateBreakStreak={(id) => {
-                  setBreakStreakModalTaskId(id);
-                  setBreakStreakMissedDays(1);
-                }}
-                onFastForward5s={handleFastForward5s}
-              />
-            ))}
-          </div>
-        ) : (
-          <div
-            className={`rounded-2xl p-12 text-center border ${
-              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-            }`}
-          >
-            <div className="w-12 h-12 rounded-full bg-[#E8F0FE] text-[#1E3A5F] flex items-center justify-center mx-auto mb-3">
-              <Filter className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-sm">
-              {searchQuery
-                ? `Không tìm thấy tác vụ nào khớp với "${searchQuery}"`
-                : 'Chưa có tác vụ nào trong danh mục này'}
-            </h3>
-            <button
-              type="button"
-              disabled={tasks.length >= 24}
-              onClick={openAddTaskModal}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF6B00] hover:bg-[#E65100] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Thêm tác vụ mới</span>
-            </button>
-          </div>
-        )}
-      </main>
-
-      {/* 3-Tier Deep Report & Share Card Modal */}
-      {selectedStatsTask && (
-        <ProjectStatsModal
-          task={selectedStatsTask}
-          sessions={sessions}
-          logs={logs}
-          userEmail={account.email}
-          isOpen={!!statsModalTaskId}
-          onClose={() => setStatsModalTaskId(null)}
-          onTrimLatestSession={handleTrimLatestSession}
-          onCompleteSprintSession={handleCompleteSprintSession}
-          onDeleteTask={handleDeleteTask}
-          onEditTask={(t) => {
-            setEditingTask(t);
-            setIsAddTaskModalOpen(true);
-          }}
-        />
-      )}
-
-      {/* Zen Focus Fullscreen Modal */}
-      <ZenFocusModal
-        task={selectedZenTask}
-        isOpen={!!zenFocusTaskId}
-        onClose={() => setZenFocusTaskId(null)}
-        onToggleTimer={handleToggleTimer}
-        onConfirmHabit={handleConfirmHabit}
-        onCompleteSprintSession={handleCompleteSprintSession}
-      />
-
-      {selectedBreakStreakTask && (
-        <StreakBreakModal
-          task={selectedBreakStreakTask}
-          isOpen={!!breakStreakModalTaskId}
-          missedDays={breakStreakMissedDays}
-          onClose={() => setBreakStreakModalTaskId(null)}
-          onUseShield={handleUseShield}
-          onAcceptCompensation={handleAcceptCompensation}
-          onResetToCheckpoint={handleResetToCheckpoint}
-          onFullReset={handleFullResetStreak}
-        />
-      )}
-
-      {milestoneTask && (
-        <MilestoneUpgradeModal
-          task={milestoneTask}
-          isOpen={!!milestoneTask}
-          onUpgrade={handleUpgradeTo66Days}
-          onKeep={handleKeep30Days}
-        />
-      )}
-
-      {retroactiveItem && (
-        <RetroactiveConfirmModal
-          item={retroactiveItem}
-          isOpen={!!retroactiveItem}
-          onConfirmYesterday={handleConfirmYesterday}
-          onDiscard={handleDiscardYesterday}
-        />
-      )}
-
-      {idleDetectionTask && (
-        <IdleDetectionModal
-          task={idleDetectionTask}
-          isOpen={!!idleDetectionTask}
-          rawDurationMs={idleRawDurationMs}
-          onSaveTrimmed={handleSaveIdleTrimmed}
-          onDiscard={handleDiscardIdle}
-        />
-      )}
-
-      <AddTaskModal
-        isOpen={isAddTaskModalOpen}
-        onClose={() => {
-          setIsAddTaskModalOpen(false);
-          setEditingTask(null);
-        }}
-        onAddTask={handleAddTask}
-        editingTask={editingTask}
-        onEditTask={handleEditTask}
-        taskCount={tasks.length}
-      />
-
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        account={account}
-        onSendOtp={sendOtp}
-        onVerifyOtp={verifyOtp}
-        onLogout={handleLogout}
-        cloudEnabled={cloudEnabled}
-        syncError={syncError}
-        onTriggerSyncNow={handleTriggerSyncNow}
-        isSyncing={isSyncing}
-        onExportBackupJSON={handleExportBackupJSON}
-        onImportBackupJSON={handleImportBackupJSON}
-        onResetToCleanStarter={handleResetToCleanStarter}
-        onLoadDemoSeed={handleLoadDemoSeed}
-        needsReauth={needsAuthentication}
-        recoveryAvailable={recoveryAvailable}
-        onExportRecovery={handleExportRecovery}
-      />
-
-      <PWAInstallGuideModal
-        isOpen={isPWAGuideOpen}
-        onClose={() => setIsPWAGuideOpen(false)}
-        isInstallable={isPWAInstallable}
-        onTriggerNativeInstall={promptInstall}
-        isIOS={isIOS}
-      />
-
-      <WelcomeModal
-        isOpen={isWelcomeModalOpen}
-        onClose={handleCloseWelcomeModal}
-        onOpenQuickStart={() => setIsAddTaskModalOpen(true)}
-      />
-
-      {/* DevTestToolbar only visible when Dev Mode is enabled */}
-      {devModeEnabled && (
-        <DevTestToolbar
-          isSimulatedOffline={isSimulatedOffline}
-          onToggleSimulatedOffline={() => {
-            setIsSimulatedOffline((prev) => !prev);
+          onToggleDarkMode={() => setDarkMode((prev) => !prev)}
+          devModeEnabled={devModeEnabled}
+          devToolsUnlocked={devToolsUnlocked}
+          onToggleDevMode={() => {
+            const next = !devModeEnabled;
+            setDevModeEnabled(next);
             showToast(
-              !isSimulatedOffline
-                ? 'Đã bật mô phỏng ngoại tuyến.'
-                : 'Đã tắt mô phỏng ngoại tuyến. Kết nối thực tế tùy thuộc thiết bị.'
+              next
+                ? '🧪 Đã bật Chế độ Nhà phát triển (Dev/Test Toolbar).'
+                : '✨ Đã ẩn công cụ kiểm thử (Giao diện chuẩn Production).',
             );
           }}
+          totalShields={totalShields}
+          totalActiveStreaks={totalActiveStreaks}
+          onOpenAddTask={openAddTaskModal}
+          onTestSound={() => soundEngine.playBellChime(523.25)}
+          account={account}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
           pendingSyncCount={pendingSyncCount}
+          isSimulatedOffline={isOffline}
           onTriggerSyncNow={handleTriggerSyncNow}
           isSyncing={isSyncing}
-          onBroadcastTestEvent={handleBroadcastTestEvent}
-          lastRealtimeEventMessage={lastRealtimeMessage}
-          onTestNotification={handleTestNotification}
-          notificationPermission={notificationPermission}
-          onRequestNotificationPermission={handleRequestNotificationPermission}
-          onOpenPWAGuide={() => setIsPWAGuideOpen(true)}
           isPWAInstallable={isPWAInstallable}
-          onTestMilestone30={handleTestMilestone30}
-          onTestRetroactiveConfirm={handleTestRetroactiveConfirm}
-          onTestIdleDetection={handleTestIdleDetection}
-          onTestStreakBreak1Day={handleTestStreakBreak1Day}
-          onTestStreakBreak2Days={handleTestStreakBreak2Days}
+          onPromptInstall={promptInstall}
+          onOpenPWAGuide={() => setIsPWAGuideOpen(true)}
+          onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
+          needsReauth={needsAuthentication}
         />
-      )}
-    </div>
-    <AccountLoadingOverlay
-      isLoadingAccount={isLoadingAccount}
-      syncError={syncError}
-      accountActionError={accountActionError}
-      isSyncing={isSyncing}
-      isLoggingOut={isLoggingOut}
-      onRetrySync={() => {
-        setAccountActionError(null);
-        void syncNow();
-      }}
-      onLogout={async () => {
-        setAccountActionError(null);
-        try {
-          await handleLogout();
-        } catch (error) {
-          setAccountActionError(
-            error instanceof Error ? error.message : 'Không đăng xuất được. Vui lòng thử lại.'
-          );
-        }
-      }}
-    />
+
+        <ToastBanner message={toastMessage} onDismiss={() => setToastMessage(null)} />
+
+        {/* Main Container */}
+        <main className="max-w-6xl mx-auto w-full px-3 sm:px-4 pt-5 sm:pt-6 flex-1">
+          <DailyCommandCenter
+            darkMode={darkMode}
+            completedHabitsToday={completedHabitsToday}
+            habitCount={habitTasks.length}
+            dailyHabitProgressPercent={dailyHabitProgressPercent}
+            totalFocusedTodayMinutes={totalFocusedTodayMinutes}
+            highestStreak={highestStreak}
+            totalActiveStreaks={totalActiveStreaks}
+            hoursUntilRollover={hoursUntilRollover}
+            minsUntilRollover={minsUntilRollover}
+            onOpenResetOptions={() => setIsAuthModalOpen(true)}
+          />
+
+          <TaskFilterBar
+            tasks={tasks}
+            darkMode={darkMode}
+            currentCategory={currentCategory}
+            onSelectCategory={setCurrentCategory}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onAddTask={openAddTaskModal}
+          />
+
+          {/* Task Grid */}
+          {filteredTasks.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
+              {filteredTasks.map((task) => (
+                <CircularTaskNode
+                  key={task.id}
+                  task={task}
+                  devModeEnabled={devModeEnabled}
+                  darkMode={darkMode}
+                  onToggleTimer={handleToggleTimer}
+                  onResetTimer={handleResetTimer}
+                  onConfirmHabit={handleConfirmHabit}
+                  onCompleteSprintSession={handleCompleteSprintSession}
+                  onOpenProjectStats={(id) => setStatsModalTaskId(id)}
+                  onOpenEditTask={(t) => {
+                    setEditingTask(t);
+                    setIsAddTaskModalOpen(true);
+                  }}
+                  onOpenZenFocus={(id) => setZenFocusTaskId(id)}
+                  onSimulateBreakStreak={(id) => {
+                    setBreakStreakModalTaskId(id);
+                    setBreakStreakMissedDays(1);
+                  }}
+                  onFastForward5s={handleFastForward5s}
+                />
+              ))}
+            </div>
+          ) : (
+            <div
+              className={`rounded-2xl p-12 text-center border ${
+                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+              }`}
+            >
+              <div className="w-12 h-12 rounded-full bg-[#E8F0FE] text-[#1E3A5F] flex items-center justify-center mx-auto mb-3">
+                <Filter className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-sm">
+                {searchQuery
+                  ? `Không tìm thấy tác vụ nào khớp với "${searchQuery}"`
+                  : 'Chưa có tác vụ nào trong danh mục này'}
+              </h3>
+              <button
+                type="button"
+                disabled={tasks.length >= 24}
+                onClick={openAddTaskModal}
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF6B00] hover:bg-[#E65100] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm tác vụ mới</span>
+              </button>
+            </div>
+          )}
+        </main>
+
+        {/* 3-Tier Deep Report & Share Card Modal */}
+        {selectedStatsTask && (
+          <ProjectStatsModal
+            task={selectedStatsTask}
+            sessions={sessions}
+            logs={logs}
+            userEmail={account.email}
+            isOpen={!!statsModalTaskId}
+            onClose={() => setStatsModalTaskId(null)}
+            onTrimLatestSession={handleTrimLatestSession}
+            onCompleteSprintSession={handleCompleteSprintSession}
+            onDeleteTask={handleDeleteTask}
+            onEditTask={(t) => {
+              setEditingTask(t);
+              setIsAddTaskModalOpen(true);
+            }}
+          />
+        )}
+
+        {/* Zen Focus Fullscreen Modal */}
+        <ZenFocusModal
+          task={selectedZenTask}
+          isOpen={!!zenFocusTaskId}
+          onClose={() => setZenFocusTaskId(null)}
+          onToggleTimer={handleToggleTimer}
+          onConfirmHabit={handleConfirmHabit}
+          onCompleteSprintSession={handleCompleteSprintSession}
+        />
+
+        {selectedBreakStreakTask && (
+          <StreakBreakModal
+            task={selectedBreakStreakTask}
+            isOpen={!!breakStreakModalTaskId}
+            missedDays={breakStreakMissedDays}
+            onClose={() => setBreakStreakModalTaskId(null)}
+            onUseShield={handleUseShield}
+            onAcceptCompensation={handleAcceptCompensation}
+            onResetToCheckpoint={handleResetToCheckpoint}
+            onFullReset={handleFullResetStreak}
+          />
+        )}
+
+        {milestoneTask && (
+          <MilestoneUpgradeModal
+            task={milestoneTask}
+            isOpen={!!milestoneTask}
+            onUpgrade={handleUpgradeTo66Days}
+            onKeep={handleKeep30Days}
+          />
+        )}
+
+        {retroactiveItem && (
+          <RetroactiveConfirmModal
+            item={retroactiveItem}
+            isOpen={!!retroactiveItem}
+            onConfirmYesterday={handleConfirmYesterday}
+            onDiscard={handleDiscardYesterday}
+          />
+        )}
+
+        {idleDetectionTask && (
+          <IdleDetectionModal
+            task={idleDetectionTask}
+            isOpen={!!idleDetectionTask}
+            rawDurationMs={idleRawDurationMs}
+            onSaveTrimmed={handleSaveIdleTrimmed}
+            onDiscard={handleDiscardIdle}
+          />
+        )}
+
+        <AddTaskModal
+          isOpen={isAddTaskModalOpen}
+          onClose={() => {
+            setIsAddTaskModalOpen(false);
+            setEditingTask(null);
+          }}
+          onAddTask={handleAddTask}
+          editingTask={editingTask}
+          onEditTask={handleEditTask}
+          taskCount={tasks.length}
+        />
+
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          account={account}
+          onSendOtp={sendOtp}
+          onVerifyOtp={verifyOtp}
+          onLogout={handleLogout}
+          cloudEnabled={cloudEnabled}
+          syncError={syncError}
+          onTriggerSyncNow={handleTriggerSyncNow}
+          isSyncing={isSyncing}
+          onExportBackupJSON={handleExportBackupJSON}
+          onImportBackupJSON={handleImportBackupJSON}
+          onResetToCleanStarter={handleResetToCleanStarter}
+          onLoadDemoSeed={handleLoadDemoSeed}
+          needsReauth={needsAuthentication}
+          recoveryAvailable={recoveryAvailable}
+          onExportRecovery={handleExportRecovery}
+        />
+
+        <PWAInstallGuideModal
+          isOpen={isPWAGuideOpen}
+          onClose={() => setIsPWAGuideOpen(false)}
+          isInstallable={isPWAInstallable}
+          onTriggerNativeInstall={promptInstall}
+        />
+
+        <WelcomeModal
+          isOpen={isWelcomeModalOpen}
+          onClose={handleCloseWelcomeModal}
+          onOpenQuickStart={() => setIsAddTaskModalOpen(true)}
+        />
+
+        {/* DevTestToolbar only visible when Dev Mode is enabled */}
+        {devModeEnabled && (
+          <DevTestToolbar
+            isSimulatedOffline={isSimulatedOffline}
+            onToggleSimulatedOffline={() => {
+              setIsSimulatedOffline((prev) => !prev);
+              showToast(
+                !isSimulatedOffline
+                  ? 'Đã bật mô phỏng ngoại tuyến.'
+                  : 'Đã tắt mô phỏng ngoại tuyến. Kết nối thực tế tùy thuộc thiết bị.',
+              );
+            }}
+            pendingSyncCount={pendingSyncCount}
+            onTriggerSyncNow={handleTriggerSyncNow}
+            isSyncing={isSyncing}
+            onBroadcastTestEvent={handleBroadcastTestEvent}
+            lastRealtimeEventMessage={lastRealtimeMessage}
+            onTestNotification={handleTestNotification}
+            notificationPermission={notificationPermission}
+            onRequestNotificationPermission={handleRequestNotificationPermission}
+            onOpenPWAGuide={() => setIsPWAGuideOpen(true)}
+            isPWAInstallable={isPWAInstallable}
+            onTestMilestone30={handleTestMilestone30}
+            onTestRetroactiveConfirm={handleTestRetroactiveConfirm}
+            onTestIdleDetection={handleTestIdleDetection}
+            onTestStreakBreak1Day={handleTestStreakBreak1Day}
+            onTestStreakBreak2Days={handleTestStreakBreak2Days}
+          />
+        )}
+      </div>
+      <AccountLoadingOverlay
+        isLoadingAccount={isLoadingAccount}
+        syncError={syncError}
+        accountActionError={accountActionError}
+        isSyncing={isSyncing}
+        isLoggingOut={isLoggingOut}
+        onRetrySync={() => {
+          setAccountActionError(null);
+          void syncNow();
+        }}
+        onLogout={async () => {
+          setAccountActionError(null);
+          try {
+            await handleLogout();
+          } catch (error) {
+            setAccountActionError(error instanceof Error ? error.message : 'Không đăng xuất được. Vui lòng thử lại.');
+          }
+        }}
+      />
     </>
   );
 }

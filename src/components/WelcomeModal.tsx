@@ -9,7 +9,6 @@ import {
   Headphones,
   Moon,
   ArrowRight,
-  CheckCircle2,
   BookmarkCheck,
   RotateCcw,
 } from 'lucide-react';
@@ -20,11 +19,7 @@ interface WelcomeModalProps {
   onOpenQuickStart?: () => void;
 }
 
-export const WelcomeModal: React.FC<WelcomeModalProps> = ({
-  isOpen,
-  onClose,
-  onOpenQuickStart,
-}) => {
+export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onOpenQuickStart }) => {
   // Checkbox: Default is checked ("Hiện lại lần sau") or unchecked based on preference
   const [showNextTime, setShowNextTime] = useState(false);
 
@@ -64,9 +59,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   <span>•</span>
                   <span>Kỷ luật 66 ngày UCL</span>
                 </div>
-                <h2 className="text-lg sm:text-2xl font-extrabold text-white leading-tight">
-                  Bền Bỉ Tới Cùng
-                </h2>
+                <h2 className="text-lg sm:text-2xl font-extrabold text-white leading-tight">Bền Bỉ Tới Cùng</h2>
               </div>
             </div>
 
@@ -81,7 +74,8 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
           </div>
 
           <p className="mt-3 text-xs sm:text-sm text-[#E8F0FE]/90 leading-relaxed font-normal">
-            Không gian rèn luyện kỷ luật không bỏ cuộc, giúp bạn biến hành động có chủ đích thành phản xạ tự nhiên sau 30 – 66 ngày bền bỉ.
+            Không gian rèn luyện kỷ luật không bỏ cuộc, giúp bạn biến hành động có chủ đích thành phản xạ tự nhiên sau
+            30 – 66 ngày bền bỉ.
           </p>
         </div>
 
@@ -98,7 +92,8 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   <span>Thói Quen & Chuỗi Ngày</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Đồng hồ đếm ngược từng phút, tự động tích lũy <strong>Chuỗi ngày (Streak)</strong> không ngắt quãng hướng đến cột mốc 66 ngày tự động hóa.
+                  Đồng hồ đếm ngược từng phút, tự động tích lũy <strong>Chuỗi ngày (Streak)</strong> không ngắt quãng
+                  hướng đến cột mốc 66 ngày tự động hóa.
                 </p>
               </div>
             </div>
@@ -113,7 +108,8 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   <span>Khiên Bền Bỉ (Shield)</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Cứ mỗi <strong>7 ngày kỷ luật</strong> bạn nhận 1 Khiên. Khi lỡ quên hoặc có việc đột xuất, Khiên sẽ bảo vệ giữ nguyên chuỗi streak cho bạn.
+                  Cứ mỗi <strong>7 ngày kỷ luật</strong> bạn nhận 1 Khiên. Khi lỡ quên hoặc có việc đột xuất, Khiên sẽ
+                  bảo vệ giữ nguyên chuỗi streak cho bạn.
                 </p>
               </div>
             </div>
@@ -128,7 +124,8 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   <span>Dự Án & Cắt Gọt Thời Gian</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Bấm giờ làm việc sâu, dễ dàng <strong>cắt gọt bớt phút xao nhãng</strong> và chốt từng phiên vào nhật ký dự án chi tiết.
+                  Bấm giờ làm việc sâu, dễ dàng <strong>cắt gọt bớt phút xao nhãng</strong> và chốt từng phiên vào nhật
+                  ký dự án chi tiết.
                 </p>
               </div>
             </div>
@@ -143,7 +140,8 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   <span>Đồng Bộ Đám Mây & 04:00 AM</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Ngày mới chuyển lúc <strong>04:00 sáng</strong> cho người thức khuya. Xác thực email bằng mã OTP để đồng bộ dữ liệu giữa các thiết bị khi có mạng.
+                  Ngày mới chuyển lúc <strong>04:00 sáng</strong> cho người thức khuya. Xác thực email bằng mã OTP để
+                  đồng bộ dữ liệu giữa các thiết bị khi có mạng.
                 </p>
               </div>
             </div>

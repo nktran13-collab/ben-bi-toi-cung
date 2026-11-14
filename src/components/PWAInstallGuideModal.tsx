@@ -6,7 +6,6 @@ interface PWAInstallGuideModalProps {
   onClose: () => void;
   isInstallable: boolean;
   onTriggerNativeInstall: () => void;
-  isIOS: boolean;
 }
 
 export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
@@ -14,7 +13,6 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
   onClose,
   isInstallable,
   onTriggerNativeInstall,
-  isIOS,
 }) => {
   if (!isOpen) return null;
 
@@ -28,12 +26,8 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
               <Smartphone className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-white">
-                Cài Đặt App Ra Màn Hình Chính
-              </h2>
-              <p className="text-xs text-[#E8F0FE]/80">
-                Chạy độc lập (Standalone) như Native App, không giật lag
-              </p>
+              <h2 className="text-base sm:text-lg font-bold text-white">Cài Đặt App Ra Màn Hình Chính</h2>
+              <p className="text-xs text-[#E8F0FE]/80">Chạy độc lập (Standalone) như Native App, không giật lag</p>
             </div>
           </div>
           <button
@@ -50,9 +44,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
           {/* Quick Install Button for Desktop / Android if event available */}
           {isInstallable && (
             <div className="bg-[#E8F0FE] p-4 rounded-xl border border-[#3B6998]/30 text-center space-y-2">
-              <div className="text-xs font-bold text-[#1E3A5F]">
-                Trình duyệt hỗ trợ cài đặt tự động 1-chạm
-              </div>
+              <div className="text-xs font-bold text-[#1E3A5F]">Trình duyệt hỗ trợ cài đặt tự động 1-chạm</div>
               <button
                 type="button"
                 onClick={() => {
@@ -128,7 +120,8 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
           {/* Android / Chrome guidance */}
           <div className="border-t border-slate-200 pt-3">
             <div className="text-xs text-slate-500">
-              <strong>Đối với Android / Chrome:</strong> Nếu không thấy nút tự động, hãy nhấn vào dấu ba chấm (⋮) ở góc trên bên phải trình duyệt và chọn <em>"Cài đặt ứng dụng"</em> hoặc <em>"Thêm vào màn hình chính"</em>.
+              <strong>Đối với Android / Chrome:</strong> Nếu không thấy nút tự động, hãy nhấn vào dấu ba chấm (⋮) ở góc
+              trên bên phải trình duyệt và chọn <em>"Cài đặt ứng dụng"</em> hoặc <em>"Thêm vào màn hình chính"</em>.
             </div>
           </div>
         </div>

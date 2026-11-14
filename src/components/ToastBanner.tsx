@@ -15,11 +15,7 @@ export const ToastBanner: React.FC<ToastBannerProps> = ({ message, onDismiss }) 
           <Sparkles className="w-4 h-4 text-[#FCC934] shrink-0" />
           <span>{message}</span>
         </div>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="text-white/70 hover:text-white font-bold cursor-pointer"
-        >
+        <button type="button" onClick={onDismiss} className="text-white/70 hover:text-white font-bold cursor-pointer">
           ✕
         </button>
       </div>

@@ -210,27 +210,37 @@ function preserveRecovery(key: string, raw: string): void {
 }
 
 export function hasRecoveryData(): boolean {
-  return Object.keys(localStorage).some(key => key.startsWith('benbi_recovery_'));
+  return Object.keys(localStorage).some((key) => key.startsWith('benbi_recovery_'));
 }
 
 export function exportRecoveryJSON(): string {
-  return JSON.stringify(Object.fromEntries(Object.keys(localStorage)
-    .filter(key => key.startsWith('benbi_recovery_'))
-    .map(key => [key, localStorage.getItem(key)])), null, 2);
+  return JSON.stringify(
+    Object.fromEntries(
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('benbi_recovery_'))
+        .map((key) => [key, localStorage.getItem(key)]),
+    ),
+    null,
+    2,
+  );
 }
 
 function parseCacheRaw(raw: string, id: string): LocalCache | null {
   try {
     const cache = JSON.parse(raw) as LocalCache;
     const account = cache?.account;
-    if (!account || account.id !== id || !id ||
+    if (
+      !account ||
+      account.id !== id ||
+      !id ||
       (account.email !== null && typeof account.email !== 'string') ||
       typeof account.isAnonymous !== 'boolean' ||
       !['anonymous', 'supabase'].includes(account.provider) ||
       !Number.isFinite(account.createdAtMs) ||
       (account.lastSyncedAtMs !== null && !Number.isFinite(account.lastSyncedAtMs)) ||
       typeof cache.initialized !== 'boolean' ||
-      (cache.migrationEmail !== undefined && typeof cache.migrationEmail !== 'string')) {
+      (cache.migrationEmail !== undefined && typeof cache.migrationEmail !== 'string')
+    ) {
       throw new Error('Thông tin bộ nhớ đệm không hợp lệ.');
     }
     const snapshot = parseSnapshot(cache.snapshot);
@@ -291,8 +301,10 @@ function parseLegacySnapshot(data: {
   logs?: unknown;
   settings?: unknown;
 }): SyncSnapshot {
-  if (data.settings !== undefined &&
-    (!data.settings || typeof data.settings !== 'object' || Array.isArray(data.settings))) {
+  if (
+    data.settings !== undefined &&
+    (!data.settings || typeof data.settings !== 'object' || Array.isArray(data.settings))
+  ) {
     throw new Error('Cài đặt không hợp lệ.');
   }
   return parseSnapshot({
@@ -318,13 +330,13 @@ export async function loadLocalCache(): Promise<LocalCache> {
   const rawAccount = localStorage.getItem(STORAGE_KEYS.USER_ACCOUNT);
   let snapshot: SyncSnapshot;
   try {
-    snapshot = [rawTasks, rawSessions, rawLogs, rawSettings].some(raw => raw !== null)
+    snapshot = [rawTasks, rawSessions, rawLogs, rawSettings].some((raw) => raw !== null)
       ? parseLegacySnapshot({
-        tasks: rawTasks === null ? [] : JSON.parse(rawTasks),
-        sessions: rawSessions === null ? [] : JSON.parse(rawSessions),
-        logs: rawLogs === null ? [] : JSON.parse(rawLogs),
-        settings: rawSettings === null ? undefined : JSON.parse(rawSettings),
-      })
+          tasks: rawTasks === null ? [] : JSON.parse(rawTasks),
+          sessions: rawSessions === null ? [] : JSON.parse(rawSessions),
+          logs: rawLogs === null ? [] : JSON.parse(rawLogs),
+          settings: rawSettings === null ? undefined : JSON.parse(rawSettings),
+        })
       : parseLegacySnapshot(getCleanStarterTasks());
   } catch {
     preserveRecovery('legacy-v2', JSON.stringify({ rawTasks, rawSessions, rawLogs, rawSettings, rawAccount }));
@@ -339,8 +351,12 @@ export async function loadLocalCache(): Promise<LocalCache> {
   };
   try {
     const legacyAccount = rawAccount === null ? null : JSON.parse(rawAccount);
-    if (legacyAccount && ['email_sync', 'mock_otp'].includes(legacyAccount.provider) &&
-      typeof legacyAccount.email === 'string' && legacyAccount.email.trim()) {
+    if (
+      legacyAccount &&
+      ['email_sync', 'mock_otp'].includes(legacyAccount.provider) &&
+      typeof legacyAccount.email === 'string' &&
+      legacyAccount.email.trim()
+    ) {
       cache.migrationEmail = legacyAccount.email.trim().toLowerCase();
     }
   } catch {}
@@ -402,7 +418,7 @@ export function exportFullBackupJSON(
   tasks: TaskItem[],
   sessions: TimeSession[],
   logs: HabitDailyLog[],
-  settings?: AppSettings
+  settings?: AppSettings,
 ): string {
   const payload: FullBackupPayload = {
     version: 2,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Clock, Scissors, Check, Trash2 } from 'lucide-react';
 import { TaskItem, formatDuration } from '../utils/engine';
 
@@ -17,12 +17,16 @@ export const IdleDetectionModal: React.FC<IdleDetectionModalProps> = ({
   onSaveTrimmed,
   onDiscard,
 }) => {
-  if (!isOpen || !task) return null;
-
   const rawMinutes = Math.max(15, Math.round(rawDurationMs / 60000));
   // Default to 60 mins or half of raw minutes as reasonable focused estimate
   const defaultSelectedMinutes = Math.min(60, rawMinutes);
   const [selectedMinutes, setSelectedMinutes] = useState<number>(defaultSelectedMinutes);
+
+  useEffect(() => {
+    setSelectedMinutes(defaultSelectedMinutes);
+  }, [defaultSelectedMinutes, task?.id]);
+
+  if (!isOpen || !task) return null;
 
   const trimmedMs = selectedMinutes * 60 * 1000;
   const discardedMs = Math.max(0, rawDurationMs - trimmedMs);
@@ -48,7 +52,10 @@ export const IdleDetectionModal: React.FC<IdleDetectionModalProps> = ({
             <div className="text-base font-bold text-[#1E3A5F] mt-0.5">{task.name}</div>
             <div className="text-xs text-slate-600 mt-1 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-[#D93025]" />
-              <span>Đồng hồ đã chạy liên tục: <strong className="text-[#D93025]">{formatDuration(rawDurationMs, true)}</strong> ({rawMinutes} phút)</span>
+              <span>
+                Đồng hồ đã chạy liên tục:{' '}
+                <strong className="text-[#D93025]">{formatDuration(rawDurationMs, true)}</strong> ({rawMinutes} phút)
+              </span>
             </div>
           </div>
 

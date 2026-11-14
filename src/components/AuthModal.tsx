@@ -83,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   }, [cooldownUntil]);
 
   useEffect(() => {
-    if (isOpen && needsReauth && account.email) setEmail(prev => prev || account.email!);
+    if (isOpen && needsReauth && account.email) setEmail((prev) => prev || account.email!);
   }, [isOpen, needsReauth, account.email]);
 
   if (!isOpen) return null;
@@ -200,7 +200,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
+      className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs"
+    >
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col text-slate-800 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
@@ -216,8 +221,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {account.isAnonymous
                   ? 'Xác thực email bằng mã OTP qua Supabase để đồng bộ'
                   : needsReauth
-                  ? `Phiên đã hết hạn: ${account.email}`
-                  : `Email đã xác thực qua Supabase: ${account.email}`}
+                    ? `Phiên đã hết hạn: ${account.email}`
+                    : `Email đã xác thực qua Supabase: ${account.email}`}
               </p>
             </div>
           </div>
@@ -242,26 +247,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <Laptop className="w-4 h-4 text-[#1E3A5F]" />
             </div>
             <div className="text-xs text-slate-700 leading-relaxed">
-              <strong className="text-slate-900 block font-semibold mb-0.5">
-                Đồng bộ bằng email đã xác thực
-              </strong>
-              Khi đổi thiết bị, bạn cần xác thực mã OTP gửi đến email qua Supabase để truy cập dữ liệu đám mây. Chỉ nhập email chưa đủ để đăng nhập.
+              <strong className="text-slate-900 block font-semibold mb-0.5">Đồng bộ bằng email đã xác thực</strong>
+              Khi đổi thiết bị, bạn cần xác thực mã OTP gửi đến email qua Supabase để truy cập dữ liệu đám mây. Chỉ nhập
+              email chưa đủ để đăng nhập.
             </div>
           </div>
 
           {!cloudEnabled && (
             <p role="status" className="bg-amber-50 text-amber-800 text-xs p-3 rounded-xl border border-amber-200">
-              Chưa cấu hình Supabase nên chưa thể gửi mã OTP hoặc đồng bộ. Bạn vẫn có thể dùng dữ liệu trên máy và sao lưu JSON.
+              Chưa cấu hình Supabase nên chưa thể gửi mã OTP hoặc đồng bộ. Bạn vẫn có thể dùng dữ liệu trên máy và sao
+              lưu JSON.
             </p>
           )}
           {error && (
-            <div role="alert" className="bg-rose-50 text-rose-700 text-xs p-3 rounded-xl border border-rose-200 flex items-start gap-2">
+            <div
+              role="alert"
+              className="bg-rose-50 text-rose-700 text-xs p-3 rounded-xl border border-rose-200 flex items-start gap-2"
+            >
               <X className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
           {info && (
-            <div role="status" className="bg-emerald-50 text-emerald-800 text-xs p-3 rounded-xl border border-emerald-200 flex items-start gap-2">
+            <div
+              role="status"
+              className="bg-emerald-50 text-emerald-800 text-xs p-3 rounded-xl border border-emerald-200 flex items-start gap-2"
+            >
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
               <span>{info}</span>
             </div>
@@ -346,7 +357,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <Mail className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                  {step === 'email' ? (needsReauth ? 'Xác thực lại bằng OTP' : 'Đăng nhập bằng OTP qua Supabase') : 'Xác thực email qua Supabase'}
+                  {step === 'email'
+                    ? needsReauth
+                      ? 'Xác thực lại bằng OTP'
+                      : 'Đăng nhập bằng OTP qua Supabase'
+                    : 'Xác thực email qua Supabase'}
                 </span>
               </div>
 
@@ -372,13 +387,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       />
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1.5">
-                      Supabase sẽ gửi mã OTP đến email này. Chỉ sau khi xác thực thành công, bạn mới đăng nhập để đồng bộ dữ liệu.
+                      Supabase sẽ gửi mã OTP đến email này. Chỉ sau khi xác thực thành công, bạn mới đăng nhập để đồng
+                      bộ dữ liệu.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="text-slate-600 break-all">Mã đã gửi đến <strong>{email}</strong></span>
+                      <span className="text-slate-600 break-all">
+                        Mã đã gửi đến <strong>{email}</strong>
+                      </span>
                       <button
                         type="button"
                         onClick={handleEditEmail}
@@ -436,7 +454,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <span>
                         {step === 'otp'
                           ? 'Xác thực & Đăng nhập'
-                          : cooldown > 0 ? `Gửi mã sau ${cooldown}s` : 'Gửi mã OTP'}
+                          : cooldown > 0
+                            ? `Gửi mã sau ${cooldown}s`
+                            : 'Gửi mã OTP'}
                       </span>
                     </>
                   )}
@@ -448,7 +468,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {recoveryAvailable && onExportRecovery && (
             <div role="status" className="bg-amber-50 p-3.5 rounded-xl border border-amber-200 space-y-2.5">
               <p className="text-xs text-amber-900 leading-relaxed">
-                Phát hiện dữ liệu cũ trên máy không đọc được và đã được giữ lại nguyên trạng. Hãy tải về để không bị mất.
+                Phát hiện dữ liệu cũ trên máy không đọc được và đã được giữ lại nguyên trạng. Hãy tải về để không bị
+                mất.
               </p>
               <button
                 type="button"
@@ -517,7 +538,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span>Không gian Bền Bỉ của riêng bạn</span>
               </div>
               <p className="text-xs text-slate-600">
-                Đặt toàn bộ chuỗi về <strong>Ngày 0</strong> để bắt đầu hành trình thực tế của bạn, hoặc nạp bộ dữ liệu mẫu 21 ngày để trải nghiệm.
+                Đặt toàn bộ chuỗi về <strong>Ngày 0</strong> để bắt đầu hành trình thực tế của bạn, hoặc nạp bộ dữ liệu
+                mẫu 21 ngày để trải nghiệm.
               </p>
 
               {!confirmCleanReset ? (

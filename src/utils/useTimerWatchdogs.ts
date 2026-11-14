@@ -62,7 +62,7 @@ export function useTimerWatchdogs({
 
         notificationService.sendNotification(
           `🔥 Bền Bỉ: ${task.name} đã hoàn thành!`,
-          'Đồng hồ đếm ngược đã chạm 00:00. Nhấn giữ 0.8 giây để xác nhận chuỗi của bạn.'
+          'Đồng hồ đếm ngược đã chạm 00:00. Nhấn giữ 0.8 giây để xác nhận chuỗi của bạn.',
         );
 
         setTasks((prev) =>
@@ -77,8 +77,8 @@ export function useTimerWatchdogs({
                   sync_status: 1,
                   updated_at_ms: Date.now(),
                 }
-              : t
-          )
+              : t,
+          ),
         );
       });
     };
@@ -122,8 +122,8 @@ export function useTimerWatchdogs({
                   sync_status: 1,
                   updated_at_ms: Date.now(),
                 }
-              : t
-          )
+              : t,
+          ),
         );
 
         idleHandlerRef.current(task, totalRawMs);

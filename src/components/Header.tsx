@@ -113,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
     const publish = () => {
       document.documentElement.style.setProperty(
         '--app-header-h',
-        `${Math.round(el.getBoundingClientRect().height)}px`
+        `${Math.round(el.getBoundingClientRect().height)}px`,
       );
     };
     publish();
@@ -204,7 +204,9 @@ export const Header: React.FC<HeaderProps> = ({
                 className="flex min-h-11 items-center gap-1.5 bg-[#152a45] text-[#FCC934] hover:bg-[#3B6998]/60 px-2.5 rounded-lg border border-[#FF6B00]/60 text-xs font-semibold shadow-xs transition-colors cursor-pointer sm:min-h-0 sm:py-1.5"
                 title="Có bản ghi chờ đồng bộ. Bấm để đồng bộ ngay."
               >
-                <RefreshCw className={`h-[18px] w-[18px] text-[#FCC934] sm:h-3.5 sm:w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-[18px] w-[18px] text-[#FCC934] sm:h-3.5 sm:w-3.5 ${isSyncing ? 'animate-spin' : ''}`}
+                />
                 <span className="hidden sm:inline">Đồng bộ</span>
                 <span className="font-mono text-[11px] leading-none">({pendingSyncCount})</span>
               </button>
@@ -222,21 +224,29 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenAuthModal}
-              aria-label={needsReauth ? 'Phiên đăng nhập đã hết hạn, xác thực lại' : 'Tài khoản, đồng bộ đám mây và sao lưu'}
+              aria-label={
+                needsReauth ? 'Phiên đăng nhập đã hết hạn, xác thực lại' : 'Tài khoản, đồng bộ đám mây và sao lưu'
+              }
               className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer sm:min-h-0 sm:min-w-0 sm:py-1.5 ${
                 needsReauth
                   ? 'bg-amber-950/60 text-amber-100 border-amber-400/80'
                   : !account.isAnonymous
-                  ? 'bg-[#152a45] text-white border-[#81C995]/70'
-                  : 'bg-[#152a45] text-[#E8F0FE]/90 border-[#3B6998]/60 hover:text-white hover:bg-[#3B6998]/50'
+                    ? 'bg-[#152a45] text-white border-[#81C995]/70'
+                    : 'bg-[#152a45] text-[#E8F0FE]/90 border-[#3B6998]/60 hover:text-white hover:bg-[#3B6998]/50'
               }`}
-              title={needsReauth ? 'Phiên đăng nhập đã hết hạn. Bấm để xác thực lại email.' : 'Quản lý Tài khoản, Đồng bộ Đám mây & Sao lưu JSON'}
+              title={
+                needsReauth
+                  ? 'Phiên đăng nhập đã hết hạn. Bấm để xác thực lại email.'
+                  : 'Quản lý Tài khoản, Đồng bộ Đám mây & Sao lưu JSON'
+              }
             >
               <User className="h-[18px] w-[18px] text-[#FCC934] shrink-0 sm:h-3.5 sm:w-3.5" />
               <span className="hidden sm:inline max-w-[125px] truncate">
                 {account.isAnonymous ? 'Sao lưu / Cloud' : account.email?.split('@')[0]}
               </span>
-              {needsReauth && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" aria-label="Cần đăng nhập lại" />}
+              {needsReauth && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" aria-label="Cần đăng nhập lại" />
+              )}
             </button>
 
             {/* Total Shields Badge */}
@@ -263,13 +273,9 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
                 title="Giữ màn hình luôn sáng khi đang bấm giờ tập trung"
               >
-                <Eye
-                  className={`w-3.5 h-3.5 ${wakeLockActive ? 'text-[#FCC934]' : 'text-[#E8F0FE]/60'}`}
-                />
+                <Eye className={`w-3.5 h-3.5 ${wakeLockActive ? 'text-[#FCC934]' : 'text-[#E8F0FE]/60'}`} />
                 <span className="hidden lg:inline">Giữ sáng</span>
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${wakeLockActive ? 'bg-[#81C995]' : 'bg-gray-500'}`}
-                />
+                <span className={`w-1.5 h-1.5 rounded-full ${wakeLockActive ? 'bg-[#81C995]' : 'bg-gray-500'}`} />
               </button>
 
               {/* Dark Mode Toggle */}
@@ -400,7 +406,13 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={runAndClose(onToggleDarkMode)}
           />
           <MenuItem
-            icon={soundEnabled ? <Volume2 className="w-4 h-4 text-[#81C995]" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
+            icon={
+              soundEnabled ? (
+                <Volume2 className="w-4 h-4 text-[#81C995]" />
+              ) : (
+                <VolumeX className="w-4 h-4 text-slate-400" />
+              )
+            }
             label="Âm thanh chuông"
             hint={soundEnabled ? 'Bật' : 'Tắt'}
             onClick={runAndClose(onToggleSound)}

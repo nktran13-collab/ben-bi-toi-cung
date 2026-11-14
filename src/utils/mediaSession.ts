@@ -17,7 +17,7 @@ export function setupMediaSession(
   handlers: {
     onPlay: () => void;
     onPause: () => void;
-  }
+  },
 ) {
   if (typeof window === 'undefined' || !('mediaSession' in navigator)) {
     return;

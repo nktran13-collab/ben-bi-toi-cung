@@ -1,5 +1,5 @@
 import React from 'react';
-import { Moon, CheckCircle2, X, Clock, AlertTriangle } from 'lucide-react';
+import { Moon, CheckCircle2, Clock } from 'lucide-react';
 import { RetroactiveConfirmation } from '../utils/engine';
 
 interface RetroactiveConfirmModalProps {
@@ -43,7 +43,8 @@ export const RetroactiveConfirmModal: React.FC<RetroactiveConfirmModalProps> = (
                 Bạn đã hoàn thành đủ định mức cho thói quen{' '}
                 <strong className="text-[#1E3A5F]">"{item.taskName}"</strong> vào lúc{' '}
                 <strong className="text-[#FF6B00]">{timeStr}</strong> hôm trước (ngày logic{' '}
-                <span className="font-semibold text-slate-800">{item.logicalDate}</span>) nhưng chưa kịp nhấn giữ xác nhận trước giờ chuyển ngày 04:00 AM.
+                <span className="font-semibold text-slate-800">{item.logicalDate}</span>) nhưng chưa kịp nhấn giữ xác
+                nhận trước giờ chuyển ngày 04:00 AM.
               </div>
             </div>
           </div>

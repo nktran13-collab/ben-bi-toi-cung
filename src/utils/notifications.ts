@@ -28,11 +28,7 @@ class NotificationService {
    * Schedules a completion notification when habit countdown reaches 00:00.
    * Simulates payload queuing for Supabase Edge Functions / Web Push.
    */
-  public scheduleHabitEndPush(
-    taskId: string,
-    taskName: string,
-    remainingMs: number
-  ): ScheduledPushRecord | null {
+  public scheduleHabitEndPush(taskId: string, taskName: string, remainingMs: number): ScheduledPushRecord | null {
     this.cancelScheduledPush(taskId);
 
     const now = Date.now();
@@ -70,7 +66,7 @@ class NotificationService {
       const timerId = window.setTimeout(() => {
         this.sendNotification(
           `🔥 Bền Bỉ: ${taskName} đã hết giờ!`,
-          'Đồng hồ đã về 00:00. Chạm để mở ứng dụng và nhấn giữ xác nhận chuỗi của bạn.'
+          'Đồng hồ đã về 00:00. Chạm để mở ứng dụng và nhấn giữ xác nhận chuỗi của bạn.',
         );
         this.scheduledRecords.delete(taskId);
         this.activeTimers.delete(taskId);

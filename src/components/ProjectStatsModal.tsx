@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Clock,
@@ -8,11 +8,8 @@ import {
   Check,
   BarChart3,
   Download,
-  Share2,
   FileSpreadsheet,
   FileText,
-  Shield,
-  Flame,
   Award,
   Trash2,
   Pencil,
@@ -61,7 +58,6 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   const [trimSuccessMessage, setTrimSuccessMessage] = useState<string | null>(null);
   const [shareCardGenerating, setShareCardGenerating] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   if (!isOpen) return null;
 
@@ -71,15 +67,14 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
   const totalSessionMs = taskSessions.reduce((acc, s) => acc + s.durationMs, 0);
   const totalLogMs = taskLogs.reduce((acc, l) => acc + (l.actualDurationMs || 0), 0);
-  const totalDurationMs = task.mode === 'project'
-    ? totalSessionMs + task.accumulatedMs
-    : totalLogMs + task.accumulatedMs;
+  const totalDurationMs =
+    task.mode === 'project' ? totalSessionMs + task.accumulatedMs : totalLogMs + task.accumulatedMs;
 
   // Calculate distinct active days
   const activeDaysSet = new Set(
     task.mode === 'project'
       ? taskSessions.map((s) => s.logicalDate)
-      : taskLogs.filter((l) => l.completed).map((l) => l.logicalDate)
+      : taskLogs.filter((l) => l.completed).map((l) => l.logicalDate),
   );
   const activeDaysCount = activeDaysSet.size;
 
@@ -89,9 +84,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   const historyDays = Math.max(1, Math.ceil((now - task.historyStartTimestamp) / DAY_MS));
   const persistenceDensity = calculatePersistenceDensity(activeDaysCount, historyDays);
 
-  const avgMinutesPerActiveDay = activeDaysCount > 0
-    ? Math.round(totalDurationMs / activeDaysCount / 60000)
-    : 0;
+  const avgMinutesPerActiveDay = activeDaysCount > 0 ? Math.round(totalDurationMs / activeDaysCount / 60000) : 0;
 
   // Group durations by last 30 logical days (04:00 AM rollover) for Project bar chart
   const last30Days: { dateStr: string; label: string; dayNum: string; durationMinutes: number }[] = [];
@@ -101,9 +94,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     const parts = dateStr.split('-');
     const dayNum = parseInt(parts[2], 10);
     const minutes = Math.round(
-      taskSessions
-        .filter((s) => s.logicalDate === dateStr)
-        .reduce((sum, s) => sum + s.durationMs, 0) / 60000
+      taskSessions.filter((s) => s.logicalDate === dateStr).reduce((sum, s) => sum + s.durationMs, 0) / 60000,
     );
     last30Days.push({
       dateStr,
@@ -228,11 +219,9 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     ctx.font = 'bold 20px sans-serif';
     ctx.fillStyle = task.mode === 'habit' ? '#FF6B00' : '#3B6998';
     ctx.fillText(
-      task.mode === 'habit'
-        ? `🔥 THÓI QUEN KỶ LUẬT (${targetMilestone} NGÀY)`
-        : '⏱️ DỰ ÁN TÍCH LŨY',
+      task.mode === 'habit' ? `🔥 THÓI QUEN KỶ LUẬT (${targetMilestone} NGÀY)` : '⏱️ DỰ ÁN TÍCH LŨY',
       100,
-      290
+      290,
     );
 
     // Stats Grid
@@ -251,7 +240,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     ctx.fillText(
       task.mode === 'habit' ? `🔥 ${task.currentStreak} ngày` : formatDuration(totalDurationMs, true),
       130,
-      430
+      430,
     );
 
     // Col 2: Persistence Density
@@ -283,17 +272,13 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     ctx.fillText(
       task.mode === 'habit' ? `🛡️ ${task.shields} khiên` : `${activeDaysCount} / ${historyDays} ngày`,
       750,
-      430
+      430,
     );
 
     // Footer quote
     ctx.font = 'italic 18px sans-serif';
     ctx.fillStyle = '#64748B';
-    ctx.fillText(
-      '“Chiến thắng không thuộc về người thông minh nhất, mà thuộc về người bền bỉ tới cùng.”',
-      100,
-      525
-    );
+    ctx.fillText('“Chiến thắng không thuộc về người thông minh nhất, mà thuộc về người bền bỉ tới cùng.”', 100, 525);
 
     // Watermark URL
     ctx.textAlign = 'right';
@@ -348,7 +333,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
               )}
             </h2>
           </div>
-          
+
           {/* Top-Right Action Buttons: Edit, Delete & Close */}
           <div className="flex items-center gap-2">
             {onEditTask && (
@@ -389,8 +374,8 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
         {confirmingDelete && onDeleteTask && (
           <div className="bg-red-50 border-b border-red-200 px-5 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="text-xs text-red-800">
-              <strong>Xác nhận xóa vĩnh viễn:</strong> Bạn có chắc chắn muốn xóa tác vụ{' '}
-              <strong>"{task.name}"</strong> cùng toàn bộ lịch sử phiên làm việc?
+              <strong>Xác nhận xóa vĩnh viễn:</strong> Bạn có chắc chắn muốn xóa tác vụ <strong>"{task.name}"</strong>{' '}
+              cùng toàn bộ lịch sử phiên làm việc?
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
@@ -417,7 +402,8 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
             <div className="text-xs text-emerald-900 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
-                Đang có phiên làm việc tích lũy <strong>{formatDuration(task.accumulatedMs, true)}</strong> chưa chốt vào nhật ký.
+                Đang có phiên làm việc tích lũy <strong>{formatDuration(task.accumulatedMs, true)}</strong> chưa chốt
+                vào nhật ký.
               </span>
             </div>
             <button
@@ -446,9 +432,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 <div className="text-2xl sm:text-3xl font-black text-white mt-1.5 tabular-nums">
                   {formatDuration(totalDurationMs, true)}
                 </div>
-                <div className="text-xs text-blue-200 mt-0.5">
-                  {(totalDurationMs / 3600000).toFixed(1)} giờ thực tế
-                </div>
+                <div className="text-xs text-blue-200 mt-0.5">{(totalDurationMs / 3600000).toFixed(1)} giờ thực tế</div>
               </div>
 
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
@@ -472,7 +456,9 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 <div className="text-2xl sm:text-3xl font-black text-white mt-1.5 tabular-nums">
                   {avgMinutesPerActiveDay} <span className="text-sm font-normal">phút</span>
                 </div>
-                <div className="text-xs text-blue-200 mt-0.5">Định mức: {Math.round(task.targetDurationMs / 60000)} phút</div>
+                <div className="text-xs text-blue-200 mt-0.5">
+                  Định mức: {Math.round(task.targetDurationMs / 60000)} phút
+                </div>
               </div>
             </div>
           </div>
@@ -500,7 +486,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                       key={d.dateStr}
                       title={`${d.label}: ${d.durationMinutes} phút`}
                       className={`flex h-9 sm:h-12 flex-col items-center justify-center rounded-lg border text-[11px] sm:text-xs font-bold leading-none transition-colors ${getHeatColor(
-                        d.durationMinutes
+                        d.durationMinutes,
                       )} ${idx === last30Days.length - 1 ? 'ring-2 ring-[#FF6B00]/60 ring-offset-1' : ''}`}
                     >
                       <span>{d.dayNum}</span>
@@ -556,7 +542,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                       key={cell.dayNumber}
                       title={`${cell.label}: ${cell.status}`}
                       className={`h-9 rounded-lg border flex flex-col items-center justify-center text-xs font-bold transition-all shadow-xs ${getMatrixColor(
-                        cell.status
+                        cell.status,
                       )}`}
                     >
                       <span className="text-xs leading-tight">D{cell.dayNumber}</span>
@@ -599,9 +585,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   <Scissors className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                    Cắt gọt thời gian thừa (Trim Session)
-                  </h4>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">Cắt gọt thời gian thừa (Trim Session)</h4>
                   <p className="text-[10px] sm:text-xs text-slate-600">
                     Nếu bạn để quên đồng hồ chạy qua giờ, hãy kéo thanh trượt để cắt bớt.
                   </p>
@@ -634,10 +618,11 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
               <div className="bg-white p-3 rounded-lg border border-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
                 <div>
                   <span className="text-slate-500">Thời gian sau cắt: </span>
-                  <strong className="text-slate-900 font-mono font-bold text-sm">
-                    {formatDuration(trimmedMs)}
-                  </strong>
-                  <span className="text-slate-400 text-[10px] sm:text-xs block sm:inline"> (gốc: {formatDuration(targetToTrimMs)})</span>
+                  <strong className="text-slate-900 font-mono font-bold text-sm">{formatDuration(trimmedMs)}</strong>
+                  <span className="text-slate-400 text-[10px] sm:text-xs block sm:inline">
+                    {' '}
+                    (gốc: {formatDuration(targetToTrimMs)})
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -655,9 +640,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Download className="w-5 h-5 text-[#FF6B00]" />
-                <h4 className="text-sm font-bold text-slate-800">
-                  Tầng 3 • Xuất dữ liệu & Thẻ Vinh Danh
-                </h4>
+                <h4 className="text-sm font-bold text-slate-800">Tầng 3 • Xuất dữ liệu & Thẻ Vinh Danh</h4>
               </div>
             </div>
 

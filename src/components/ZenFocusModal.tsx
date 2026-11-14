@@ -1,16 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  X,
-  Play,
-  Pause,
-  Headphones,
-  VolumeX,
-  Flame,
-  Sparkles,
-  CheckCircle2,
-  Check,
-  Maximize2,
-} from 'lucide-react';
+import { X, Play, Pause, Headphones, VolumeX, Flame, Sparkles, CheckCircle2, Check, Maximize2 } from 'lucide-react';
 import {
   TaskItem,
   calculateHabitRemaining,
@@ -78,16 +67,16 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  let displayTime = '';
-  let progressRatio = 0;
-  let strokeColor = '#FF6B00';
+  let displayTime: string;
+  let progressRatio: number;
+  let strokeColor: string;
 
   if (isHabit) {
     const { remainingMs, progressRatio: ratio } = calculateHabitRemaining(
       effectiveTargetMs,
       task.startedAtMs,
       task.accumulatedMs,
-      currentTimeMs
+      currentTimeMs,
     );
     progressRatio = isCompleted ? 1 : ratio;
     displayTime = formatDuration(isCompleted ? effectiveTargetMs : remainingMs);
@@ -97,7 +86,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
       effectiveTargetMs,
       task.startedAtMs,
       task.accumulatedMs,
-      currentTimeMs
+      currentTimeMs,
     );
     progressRatio = Math.min(1, ratio);
     displayTime = formatDuration(elapsedMs, true);
@@ -203,9 +192,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
       {/* Center Focus Ring */}
       <div className="flex flex-col items-center justify-center my-auto py-6">
         <div className="text-center mb-6 max-w-lg">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            {task.name}
-          </h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">{task.name}</h2>
           {task.notes ? (
             <p className="text-sm text-blue-200/80 mt-2 italic">“{task.notes}”</p>
           ) : (
@@ -223,12 +210,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
             <div className="absolute inset-0 rounded-full bg-[#FF6B00]/15 blur-2xl animate-pulse pointer-events-none" />
           )}
 
-          <svg
-            width="100%"
-            height="100%"
-            viewBox={`0 0 ${size} ${size}`}
-            className="transform -rotate-90"
-          >
+          <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -255,9 +237,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
             {isCompleted ? (
               <div className="flex flex-col items-center">
                 <CheckCircle2 className="w-12 h-12 text-[#81C995] mb-2" />
-                <span className="text-base font-bold text-[#81C995] uppercase tracking-wider">
-                  Đã Hoàn Thành
-                </span>
+                <span className="text-base font-bold text-[#81C995] uppercase tracking-wider">Đã Hoàn Thành</span>
               </div>
             ) : (
               <>

@@ -71,9 +71,9 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  let displayTime = '';
-  let progressRatio = 0;
-  let strokeColor = '#3B6998';
+  let displayTime: string;
+  let progressRatio: number;
+  let strokeColor: string;
   let expectedEndFormatted = '';
 
   if (isHabit) {
@@ -81,17 +81,13 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
       effectiveTargetMs,
       task.startedAtMs,
       task.accumulatedMs,
-      currentTimeMs
+      currentTimeMs,
     );
     progressRatio = isCompleted ? 1 : ratio;
     displayTime = formatDuration(isCompleted ? effectiveTargetMs : remainingMs);
 
     if (isRunning && task.startedAtMs) {
-      const expectedEnd = calculateExpectedEndTimestamp(
-        task.startedAtMs,
-        effectiveTargetMs,
-        task.accumulatedMs
-      );
+      const expectedEnd = calculateExpectedEndTimestamp(task.startedAtMs, effectiveTargetMs, task.accumulatedMs);
       expectedEndFormatted = formatClockTime(expectedEnd);
     }
 
@@ -105,19 +101,14 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
       effectiveTargetMs,
       task.startedAtMs,
       task.accumulatedMs,
-      currentTimeMs
+      currentTimeMs,
     );
     progressRatio = Math.min(1, ratio);
     displayTime = formatDuration(elapsedMs);
     strokeColor = isCompleted ? '#81C995' : darkMode ? '#38BDF8' : '#1E3A5F';
   }
 
-  let strokeDashoffset = 0;
-  if (isHabit && isCompleted) {
-    strokeDashoffset = 0;
-  } else {
-    strokeDashoffset = circumference * (1 - Math.max(0, Math.min(1, progressRatio)));
-  }
+  const strokeDashoffset = isHabit && isCompleted ? 0 : circumference * (1 - Math.max(0, Math.min(1, progressRatio)));
 
   // Long-press confirmation logic (0.8s hold)
   const [holdingProgress, setHoldingProgress] = useState(0);
@@ -173,9 +164,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
     }
   };
 
-  const currentElapsedMs = isRunning && task.startedAtMs
-    ? task.accumulatedMs + Math.max(0, currentTimeMs - task.startedAtMs)
-    : task.accumulatedMs;
+  const currentElapsedMs =
+    isRunning && task.startedAtMs
+      ? task.accumulatedMs + Math.max(0, currentTimeMs - task.startedAtMs)
+      : task.accumulatedMs;
 
   return (
     <div
@@ -183,19 +175,17 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
         isPendingConfirmation
           ? 'border-[#FF6B00] ring-4 ring-[#FF6B00]/20 bg-[#FFF3E0]/30 dark:bg-[#FF6B00]/10 animate-pulse'
           : isCompleted
-          ? 'border-[#81C995] bg-[#81C995]/5 dark:bg-emerald-950/20'
-          : darkMode
-          ? 'bg-slate-900 border-slate-800 text-slate-100'
-          : 'bg-white border-slate-200/90 text-slate-800'
+            ? 'border-[#81C995] bg-[#81C995]/5 dark:bg-emerald-950/20'
+            : darkMode
+              ? 'bg-slate-900 border-slate-800 text-slate-100'
+              : 'bg-white border-slate-200/90 text-slate-800'
       }`}
     >
       {/* Top Bar: Category & Pill Badge */}
       <div className="w-full flex items-center justify-between gap-1 mb-2 min-w-0">
         <div
           className={`flex items-center gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full border text-[10px] sm:text-xs font-semibold min-w-0 shrink max-w-[55%] ${
-            darkMode
-              ? 'bg-slate-800 border-slate-700 text-slate-300'
-              : 'bg-[#F4F7FA] border-slate-200 text-slate-700'
+            darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-[#F4F7FA] border-slate-200 text-slate-700'
           }`}
         >
           {renderCategoryIcon()}
@@ -203,16 +193,13 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             {task.category === 'health'
               ? 'Sức khoẻ'
               : task.category === 'work'
-              ? 'Công việc'
-              : task.category === 'study'
-              ? 'Học hành'
-              : 'Thói quen'}
+                ? 'Công việc'
+                : task.category === 'study'
+                  ? 'Học hành'
+                  : 'Thói quen'}
           </span>
           {task.sync_status === 1 && (
-            <span
-              className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] shrink-0"
-              title="Đang chờ đồng bộ đám mây"
-            />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] shrink-0" title="Đang chờ đồng bộ đám mây" />
           )}
         </div>
 
@@ -223,10 +210,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                 isCompleted
                   ? 'bg-[#81C995] text-slate-950'
                   : task.inCompensationQuest
-                  ? 'bg-[#D93025] text-white animate-bounce'
-                  : darkMode
-                  ? 'bg-[#FF6B00]/20 text-[#FF9E40] border border-[#FF6B00]/40'
-                  : 'bg-[#FFF3E0] text-[#FF6B00] border border-[#FF6B00]/30'
+                    ? 'bg-[#D93025] text-white animate-bounce'
+                    : darkMode
+                      ? 'bg-[#FF6B00]/20 text-[#FF9E40] border border-[#FF6B00]/40'
+                      : 'bg-[#FFF3E0] text-[#FF6B00] border border-[#FF6B00]/30'
               }`}
               title={
                 task.inCompensationQuest
@@ -250,8 +237,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             >
               <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
               <span>
-                {task.currentStreak}{' '}
-                <span className="hidden sm:inline">phiên</span>
+                {task.currentStreak} <span className="hidden sm:inline">phiên</span>
                 <span className="sm:hidden">p</span>
               </span>
             </div>
@@ -329,14 +315,8 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             </div>
           ) : isPendingConfirmation ? (
             <div className="flex flex-col items-center">
-              <span className="text-[10px] sm:text-xs font-bold text-[#FF6B00] animate-bounce">
-                00:00 Hết giờ!
-              </span>
-              <span
-                className={`text-[10px] sm:text-xs font-bold mt-1 ${
-                  darkMode ? 'text-white' : 'text-slate-800'
-                }`}
-              >
+              <span className="text-[10px] sm:text-xs font-bold text-[#FF6B00] animate-bounce">00:00 Hết giờ!</span>
+              <span className={`text-[10px] sm:text-xs font-bold mt-1 ${darkMode ? 'text-white' : 'text-slate-800'}`}>
                 Xác nhận
               </span>
             </div>
@@ -379,8 +359,8 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                   task.inCompensationQuest
                     ? 'bg-red-50 text-red-700 border-red-200'
                     : darkMode
-                    ? 'bg-slate-800 text-slate-300 border-slate-700'
-                    : 'bg-[#F4F7FA] text-slate-500 border-slate-200'
+                      ? 'bg-slate-800 text-slate-300 border-slate-700'
+                      : 'bg-[#F4F7FA] text-slate-500 border-slate-200'
                 }`}
               >
                 {Math.round(effectiveTargetMs / 60000)} phút
@@ -405,8 +385,8 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
           {task.notes
             ? task.notes
             : isHabit
-            ? `Định mức ${Math.round(effectiveTargetMs / 60000)}p/ngày`
-            : `Mục tiêu phiên: ${Math.round(effectiveTargetMs / 60000)}p`}
+              ? `Định mức ${Math.round(effectiveTargetMs / 60000)}p/ngày`
+              : `Mục tiêu phiên: ${Math.round(effectiveTargetMs / 60000)}p`}
         </p>
 
         {/* Scheduled Web Push Notification Badge */}
@@ -435,9 +415,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             />
             <span className="relative z-10 flex items-center justify-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FCC934]" />
-              <span>
-                {holdingProgress > 0 ? `Giữ: ${Math.round(holdingProgress)}%` : 'Nhấn giữ 0.8s xác nhận'}
-              </span>
+              <span>{holdingProgress > 0 ? `Giữ: ${Math.round(holdingProgress)}%` : 'Nhấn giữ 0.8s xác nhận'}</span>
             </span>
           </button>
 

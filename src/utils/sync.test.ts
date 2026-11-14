@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'vitest';
 import type { TaskItem, TimeSession, HabitDailyLog } from './engine.ts';
 import type { AppSettings } from './storage.ts';
 import type { Collection, SyncSnapshot, Tombstone } from './sync.ts';
@@ -16,41 +16,71 @@ import {
 
 function task(overrides: Partial<TaskItem> = {}): TaskItem {
   return {
-    id: 't1', name: 'Read', mode: 'habit', category: 'study',
-    targetDurationMs: 60_000, currentStreak: 0, bestStreak: 0, shields: 0,
-    status: 'idle', startedAtMs: null, accumulatedMs: 0,
-    historyStartTimestamp: 0, sync_status: 0, updated_at_ms: 100,
+    id: 't1',
+    name: 'Read',
+    mode: 'habit',
+    category: 'study',
+    targetDurationMs: 60_000,
+    currentStreak: 0,
+    bestStreak: 0,
+    shields: 0,
+    status: 'idle',
+    startedAtMs: null,
+    accumulatedMs: 0,
+    historyStartTimestamp: 0,
+    sync_status: 0,
+    updated_at_ms: 100,
     ...overrides,
   };
 }
 
 function session(overrides: Partial<TimeSession> = {}): TimeSession {
   return {
-    id: 's1', taskId: 't1', logicalDate: '2026-11-06',
-    startedAt: 0, endedAt: 60_000, durationMs: 60_000,
-    sync_status: 0, updated_at_ms: 100, ...overrides,
+    id: 's1',
+    taskId: 't1',
+    logicalDate: '2026-11-06',
+    startedAt: 0,
+    endedAt: 60_000,
+    durationMs: 60_000,
+    sync_status: 0,
+    updated_at_ms: 100,
+    ...overrides,
   };
 }
 
 function log(overrides: Partial<HabitDailyLog> = {}): HabitDailyLog {
   return {
-    id: 'l1', taskId: 't1', logicalDate: '2026-11-06',
-    completed: false, actualDurationMs: 60_000,
-    sync_status: 0, updated_at_ms: 100, ...overrides,
+    id: 'l1',
+    taskId: 't1',
+    logicalDate: '2026-11-06',
+    completed: false,
+    actualDurationMs: 60_000,
+    sync_status: 0,
+    updated_at_ms: 100,
+    ...overrides,
   };
 }
 
 function settings(overrides: Partial<AppSettings> = {}): AppSettings {
   return {
-    soundEnabled: true, wakeLockRequested: true,
-    dayRolloverHour: 4, notificationsEnabled: false, ...overrides,
+    soundEnabled: true,
+    wakeLockRequested: true,
+    dayRolloverHour: 4,
+    notificationsEnabled: false,
+    ...overrides,
   };
 }
 
 function snapshot(overrides: Partial<SyncSnapshot> = {}): SyncSnapshot {
   return {
-    version: 3, tasks: [], sessions: [], logs: [], settings: settings(),
-    settingsUpdatedAtMs: 100, tombstones: [], ...overrides,
+    version: 3,
+    tasks: [],
+    sessions: [],
+    logs: [],
+    settings: settings(),
+    settingsUpdatedAtMs: 100,
+    tombstones: [],
+    ...overrides,
   };
 }
 
@@ -63,18 +93,21 @@ function populated(updated_at_ms = 100): SyncSnapshot {
 }
 
 function deletesFor(data: SyncSnapshot, updated_at_ms: number): Tombstone[] {
-  return collections.flatMap(kind => data[kind].map(({ id }) => ({ kind, id, updated_at_ms })));
+  return collections.flatMap((kind) => data[kind].map(({ id }) => ({ kind, id, updated_at_ms })));
 }
 
 function reverseCollections(data: SyncSnapshot): SyncSnapshot {
   return {
-    ...data, tasks: [...data.tasks].reverse(), sessions: [...data.sessions].reverse(),
-    logs: [...data.logs].reverse(), tombstones: [...data.tombstones].reverse(),
+    ...data,
+    tasks: [...data.tasks].reverse(),
+    sessions: [...data.sessions].reverse(),
+    logs: [...data.logs].reverse(),
+    tombstones: [...data.tombstones].reverse(),
   };
 }
 
 function ids(data: SyncSnapshot, kind: Collection): string[] {
-  return data[kind].map(item => item.id).sort();
+  return data[kind].map((item) => item.id).sort();
 }
 
 for (const kind of collections) {
@@ -92,7 +125,10 @@ for (const kind of collections) {
       });
       const merged = newerSide === 'local' ? mergeSnapshots(newer, older) : mergeSnapshots(older, newer);
       const expected = newer[kind][0];
-      assert.deepEqual(merged[kind].find(item => item.id === expected.id), expected);
+      assert.deepEqual(
+        merged[kind].find((item) => item.id === expected.id),
+        expected,
+      );
       assert.deepEqual(ids(merged, kind), [expected.id, 'older-only', 'newer-only'].sort());
     });
   }
@@ -116,9 +152,9 @@ test('equal-timestamp conflicts converge by fingerprint with both inputs and all
   const originalLeft = structuredClone(left);
   const originalRight = structuredClone(right);
   const merged = mergeSnapshots(left, right);
-  assert.equal(merged.tasks.find(item => item.id === 't1')?.name, 'Z');
-  assert.equal(merged.sessions.find(item => item.id === 's1')?.durationMs, 20);
-  assert.equal(merged.logs.find(item => item.id === 'l1')?.completed, true);
+  assert.equal(merged.tasks.find((item) => item.id === 't1')?.name, 'Z');
+  assert.equal(merged.sessions.find((item) => item.id === 's1')?.durationMs, 20);
+  assert.equal(merged.logs.find((item) => item.id === 'l1')?.completed, true);
   assert.equal(merged.settings.darkMode, true);
   for (const [a, b] of [
     [right, left],
@@ -146,23 +182,30 @@ test('duplicates within and across snapshots deduplicate by collection and ID, k
     tasks: [task({ id: 'same', updated_at_ms: 200 }), task({ id: 'same' })],
     sessions: [session({ id: 'same', taskId: 'same' }), session({ id: 'same', taskId: 'same', updated_at_ms: 200 })],
     logs: [log({ id: 'same', taskId: 'same' }), log({ id: 'same', taskId: 'same' })],
-    tombstones: collections.flatMap(kind => [
-      { kind, id: 'gone', updated_at_ms: 10 }, { kind, id: 'gone', updated_at_ms: 30 },
+    tombstones: collections.flatMap((kind) => [
+      { kind, id: 'gone', updated_at_ms: 10 },
+      { kind, id: 'gone', updated_at_ms: 30 },
     ]),
   });
   const right = snapshot({
     tasks: [task({ id: 'same', updated_at_ms: 200 }), task({ id: 'same', updated_at_ms: 150 })],
     sessions: [session({ id: 'same', taskId: 'same' })],
     logs: [log({ id: 'same', taskId: 'same', updated_at_ms: 200 }), log({ id: 'same', taskId: 'same' })],
-    tombstones: collections.map(kind => ({ kind, id: 'gone', updated_at_ms: 20 })),
+    tombstones: collections.map((kind) => ({ kind, id: 'gone', updated_at_ms: 20 })),
   });
   const merged = mergeSnapshots(left, right);
   for (const kind of collections) {
     assert.deepEqual(ids(merged, kind), ['same']);
     assert.equal(merged[kind][0].updated_at_ms, 200);
-    assert.deepEqual(merged.tombstones.filter(t => t.kind === kind), [{ kind, id: 'gone', updated_at_ms: 30 }]);
+    assert.deepEqual(
+      merged.tombstones.filter((t) => t.kind === kind),
+      [{ kind, id: 'gone', updated_at_ms: 30 }],
+    );
   }
-  assert.equal(snapshotFingerprint(merged), snapshotFingerprint(mergeSnapshots(reverseCollections(right), reverseCollections(left))));
+  assert.equal(
+    snapshotFingerprint(merged),
+    snapshotFingerprint(mergeSnapshots(reverseCollections(right), reverseCollections(left))),
+  );
 });
 
 for (const kind of collections) {
@@ -191,8 +234,16 @@ test('a recreated parent suppresses children older than or tied with its deletio
   const deleted = snapshot({ tombstones: [{ kind: 'tasks', id: 't1', updated_at_ms: 200 }] });
   const recreated = snapshot({
     tasks: [task({ updated_at_ms: 201 })],
-    sessions: [session({ id: 'older', updated_at_ms: 199 }), session({ id: 'tie', updated_at_ms: 200 }), session({ id: 'new', updated_at_ms: 201 })],
-    logs: [log({ id: 'older', updated_at_ms: 199 }), log({ id: 'tie', updated_at_ms: 200 }), log({ id: 'new', updated_at_ms: 201 })],
+    sessions: [
+      session({ id: 'older', updated_at_ms: 199 }),
+      session({ id: 'tie', updated_at_ms: 200 }),
+      session({ id: 'new', updated_at_ms: 201 }),
+    ],
+    logs: [
+      log({ id: 'older', updated_at_ms: 199 }),
+      log({ id: 'tie', updated_at_ms: 200 }),
+      log({ id: 'new', updated_at_ms: 201 }),
+    ],
   });
   for (const merged of [mergeSnapshots(deleted, recreated), mergeSnapshots(recreated, deleted)]) {
     assert.deepEqual(merged.tasks, recreated.tasks);
@@ -219,7 +270,13 @@ test('repeated offline stale snapshots and their acknowledgements cannot resurre
   assert.equal(cloud.tombstones.length, 3);
   const reconnected = mergeSnapshots(offline, cloud);
   const acknowledged = acknowledgeSnapshot(reconnected, cloud);
-  for (const data of [cloud, reconnected, acknowledged, mergeSnapshots(acknowledged, offline), mergeSnapshots(offline, acknowledged)]) {
+  for (const data of [
+    cloud,
+    reconnected,
+    acknowledged,
+    mergeSnapshots(acknowledged, offline),
+    mergeSnapshots(offline, acknowledged),
+  ]) {
     for (const kind of collections) assert.deepEqual(data[kind], []);
     assert.deepEqual(data.tombstones, local.tombstones);
   }
@@ -231,12 +288,27 @@ test('recordLocalChanges stamps additions/edits, preserves unchanged rows, and c
     tasks: [task(), task({ id: 'keep', updated_at_ms: 90 }), task({ id: 'remove', updated_at_ms: 95 })],
     sessions: [session(), session({ id: 'keep', updated_at_ms: 90 }), session({ id: 'remove', updated_at_ms: 95 })],
     logs: [log(), log({ id: 'keep', updated_at_ms: 90 }), log({ id: 'remove', updated_at_ms: 95 })],
-    tombstones: [{ kind: 'tasks', id: 'historical', updated_at_ms: 10 }, { kind: 'tasks', id: 'historical', updated_at_ms: 20 }],
+    tombstones: [
+      { kind: 'tasks', id: 'historical', updated_at_ms: 10 },
+      { kind: 'tasks', id: 'historical', updated_at_ms: 20 },
+    ],
   });
   const next = snapshot({
-    tasks: [task({ name: 'Edited' }), task({ id: 'keep', updated_at_ms: 90, sync_status: 1 }), task({ id: 'add', updated_at_ms: 0 })],
-    sessions: [session({ durationMs: 30_000 }), session({ id: 'keep', updated_at_ms: 90, sync_status: 1 }), session({ id: 'add', updated_at_ms: 0 })],
-    logs: [log({ completed: true }), log({ id: 'keep', updated_at_ms: 90, sync_status: 1 }), log({ id: 'add', updated_at_ms: 0 })],
+    tasks: [
+      task({ name: 'Edited' }),
+      task({ id: 'keep', updated_at_ms: 90, sync_status: 1 }),
+      task({ id: 'add', updated_at_ms: 0 }),
+    ],
+    sessions: [
+      session({ durationMs: 30_000 }),
+      session({ id: 'keep', updated_at_ms: 90, sync_status: 1 }),
+      session({ id: 'add', updated_at_ms: 0 }),
+    ],
+    logs: [
+      log({ completed: true }),
+      log({ id: 'keep', updated_at_ms: 90, sync_status: 1 }),
+      log({ id: 'add', updated_at_ms: 0 }),
+    ],
   });
   const originalPrevious = structuredClone(previous);
   const originalNext = structuredClone(next);
@@ -245,22 +317,36 @@ test('recordLocalChanges stamps additions/edits, preserves unchanged rows, and c
     assert.deepEqual(result[kind][0], { ...next[kind][0], updated_at_ms: 101, sync_status: 1 });
     assert.deepEqual(result[kind][1], previous[kind][1]);
     assert.deepEqual(result[kind][2], { ...next[kind][2], updated_at_ms: 100, sync_status: 1 });
-    assert.deepEqual(result.tombstones.filter(t => t.kind === kind && t.id === 'remove'), [{ kind, id: 'remove', updated_at_ms: 100 }]);
+    assert.deepEqual(
+      result.tombstones.filter((t) => t.kind === kind && t.id === 'remove'),
+      [{ kind, id: 'remove', updated_at_ms: 100 }],
+    );
   }
-  assert.deepEqual(result.tombstones.filter(t => t.id === 'historical'), [{ kind: 'tasks', id: 'historical', updated_at_ms: 20 }]);
+  assert.deepEqual(
+    result.tombstones.filter((t) => t.id === 'historical'),
+    [{ kind: 'tasks', id: 'historical', updated_at_ms: 20 }],
+  );
   assert.deepEqual(previous, originalPrevious);
   assert.deepEqual(next, originalNext);
 });
 
 test('same-millisecond edits, deletion, recreation, and clock rollback stay strictly monotonic', () => {
   let current = populated();
-  for (const [now, expected] of [[100, 101], [100, 102], [1, 103]]) {
-    current = recordLocalChanges(current, {
-      ...current,
-      tasks: current.tasks.map(t => ({ ...t, name: `${t.name}!` })),
-      sessions: current.sessions.map(s => ({ ...s, durationMs: s.durationMs + 1 })),
-      logs: current.logs.map(l => ({ ...l, completed: !l.completed })),
-    }, now);
+  for (const [now, expected] of [
+    [100, 101],
+    [100, 102],
+    [1, 103],
+  ]) {
+    current = recordLocalChanges(
+      current,
+      {
+        ...current,
+        tasks: current.tasks.map((t) => ({ ...t, name: `${t.name}!` })),
+        sessions: current.sessions.map((s) => ({ ...s, durationMs: s.durationMs + 1 })),
+        logs: current.logs.map((l) => ({ ...l, completed: !l.completed })),
+      },
+      now,
+    );
     for (const kind of collections) {
       assert.equal(current[kind][0].updated_at_ms, expected);
       assert.equal(current[kind][0].sync_status, 1);
@@ -270,7 +356,10 @@ test('same-millisecond edits, deletion, recreation, and clock rollback stay stri
     const deleted = recordLocalChanges(current, { ...current, tasks: [], sessions: [], logs: [] }, 100);
     for (const kind of collections) {
       assert.deepEqual(deleted[kind], []);
-      assert.deepEqual(deleted.tombstones.filter(t => t.kind === kind), [{ kind, id: current[kind][0].id, updated_at_ms: deletedAt }]);
+      assert.deepEqual(
+        deleted.tombstones.filter((t) => t.kind === kind),
+        [{ kind, id: current[kind][0].id, updated_at_ms: deletedAt }],
+      );
     }
     current = recordLocalChanges(deleted, populated(), 100);
     for (const kind of collections) {
@@ -289,13 +378,14 @@ test('recordLocalChanges does not timestamp sync_status-only changes or reorderi
   });
   const next = reverseCollections({
     ...previous,
-    tasks: previous.tasks.map(t => ({ ...t, sync_status: 1 })),
-    sessions: previous.sessions.map(s => ({ ...s, sync_status: 1 })),
-    logs: previous.logs.map(l => ({ ...l, sync_status: 1 })),
+    tasks: previous.tasks.map((t) => ({ ...t, sync_status: 1 })),
+    sessions: previous.sessions.map((s) => ({ ...s, sync_status: 1 })),
+    logs: previous.logs.map((l) => ({ ...l, sync_status: 1 })),
   });
   const result = recordLocalChanges(previous, next, 500);
   assert.equal(snapshotFingerprint(result), snapshotFingerprint(previous));
-  for (const kind of collections) assert.ok(result[kind].every(item => item.sync_status === 0 && item.updated_at_ms === 100));
+  for (const kind of collections)
+    assert.ok(result[kind].every((item) => item.sync_status === 0 && item.updated_at_ms === 100));
   assert.equal(result.settingsUpdatedAtMs, previous.settingsUpdatedAtMs);
   assert.deepEqual(result.tombstones, []);
 });
@@ -316,10 +406,20 @@ test('settings use whole-object LWW in either direction, with deterministic equa
 
 test('local settings changes advance monotonically in the same millisecond and after clock rollback', () => {
   let current = snapshot();
-  for (const [now, expected] of [[100, 101], [100, 102], [1, 103], [500, 500]]) {
-    current = recordLocalChanges(current, {
-      ...current, settings: { ...current.settings, soundEnabled: !current.settings.soundEnabled },
-    }, now);
+  for (const [now, expected] of [
+    [100, 101],
+    [100, 102],
+    [1, 103],
+    [500, 500],
+  ]) {
+    current = recordLocalChanges(
+      current,
+      {
+        ...current,
+        settings: { ...current.settings, soundEnabled: !current.settings.soundEnabled },
+      },
+      now,
+    );
     assert.equal(current.settingsUpdatedAtMs, expected);
   }
   const unchanged = recordLocalChanges(current, structuredClone(current), 1_000);
@@ -332,26 +432,30 @@ test('an acknowledgement arriving after newer local edits leaves those edits and
     sessions: [session({ sync_status: 1 }), session({ id: 'unchanged', sync_status: 1 })],
     logs: [log({ sync_status: 1 }), log({ id: 'unchanged', sync_status: 1 })],
   });
-  const current = recordLocalChanges(sent, {
-    ...sent,
-    tasks: [task({ name: 'Edited while sending' }), sent.tasks[1]],
-    sessions: [session({ durationMs: 30_000 }), sent.sessions[1]],
-    logs: [log({ completed: true }), sent.logs[1]],
-    settings: settings({ soundEnabled: false }),
-  }, 100);
+  const current = recordLocalChanges(
+    sent,
+    {
+      ...sent,
+      tasks: [task({ name: 'Edited while sending' }), sent.tasks[1]],
+      sessions: [session({ durationMs: 30_000 }), sent.sessions[1]],
+      logs: [log({ completed: true }), sent.logs[1]],
+      settings: settings({ soundEnabled: false }),
+    },
+    100,
+  );
   const originalCurrent = structuredClone(current);
   const originalSent = structuredClone(sent);
   const acknowledged = acknowledgeSnapshot(current, sent);
   for (const kind of collections) {
     assert.deepEqual(acknowledged[kind][0], current[kind][0]);
     assert.equal(acknowledged[kind][0].sync_status, 1);
-    assert.equal(acknowledged[kind].find(item => item.id === 'unchanged')?.sync_status, 0);
+    assert.equal(acknowledged[kind].find((item) => item.id === 'unchanged')?.sync_status, 0);
   }
   assert.deepEqual(acknowledged.settings, current.settings);
   assert.equal(acknowledged.settingsUpdatedAtMs, 101);
   assert.equal(pendingChanges(acknowledged, sent), 4);
   const finallyAcknowledged = acknowledgeSnapshot(acknowledged, current);
-  for (const kind of collections) assert.ok(finallyAcknowledged[kind].every(item => item.sync_status === 0));
+  for (const kind of collections) assert.ok(finallyAcknowledged[kind].every((item) => item.sync_status === 0));
   assert.equal(pendingChanges(finallyAcknowledged, current), 0);
   assert.deepEqual(current, originalCurrent);
   assert.deepEqual(sent, originalSent);
@@ -382,13 +486,13 @@ test('pendingChanges is zero for equal content despite sync_status, key order, o
     tasks: [task(), task({ id: 'other' })],
     sessions: [session(), session({ id: 'other' })],
     logs: [log(), log({ id: 'other' })],
-    tombstones: collections.map(kind => ({ kind, id: 'gone', updated_at_ms: 50 })),
+    tombstones: collections.map((kind) => ({ kind, id: 'gone', updated_at_ms: 50 })),
   });
   const current = reverseCollections({
     ...saved,
-    tasks: saved.tasks.map(t => ({ ...t, sync_status: 1 })),
-    sessions: saved.sessions.map(s => ({ ...s, sync_status: 1 })),
-    logs: saved.logs.map(l => ({ ...l, sync_status: 1 })),
+    tasks: saved.tasks.map((t) => ({ ...t, sync_status: 1 })),
+    sessions: saved.sessions.map((s) => ({ ...s, sync_status: 1 })),
+    logs: saved.logs.map((l) => ({ ...l, sync_status: 1 })),
     settings: { notificationsEnabled: false, dayRolloverHour: 4, wakeLockRequested: true, soundEnabled: true },
   });
   assert.equal(snapshotFingerprint(current), snapshotFingerprint(saved));
@@ -399,7 +503,9 @@ test('pendingChanges is zero for equal content despite sync_status, key order, o
 test('pendingChanges counts content changes even with sync_status zero', () => {
   const saved = populated();
   const current = snapshot({
-    tasks: [task({ name: 'Changed' })], sessions: [session({ durationMs: 1 })], logs: [log({ completed: true })],
+    tasks: [task({ name: 'Changed' })],
+    sessions: [session({ durationMs: 1 })],
+    logs: [log({ completed: true })],
   });
   assert.equal(pendingChanges(current, saved), 3);
   assert.equal(pendingChanges(populated(101), saved), 3);
@@ -410,14 +516,18 @@ test('pendingChanges includes tombstones, settings content, settings timestamps,
   const saved = snapshot();
   const current = snapshot({
     tombstones: deletesFor(populated(), 200),
-    settings: settings({ soundEnabled: false }), settingsUpdatedAtMs: 200,
+    settings: settings({ soundEnabled: false }),
+    settingsUpdatedAtMs: 200,
   });
   assert.notEqual(snapshotFingerprint(current), snapshotFingerprint(saved));
   assert.equal(pendingChanges(current, saved), 4);
   assert.equal(pendingChanges({ ...saved, tombstones: current.tombstones }, saved), 3);
   assert.equal(pendingChanges({ ...saved, settings: current.settings }, saved), 1);
   assert.equal(pendingChanges({ ...saved, settingsUpdatedAtMs: 101 }, saved), 1);
-  assert.equal(pendingChanges({ ...current, tombstones: current.tombstones.map(t => ({ ...t, updated_at_ms: 201 })) }, current), 3);
+  assert.equal(
+    pendingChanges({ ...current, tombstones: current.tombstones.map((t) => ({ ...t, updated_at_ms: 201 })) }, current),
+    3,
+  );
   assert.equal(pendingChanges(structuredClone(current), current), 0);
   assert.equal(pendingChanges(snapshot(), null), 1);
   assert.equal(pendingChanges({ ...populated(), tombstones: current.tombstones }, null), 7);
@@ -433,7 +543,11 @@ test('parseSnapshot accepts a complete JSON snapshot and an empty snapshot', () 
 });
 
 const malformedSnapshots: [string, unknown][] = [
-  ['null', null], ['undefined', undefined], ['primitive', 42], ['array', []], ['empty object', {}],
+  ['null', null],
+  ['undefined', undefined],
+  ['primitive', 42],
+  ['array', []],
+  ['empty object', {}],
   ['serialized JSON instead of an object', JSON.stringify(snapshot())],
   ['wrong version', { ...snapshot(), version: 2 }],
   ['string version', { ...snapshot(), version: '3' }],
@@ -457,20 +571,28 @@ const malformedSnapshots: [string, unknown][] = [
   ['unknown tombstone kind', { ...snapshot(), tombstones: [{ kind: 'settings', id: 'x', updated_at_ms: 100 }] }],
   ['empty tombstone ID', { ...snapshot(), tombstones: [{ kind: 'tasks', id: '', updated_at_ms: 100 }] }],
   ['negative tombstone timestamp', { ...snapshot(), tombstones: [{ kind: 'tasks', id: 'x', updated_at_ms: -1 }] }],
-  ['non-finite tombstone timestamp', { ...snapshot(), tombstones: [{ kind: 'logs', id: 'x', updated_at_ms: Infinity }] }],
+  [
+    'non-finite tombstone timestamp',
+    { ...snapshot(), tombstones: [{ kind: 'logs', id: 'x', updated_at_ms: Infinity }] },
+  ],
 ];
 for (const [name, value] of malformedSnapshots) {
   test(`parseSnapshot rejects ${name}`, () => assert.throws(() => parseSnapshot(value), Error));
 }
 
 for (const kind of collections) {
-  for (const [name, value] of [['missing', undefined], ['null', null], ['object', {}]] as const) {
+  for (const [name, value] of [
+    ['missing', undefined],
+    ['null', null],
+    ['object', {}],
+  ] as const) {
     test(`parseSnapshot rejects ${name} ${kind} collection`, () => {
       assert.throws(() => parseSnapshot({ ...snapshot(), [kind]: value }), Error);
     });
   }
   const invalidRecords: [string, unknown][] = [
-    ['null record', null], ['empty record', {}],
+    ['null record', null],
+    ['empty record', {}],
     ['empty ID', { ...populated()[kind][0], id: '' }],
     ['non-string ID', { ...populated()[kind][0], id: 1 }],
     ['missing timestamp', { ...populated()[kind][0], updated_at_ms: undefined }],
@@ -489,13 +611,24 @@ for (const kind of collections) {
 }
 
 const invalidFields: [Collection, string, unknown][] = [
-  ['tasks', 'name', 123], ['tasks', 'mode', 'unknown'], ['tasks', 'category', 'unknown'],
-  ['tasks', 'status', 'unknown'], ['tasks', 'startedAtMs', undefined], ['tasks', 'startedAtMs', NaN],
-  ...['targetDurationMs', 'currentStreak', 'bestStreak', 'shields', 'accumulatedMs', 'historyStartTimestamp']
-    .map(field => ['tasks', field, '100'] as [Collection, string, unknown]),
-  ['sessions', 'taskId', 123], ['sessions', 'logicalDate', null],
-  ...['startedAt', 'endedAt', 'durationMs'].map(field => ['sessions', field, Infinity] as [Collection, string, unknown]),
-  ['logs', 'taskId', 123], ['logs', 'logicalDate', null], ['logs', 'completed', 'true'], ['logs', 'actualDurationMs', NaN],
+  ['tasks', 'name', 123],
+  ['tasks', 'mode', 'unknown'],
+  ['tasks', 'category', 'unknown'],
+  ['tasks', 'status', 'unknown'],
+  ['tasks', 'startedAtMs', undefined],
+  ['tasks', 'startedAtMs', NaN],
+  ...['targetDurationMs', 'currentStreak', 'bestStreak', 'shields', 'accumulatedMs', 'historyStartTimestamp'].map(
+    (field) => ['tasks', field, '100'] as [Collection, string, unknown],
+  ),
+  ['sessions', 'taskId', 123],
+  ['sessions', 'logicalDate', null],
+  ...['startedAt', 'endedAt', 'durationMs'].map(
+    (field) => ['sessions', field, Infinity] as [Collection, string, unknown],
+  ),
+  ['logs', 'taskId', 123],
+  ['logs', 'logicalDate', null],
+  ['logs', 'completed', 'true'],
+  ['logs', 'actualDurationMs', NaN],
 ];
 for (const [kind, field, value] of invalidFields) {
   test(`parseSnapshot rejects ${kind}.${field} = ${String(value)}`, () => {

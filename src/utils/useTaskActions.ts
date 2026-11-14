@@ -31,7 +31,6 @@ interface UseTaskActionsOptions {
   setMilestoneTask: (task: TaskItem | null) => void;
   setRetroactiveItem: (item: RetroactiveConfirmation | null) => void;
   setIdleDetectionTask: (task: TaskItem | null) => void;
-  setIdleRawDurationMs: (ms: number) => void;
   setStatsModalTaskId: (id: string | null) => void;
   setEditingTask: (task: TaskItem | null) => void;
   setCurrentCategory: (category: 'all' | TaskCategory) => void;
@@ -40,130 +39,149 @@ interface UseTaskActionsOptions {
 
 export function useTaskActions(options: UseTaskActionsOptions) {
   const {
-    tasks, sessions, logs,
-    setTasks, setSessions, setLogs,
-    showToast, breakStreakMissedDays, idleRawDurationMs,
-    setMilestoneTask, setRetroactiveItem,
-    setIdleDetectionTask, setIdleRawDurationMs,
-    setStatsModalTaskId, setEditingTask, setCurrentCategory, setSearchQuery,
+    tasks,
+    sessions,
+    logs,
+    setTasks,
+    setSessions,
+    setLogs,
+    showToast,
+    breakStreakMissedDays,
+    idleRawDurationMs,
+    setMilestoneTask,
+    setRetroactiveItem,
+    setIdleDetectionTask,
+    setStatsModalTaskId,
+    setEditingTask,
+    setCurrentCategory,
+    setSearchQuery,
   } = options;
 
   // Toggle Timer with atomic local write and realtime broadcast
-  const handleToggleTimer = useCallback((taskId: string) => {
-    const now = Date.now();
-    setTasks((prev) => {
-      let broadcastAction: 'TIMER_START' | 'TIMER_PAUSE' = 'TIMER_START';
-      let targetStartedAt: number | null = now;
-      let targetAccumulated = 0;
+  const handleToggleTimer = useCallback(
+    (taskId: string) => {
+      const now = Date.now();
+      setTasks((prev) => {
+        let broadcastAction: 'TIMER_START' | 'TIMER_PAUSE' = 'TIMER_START';
+        let targetStartedAt: number | null = now;
+        let targetAccumulated = 0;
 
-      const updated: TaskItem[] = prev.map((t): TaskItem => {
-        if (t.id !== taskId) return t;
+        const updated: TaskItem[] = prev.map((t): TaskItem => {
+          if (t.id !== taskId) return t;
 
-        if (t.status === 'running') {
-          soundEngine.playTap(false);
-          notificationService.cancelScheduledPush(t.id);
-          broadcastAction = 'TIMER_PAUSE';
-          const elapsed = t.startedAtMs ? now - t.startedAtMs : 0;
-          targetAccumulated = t.accumulatedMs + Math.max(0, elapsed);
-          targetStartedAt = null;
+          if (t.status === 'running') {
+            soundEngine.playTap(false);
+            notificationService.cancelScheduledPush(t.id);
+            broadcastAction = 'TIMER_PAUSE';
+            const elapsed = t.startedAtMs ? now - t.startedAtMs : 0;
+            targetAccumulated = t.accumulatedMs + Math.max(0, elapsed);
+            targetStartedAt = null;
 
-          return {
-            ...t,
-            status: 'paused',
-            startedAtMs: null,
-            accumulatedMs: targetAccumulated,
-            sync_status: 1,
-            updated_at_ms: now,
-          };
-        } else {
-          soundEngine.playTap(true);
-          broadcastAction = 'TIMER_START';
-          targetAccumulated = t.accumulatedMs;
-          targetStartedAt = now;
+            return {
+              ...t,
+              status: 'paused',
+              startedAtMs: null,
+              accumulatedMs: targetAccumulated,
+              sync_status: 1,
+              updated_at_ms: now,
+            };
+          } else {
+            soundEngine.playTap(true);
+            broadcastAction = 'TIMER_START';
+            targetAccumulated = t.accumulatedMs;
+            targetStartedAt = now;
 
-          if (t.mode === 'habit') {
-            const effectiveTargetMs = getEffectiveTargetDurationMs(t);
-            const remainingMs = Math.max(0, effectiveTargetMs - targetAccumulated);
-            notificationService.scheduleHabitEndPush(t.id, t.name, remainingMs);
+            if (t.mode === 'habit') {
+              const effectiveTargetMs = getEffectiveTargetDurationMs(t);
+              const remainingMs = Math.max(0, effectiveTargetMs - targetAccumulated);
+              notificationService.scheduleHabitEndPush(t.id, t.name, remainingMs);
+            }
+
+            return {
+              ...t,
+              status: 'running',
+              startedAtMs: now,
+              sync_status: 1,
+              updated_at_ms: now,
+            };
           }
+        });
 
-          return {
+        realtimeManager.publish({
+          type: broadcastAction,
+          taskId,
+          startedAtMs: targetStartedAt,
+          accumulatedMs: targetAccumulated,
+        });
+
+        return updated;
+      });
+    },
+    [setTasks],
+  );
+
+  const handleResetTimer = useCallback(
+    (taskId: string) => {
+      soundEngine.playTap(false);
+      notificationService.cancelScheduledPush(taskId);
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                status: 'idle',
+                startedAtMs: null,
+                accumulatedMs: 0,
+                sync_status: 1,
+                updated_at_ms: Date.now(),
+              }
+            : t,
+        ),
+      );
+
+      realtimeManager.publish({ type: 'TIMER_RESET', taskId });
+    },
+    [setTasks],
+  );
+
+  // Fast-forward to 5s remaining (testing helper)
+  const handleFastForward5s = useCallback(
+    (taskId: string) => {
+      const now = Date.now();
+      soundEngine.playSoftChime(880, 0.2, 0.3);
+
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== taskId) return t;
+          const effectiveTargetMs = getEffectiveTargetDurationMs(t);
+          const targetRemainMs = 5000;
+          const newAccumulated = Math.max(0, effectiveTargetMs - targetRemainMs);
+
+          notificationService.scheduleHabitEndPush(t.id, t.name, targetRemainMs);
+
+          const updatedTask: TaskItem = {
             ...t,
             status: 'running',
             startedAtMs: now,
+            accumulatedMs: newAccumulated,
             sync_status: 1,
             updated_at_ms: now,
           };
-        }
-      });
 
-      realtimeManager.publish({
-        type: broadcastAction,
-        taskId,
-        startedAtMs: targetStartedAt,
-        accumulatedMs: targetAccumulated,
-      });
+          realtimeManager.publish({
+            type: 'TIMER_START',
+            taskId,
+            startedAtMs: now,
+            accumulatedMs: newAccumulated,
+          });
 
-      return updated;
-    });
-  }, [setTasks]);
-
-  const handleResetTimer = useCallback((taskId: string) => {
-    soundEngine.playTap(false);
-    notificationService.cancelScheduledPush(taskId);
-
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              status: 'idle',
-              startedAtMs: null,
-              accumulatedMs: 0,
-              sync_status: 1,
-              updated_at_ms: Date.now(),
-            }
-          : t
-      )
-    );
-
-    realtimeManager.publish({ type: 'TIMER_RESET', taskId });
-  }, [setTasks]);
-
-  // Fast-forward to 5s remaining (testing helper)
-  const handleFastForward5s = useCallback((taskId: string) => {
-    const now = Date.now();
-    soundEngine.playSoftChime(880, 0.2, 0.3);
-
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        const effectiveTargetMs = getEffectiveTargetDurationMs(t);
-        const targetRemainMs = 5000;
-        const newAccumulated = Math.max(0, effectiveTargetMs - targetRemainMs);
-
-        notificationService.scheduleHabitEndPush(t.id, t.name, targetRemainMs);
-
-        const updatedTask: TaskItem = {
-          ...t,
-          status: 'running',
-          startedAtMs: now,
-          accumulatedMs: newAccumulated,
-          sync_status: 1,
-          updated_at_ms: now,
-        };
-
-        realtimeManager.publish({
-          type: 'TIMER_START',
-          taskId,
-          startedAtMs: now,
-          accumulatedMs: newAccumulated,
-        });
-
-        return updatedTask;
-      })
-    );
-  }, [setTasks]);
+          return updatedTask;
+        }),
+      );
+    },
+    [setTasks],
+  );
 
   // Confirm habit after long-press or confirmation button
   const handleConfirmHabit = useCallback(
@@ -222,7 +240,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
           }
 
           return updatedTask;
-        })
+        }),
       );
 
       const targetTask = tasks.find((t) => t.id === taskId);
@@ -231,8 +249,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
         taskId,
         logicalDate,
         completed: true,
-        actualDurationMs:
-          completedDurationMs || (targetTask ? getEffectiveTargetDurationMs(targetTask) : 0),
+        actualDurationMs: completedDurationMs || (targetTask ? getEffectiveTargetDurationMs(targetTask) : 0),
         confirmedAt: now,
         recoveryType: wasInCompensation ? 'makeup' : 'on_time',
         sync_status: 1,
@@ -250,14 +267,14 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       showToast(
         wasInCompensation
           ? `⚡ Đã hoàn thành Nhiệm vụ Đền bù x2! Chuỗi khôi phục và tăng lên ${updatedStreak} ngày.`
-          : `🔥 Đã hoàn thành thói quen hôm nay! Chuỗi tăng lên ${updatedStreak} ngày.`
+          : `🔥 Đã hoàn thành thói quen hôm nay! Chuỗi tăng lên ${updatedStreak} ngày.`,
       );
 
       if (shouldTriggerMilestoneModal) {
         setMilestoneTask(shouldTriggerMilestoneModal);
       }
     },
-    [tasks, setTasks, setLogs, showToast, setMilestoneTask]
+    [tasks, setTasks, setLogs, showToast, setMilestoneTask],
   );
 
   // Upgrade habit to the UCL 66-day milestone
@@ -265,17 +282,13 @@ export function useTaskActions(options: UseTaskActionsOptions) {
     (taskId: string) => {
       const now = Date.now();
       setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId
-            ? { ...t, targetMilestoneDays: 66, sync_status: 1, updated_at_ms: now }
-            : t
-        )
+        prev.map((t) => (t.id === taskId ? { ...t, targetMilestoneDays: 66, sync_status: 1, updated_at_ms: now } : t)),
       );
       setMilestoneTask(null);
       soundEngine.playSuccessChime();
       showToast('🚀 Đã nâng cấp mục tiêu lên 66 ngày! Phản xạ thần kinh đang dần tự động hóa.');
     },
-    [setTasks, setMilestoneTask, showToast]
+    [setTasks, setMilestoneTask, showToast],
   );
 
   // Retroactive confirmation handlers
@@ -309,7 +322,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
             sync_status: 1,
             updated_at_ms: now,
           };
-        })
+        }),
       );
 
       const targetTask = tasks.find((t) => t.id === taskId);
@@ -329,27 +342,30 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       setRetroactiveItem(null);
       showToast('✅ Đã truy lĩnh và bảo toàn chuỗi ngày hôm qua thành công!');
     },
-    [tasks, setTasks, setLogs, setRetroactiveItem, showToast]
+    [tasks, setTasks, setLogs, setRetroactiveItem, showToast],
   );
 
-  const handleDiscardYesterday = useCallback((taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              status: 'idle',
-              timerEndedAtMs: undefined,
-              startedAtMs: null,
-              accumulatedMs: 0,
-              sync_status: 1,
-              updated_at_ms: Date.now(),
-            }
-          : t
-      )
-    );
-    setRetroactiveItem(null);
-  }, [setTasks, setRetroactiveItem]);
+  const handleDiscardYesterday = useCallback(
+    (taskId: string) => {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                status: 'idle',
+                timerEndedAtMs: undefined,
+                startedAtMs: null,
+                accumulatedMs: 0,
+                sync_status: 1,
+                updated_at_ms: Date.now(),
+              }
+            : t,
+        ),
+      );
+      setRetroactiveItem(null);
+    },
+    [setTasks, setRetroactiveItem],
+  );
 
   // Idle timer resolution handlers
   const handleSaveIdleTrimmed = useCallback(
@@ -388,14 +404,14 @@ export function useTaskActions(options: UseTaskActionsOptions) {
                 sync_status: 1,
                 updated_at_ms: now,
               }
-            : t
-        )
+            : t,
+        ),
       );
 
       setIdleDetectionTask(null);
       showToast(`Đã lưu phiên làm việc ${formatDuration(trimmedDurationMs, true)} sau khi cắt gọt.`);
     },
-    [idleRawDurationMs, setSessions, setTasks, setIdleDetectionTask, showToast]
+    [idleRawDurationMs, setSessions, setTasks, setIdleDetectionTask, showToast],
   );
 
   const handleDiscardIdle = useCallback(
@@ -412,50 +428,53 @@ export function useTaskActions(options: UseTaskActionsOptions) {
                 sync_status: 1,
                 updated_at_ms: Date.now(),
               }
-            : t
-        )
+            : t,
+        ),
       );
       setIdleDetectionTask(null);
       showToast('Đã hủy phiên làm việc chạy quá giờ.');
     },
-    [setTasks, setIdleDetectionTask, showToast]
+    [setTasks, setIdleDetectionTask, showToast],
   );
 
   // Trim latest session for project mode
-  const handleTrimLatestSession = useCallback((taskId: string, trimMinutes: number) => {
-    soundEngine.playSoftChime(440, 0.2, 0.4);
-    const trimMs = trimMinutes * 60 * 1000;
-    const now = Date.now();
+  const handleTrimLatestSession = useCallback(
+    (taskId: string, trimMinutes: number) => {
+      soundEngine.playSoftChime(440, 0.2, 0.4);
+      const trimMs = trimMinutes * 60 * 1000;
+      const now = Date.now();
 
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        return {
-          ...t,
-          accumulatedMs: Math.max(0, t.accumulatedMs - trimMs),
-          sync_status: 1,
-          updated_at_ms: now,
-        };
-      })
-    );
-
-    setSessions((prev) => {
-      const rev = [...prev].reverse();
-      const latest = rev.find((s) => s.taskId === taskId);
-      if (!latest) return prev;
-      return prev.map((s) =>
-        s.id === latest.id
-          ? {
-              ...s,
-              durationMs: Math.max(0, s.durationMs - trimMs),
-              trimmedMs: (s.trimmedMs || 0) + trimMs,
-              sync_status: 1,
-              updated_at_ms: now,
-            }
-          : s
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== taskId) return t;
+          return {
+            ...t,
+            accumulatedMs: Math.max(0, t.accumulatedMs - trimMs),
+            sync_status: 1,
+            updated_at_ms: now,
+          };
+        }),
       );
-    });
-  }, [setTasks, setSessions]);
+
+      setSessions((prev) => {
+        const rev = [...prev].reverse();
+        const latest = rev.find((s) => s.taskId === taskId);
+        if (!latest) return prev;
+        return prev.map((s) =>
+          s.id === latest.id
+            ? {
+                ...s,
+                durationMs: Math.max(0, s.durationMs - trimMs),
+                trimmedMs: (s.trimmedMs || 0) + trimMs,
+                sync_status: 1,
+                updated_at_ms: now,
+              }
+            : s,
+        );
+      });
+    },
+    [setTasks, setSessions],
+  );
 
   // Complete sprint session for project mode (works whether paused or running)
   const handleCompleteSprintSession = useCallback(
@@ -468,9 +487,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       if (!targetTask) return;
 
       const runningDelta =
-        targetTask.status === 'running' && targetTask.startedAtMs
-          ? Math.max(0, now - targetTask.startedAtMs)
-          : 0;
+        targetTask.status === 'running' && targetTask.startedAtMs ? Math.max(0, now - targetTask.startedAtMs) : 0;
       const sessionDuration = targetTask.accumulatedMs + runningDelta;
 
       if (sessionDuration <= 0) return;
@@ -503,13 +520,13 @@ export function useTaskActions(options: UseTaskActionsOptions) {
                 sync_status: 1,
                 updated_at_ms: now,
               }
-            : t
-        )
+            : t,
+        ),
       );
 
       showToast(`✅ Đã chốt & lưu phiên làm việc ${formatDuration(sessionDuration)} vào nhật ký dự án.`);
     },
-    [tasks, setSessions, setTasks, showToast]
+    [tasks, setSessions, setTasks, showToast],
   );
 
   const handleDeleteTask = useCallback(
@@ -521,7 +538,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       setStatsModalTaskId(null);
       showToast('Đã xóa tác vụ thành công.');
     },
-    [tasks, sessions, logs, setTasks, setSessions, setLogs, setStatsModalTaskId, showToast]
+    [tasks, sessions, logs, setTasks, setSessions, setLogs, setStatsModalTaskId, showToast],
   );
 
   // Streak break recovery handlers
@@ -543,8 +560,8 @@ export function useTaskActions(options: UseTaskActionsOptions) {
                 sync_status: 1,
                 updated_at_ms: now,
               }
-            : t
-        )
+            : t,
+        ),
       );
 
       const newLog: HabitDailyLog = {
@@ -562,7 +579,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
 
       showToast('🛡️ Đã sử dụng Khiên Bền Bỉ để bảo vệ chuỗi thành công!');
     },
-    [breakStreakMissedDays, setTasks, setLogs, showToast]
+    [breakStreakMissedDays, setTasks, setLogs, showToast],
   );
 
   const handleAcceptCompensation = useCallback(
@@ -580,12 +597,12 @@ export function useTaskActions(options: UseTaskActionsOptions) {
                 sync_status: 1,
                 updated_at_ms: now,
               }
-            : t
-        )
+            : t,
+        ),
       );
       showToast('⚡ Đã kích hoạt Nhiệm vụ Đền bù x2 thời gian cho hôm nay!');
     },
-    [setTasks, showToast]
+    [setTasks, showToast],
   );
 
   const handleResetToCheckpoint = useCallback(
@@ -605,11 +622,11 @@ export function useTaskActions(options: UseTaskActionsOptions) {
             sync_status: 1,
             updated_at_ms: now,
           };
-        })
+        }),
       );
       showToast('Đã trở về cột mốc bảo lưu gần nhất.');
     },
-    [setTasks, showToast]
+    [setTasks, showToast],
   );
 
   const handleFullResetStreak = useCallback(
@@ -628,12 +645,12 @@ export function useTaskActions(options: UseTaskActionsOptions) {
                 sync_status: 1,
                 updated_at_ms: now,
               }
-            : t
-        )
+            : t,
+        ),
       );
       showToast('Đã đặt lại chuỗi về Ngày 0.');
     },
-    [setTasks, showToast]
+    [setTasks, showToast],
   );
 
   // Add task with 24-task limit enforcement
@@ -651,7 +668,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
         | 'historyStartTimestamp'
         | 'sync_status'
         | 'updated_at_ms'
-      >
+      >,
     ) => {
       if (tasks.length >= 24) {
         showToast('Đã đạt giới hạn tối đa 24 tác vụ. Vui lòng hoàn tất hoặc xóa bớt tác vụ.');
@@ -678,7 +695,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       setSearchQuery('');
       showToast(`Đã tạo tác vụ "${newTask.name}".`);
     },
-    [tasks, setTasks, setCurrentCategory, setSearchQuery, showToast]
+    [tasks, setTasks, setCurrentCategory, setSearchQuery, showToast],
   );
 
   const handleEditTask = useCallback(
@@ -691,19 +708,17 @@ export function useTaskActions(options: UseTaskActionsOptions) {
         targetDurationMs: number;
         targetMilestoneDays?: number;
         notes?: string;
-      }
+      },
     ) => {
       const now = Date.now();
       soundEngine.playSoftChime(659.25, 0.2, 0.4);
       setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId ? { ...t, ...updates, sync_status: 1, updated_at_ms: now } : t
-        )
+        prev.map((t) => (t.id === taskId ? { ...t, ...updates, sync_status: 1, updated_at_ms: now } : t)),
       );
       setEditingTask(null);
       showToast(`Đã cập nhật tác vụ "${updates.name}".`);
     },
-    [setTasks, setEditingTask, showToast]
+    [setTasks, setEditingTask, showToast],
   );
 
   return {

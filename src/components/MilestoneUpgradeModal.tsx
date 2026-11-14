@@ -10,12 +10,7 @@ interface MilestoneUpgradeModalProps {
   onKeep: (taskId: string) => void;
 }
 
-export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({
-  task,
-  isOpen,
-  onUpgrade,
-  onKeep,
-}) => {
+export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({ task, isOpen, onUpgrade, onKeep }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -103,9 +98,7 @@ export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FF6B00] text-white text-xs font-bold rounded-full uppercase tracking-wider mb-2 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" /> Chinh phục Mốc 30 Ngày
           </div>
-          <h2 className="text-2xl font-black text-white tracking-tight">
-            Chúc mừng bạn!
-          </h2>
+          <h2 className="text-2xl font-black text-white tracking-tight">Chúc mừng bạn!</h2>
           <p className="text-xs text-blue-100 mt-1">
             Tác vụ: <span className="font-semibold text-white">"{task.name}"</span>
           </p>
@@ -117,11 +110,11 @@ export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({
             <div className="flex items-start gap-3">
               <Zap className="w-5 h-5 text-[#FF6B00] shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-bold text-[#1E3A5F]">
-                  Tâm lý học thói quen UCL (London)
-                </h4>
+                <h4 className="text-sm font-bold text-[#1E3A5F]">Tâm lý học thói quen UCL (London)</h4>
                 <p className="text-xs text-slate-700 mt-1 leading-relaxed">
-                  Bạn đã hình thành nền móng 30 ngày vững chắc. Nghiên cứu của TS. Phillippa Lally tại UCL chứng minh rằng cần trung bình <strong>66 ngày</strong> để một hành vi trở thành phản xạ tự động hóa thần kinh (Automaticity).
+                  Bạn đã hình thành nền móng 30 ngày vững chắc. Nghiên cứu của TS. Phillippa Lally tại UCL chứng minh
+                  rằng cần trung bình <strong>66 ngày</strong> để một hành vi trở thành phản xạ tự động hóa thần kinh
+                  (Automaticity).
                 </p>
               </div>
             </div>
@@ -131,15 +124,21 @@ export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({
           <div className="space-y-2.5">
             <div className="flex items-center gap-2.5 text-xs text-slate-700">
               <CheckCircle2 className="w-4 h-4 text-[#81C995] shrink-0" />
-              <span>Giữ nguyên chuỗi <strong>🔥 {task.currentStreak} ngày</strong> hiện tại.</span>
+              <span>
+                Giữ nguyên chuỗi <strong>🔥 {task.currentStreak} ngày</strong> hiện tại.
+              </span>
             </div>
             <div className="flex items-center gap-2.5 text-xs text-slate-700">
               <Shield className="w-4 h-4 text-[#FCC934] shrink-0" />
-              <span>Mở rộng dung lượng tích trữ Khiên Bền Bỉ từ <strong>2 lên 3 Khiên</strong>.</span>
+              <span>
+                Mở rộng dung lượng tích trữ Khiên Bền Bỉ từ <strong>2 lên 3 Khiên</strong>.
+              </span>
             </div>
             <div className="flex items-center gap-2.5 text-xs text-slate-700">
               <Award className="w-4 h-4 text-[#FF6B00] shrink-0" />
-              <span>Kích hoạt các Cột mốc Bảo lưu mới tại <strong>Ngày 45 & Ngày 60</strong>.</span>
+              <span>
+                Kích hoạt các Cột mốc Bảo lưu mới tại <strong>Ngày 45 & Ngày 60</strong>.
+              </span>
             </div>
           </div>
 

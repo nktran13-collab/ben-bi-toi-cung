@@ -10,7 +10,8 @@ class SoundEngine {
   private initContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
@@ -33,7 +34,8 @@ class SoundEngine {
    * Resonant FM Bell Chime when habit countdown reaches 0.
    * Carrier + Modulator creates realistic metallic chime resonance.
    */
-  public playBellChime(frequency = 523.25) { // C5
+  public playBellChime(frequency = 523.25) {
+    // C5
     if (this.isMuted) return;
     const ctx = this.initContext();
     if (!ctx) return;

@@ -49,9 +49,7 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                   {missedDays === 1 ? 'Bỏ lỡ 1 ngày' : `Bỏ lỡ ${missedDays} ngày liên tiếp`}
                 </span>
               </div>
-              <h2 className="text-lg sm:text-xl font-bold mt-1 text-white">
-                Cảnh báo đứt chuỗi: {task.name}
-              </h2>
+              <h2 className="text-lg sm:text-xl font-bold mt-1 text-white">Cảnh báo đứt chuỗi: {task.name}</h2>
             </div>
           </div>
           <button
@@ -82,7 +80,9 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
           <div className="p-4 bg-red-50 border-b border-red-200 text-xs text-red-800 flex items-start gap-2.5">
             <Lock className="w-4 h-4 text-[#D93025] shrink-0 mt-0.5" />
             <div>
-              <strong>Nút Đi tiếp đã bị khóa:</strong> Bạn đã bỏ lỡ từ 2 ngày liên tiếp trở lên mà không đủ khiên. Để bảo vệ kỷ luật thực chất của chuỗi, bạn chỉ có thể chọn Lùi về Cột mốc Bảo lưu gần nhất hoặc Reset toàn bộ.
+              <strong>Nút Đi tiếp đã bị khóa:</strong> Bạn đã bỏ lỡ từ 2 ngày liên tiếp trở lên mà không đủ khiên. Để
+              bảo vệ kỷ luật thực chất của chuỗi, bạn chỉ có thể chọn Lùi về Cột mốc Bảo lưu gần nhất hoặc Reset toàn
+              bộ.
             </div>
           </div>
         )}
@@ -105,7 +105,8 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                       </span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-1">
-                      Kích hoạt trạng thái <strong className="text-amber-800">FROZEN_BY_SHIELD</strong> (tô màu Vàng kim trên lưới) để bảo toàn chuỗi {task.currentStreak} ngày.
+                      Kích hoạt trạng thái <strong className="text-amber-800">FROZEN_BY_SHIELD</strong> (tô màu Vàng kim
+                      trên lưới) để bảo toàn chuỗi {task.currentStreak} ngày.
                     </p>
                   </div>
                 </div>
@@ -136,7 +137,9 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                       <span>Cơ hội Đi tiếp: Nhiệm vụ Đền bù (x2 thời gian)</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-1">
-                      Kích hoạt <strong className="text-[#1E3A5F]">MAKEUP_RECOVERED</strong>: Bạn cam kết hoàn thành <strong className="text-[#FF6B00]">{doubleMinutes} phút</strong> hôm nay (thay vì {normalMinutes} phút) để khôi phục chuỗi hoàn toàn.
+                      Kích hoạt <strong className="text-[#1E3A5F]">MAKEUP_RECOVERED</strong>: Bạn cam kết hoàn thành{' '}
+                      <strong className="text-[#FF6B00]">{doubleMinutes} phút</strong> hôm nay (thay vì {normalMinutes}{' '}
+                      phút) để khôi phục chuỗi hoàn toàn.
                     </p>
                   </div>
                 </div>
@@ -166,7 +169,8 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                     Lùi về Cột mốc Bảo lưu gần nhất: Ngày {checkpoint}
                   </h4>
                   <p className="text-xs text-slate-600 mt-1">
-                    Bảo vệ thành quả: Hệ thống giữ lại cột mốc đạt được (7, 14, 21, 30, 45, 60 ngày) thay vì bắt đầu lại từ con số 0.
+                    Bảo vệ thành quả: Hệ thống giữ lại cột mốc đạt được (7, 14, 21, 30, 45, 60 ngày) thay vì bắt đầu lại
+                    từ con số 0.
                   </p>
                 </div>
               </div>

@@ -4,9 +4,11 @@ import { mergeSnapshots, parseSnapshot, snapshotFingerprint, type SyncSnapshot }
 const url = (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
 const key = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
 export const cloudEnabled = /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) && key.length > 20;
-export const supabase = cloudEnabled ? createClient(url, key, {
-  auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-}) : null;
+export const supabase = cloudEnabled
+  ? createClient(url, key, {
+      auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    })
+  : null;
 
 function client() {
   if (!supabase) throw new Error('Chưa cấu hình Supabase. Dữ liệu hiện chỉ được lưu trên thiết bị.');
@@ -15,12 +17,17 @@ function client() {
 
 export function cloudError(error: unknown): string {
   const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
-  if (/rate limit|too many|security purposes/i.test(message)) return 'Máy chủ đang giới hạn yêu cầu. Vui lòng chờ một phút rồi thử lại.';
-  if (/expired|invalid.*(token|otp)|token.*(invalid|expired)/i.test(message)) return 'Mã không đúng hoặc đã hết hạn. Kiểm tra email hoặc gửi lại mã.';
-  if (/email.*not.*authorized|email_address_not_authorized/i.test(message)) return 'Máy chủ email chưa cấu hình SMTP riêng nên chưa gửi được tới địa chỉ này.';
+  if (/rate limit|too many|security purposes/i.test(message))
+    return 'Máy chủ đang giới hạn yêu cầu. Vui lòng chờ một phút rồi thử lại.';
+  if (/expired|invalid.*(token|otp)|token.*(invalid|expired)/i.test(message))
+    return 'Mã không đúng hoặc đã hết hạn. Kiểm tra email hoặc gửi lại mã.';
+  if (/email.*not.*authorized|email_address_not_authorized/i.test(message))
+    return 'Máy chủ email chưa cấu hình SMTP riêng nên chưa gửi được tới địa chỉ này.';
   if (/captcha/i.test(message)) return 'Máy chủ yêu cầu xác minh trình duyệt. Vui lòng kiểm tra cấu hình CAPTCHA.';
-  if (/permission denied|row.level|42501/i.test(message)) return 'Chưa có quyền truy cập dữ liệu. Hãy đăng nhập lại hoặc kiểm tra schema Supabase.';
-  if (/fetch|network|load failed/i.test(message)) return 'Không kết nối được máy chủ. Thay đổi vẫn nằm trong hàng đợi trên thiết bị.';
+  if (/permission denied|row.level|42501/i.test(message))
+    return 'Chưa có quyền truy cập dữ liệu. Hãy đăng nhập lại hoặc kiểm tra schema Supabase.';
+  if (/fetch|network|load failed/i.test(message))
+    return 'Không kết nối được máy chủ. Thay đổi vẫn nằm trong hàng đợi trên thiết bị.';
   return message || 'Chưa đồng bộ được. Dữ liệu trên thiết bị chưa bị xóa.';
 }
 
@@ -41,7 +48,11 @@ export async function verifyLoginOtp(email: string, token: string) {
 }
 
 export async function fetchCloudState(userId: string) {
-  const { data, error } = await client().from('benbi_state').select('data,revision').eq('user_id', userId).maybeSingle();
+  const { data, error } = await client()
+    .from('benbi_state')
+    .select('data,revision')
+    .eq('user_id', userId)
+    .maybeSingle();
   if (error) throw error;
   return data ? { snapshot: parseSnapshot(data.data), revision: Number(data.revision) } : null;
 }

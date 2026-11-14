@@ -5,10 +5,10 @@
 
 export type MatrixDayStatus =
   | 'completed_on_time' // Relentless Orange #FF6B00
-  | 'frozen_by_shield'   // Gold #FCC934
-  | 'makeup_recovered'   // Deep Jean Blue #1E3A5F
-  | 'missed'             // Coral Red #D93025
-  | 'upcoming';          // Soft Jean Tint #E8F0FE
+  | 'frozen_by_shield' // Gold #FCC934
+  | 'makeup_recovered' // Deep Jean Blue #1E3A5F
+  | 'missed' // Coral Red #D93025
+  | 'upcoming'; // Soft Jean Tint #E8F0FE
 
 export interface MatrixDayCell {
   dayNumber: number;
@@ -151,7 +151,9 @@ export function getPreviousLogicalDate(input: number | string = Date.now(), roll
  * Returns the effective target duration for a task (doubles if inCompensationQuest is active for a habit).
  * Preserves base targetDurationMs so completing the compensation quest restores normal quota next day.
  */
-export function getEffectiveTargetDurationMs(task: Pick<TaskItem, 'mode' | 'targetDurationMs' | 'inCompensationQuest'>): number {
+export function getEffectiveTargetDurationMs(
+  task: Pick<TaskItem, 'mode' | 'targetDurationMs' | 'inCompensationQuest'>,
+): number {
   if (task.mode === 'habit' && task.inCompensationQuest) {
     return task.targetDurationMs * 2;
   }
@@ -179,7 +181,7 @@ export function calculateDaysBetweenLogicalDates(fromDateStr: string, toDateStr:
 export function evaluateDailyRollover(
   tasks: TaskItem[],
   currentLogicalDate: string,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
 ): {
   updatedTasks: TaskItem[];
   hasChanges: boolean;
@@ -258,7 +260,7 @@ export function getMillisecondsUntilRollover(nowMs: number = Date.now(), rollove
 export function calculateElapsedTime(
   startedAtMs: number | null,
   accumulatedMs: number,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
 ): number {
   if (startedAtMs === null) {
     return Math.max(0, accumulatedMs);
@@ -274,7 +276,7 @@ export function calculateHabitRemaining(
   targetDurationMs: number,
   startedAtMs: number | null,
   accumulatedMs: number,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
 ): { remainingMs: number; progressRatio: number; isFinished: boolean } {
   const elapsed = calculateElapsedTime(startedAtMs, accumulatedMs, nowMs);
   const remainingMs = Math.max(0, targetDurationMs - elapsed);
@@ -294,7 +296,7 @@ export function calculateProjectProgress(
   targetDurationMs: number,
   startedAtMs: number | null,
   accumulatedMs: number,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
 ): { elapsedMs: number; progressRatio: number } {
   const elapsedMs = calculateElapsedTime(startedAtMs, accumulatedMs, nowMs);
   const progressRatio = targetDurationMs > 0 ? Math.min(1, elapsedMs / targetDurationMs) : 0;
@@ -334,7 +336,7 @@ export function getMaxShieldCapacity(targetMilestoneDays = 30): number {
 export function calculateEarnedShields(
   streak: number,
   existingShields: number = 0,
-  targetMilestoneDays = 30
+  targetMilestoneDays = 30,
 ): { newShields: number; earned: boolean } {
   const maxCapacity = getMaxShieldCapacity(targetMilestoneDays);
   const earnedBonus = streak > 0 && streak % 7 === 0 ? 1 : 0;
@@ -376,11 +378,7 @@ export function trimSessionDuration(sessionDurationMs: number, trimMinutes: numb
 /**
  * Counts items awaiting cloud sync (sync_status === 1)
  */
-export function countPendingSync(
-  tasks: TaskItem[],
-  sessions: TimeSession[],
-  logs: HabitDailyLog[]
-): number {
+export function countPendingSync(tasks: TaskItem[], sessions: TimeSession[], logs: HabitDailyLog[]): number {
   const pendingTasks = tasks.filter((t) => t.sync_status === 1).length;
   const pendingSessions = sessions.filter((s) => s.sync_status === 1).length;
   const pendingLogs = logs.filter((l) => l.sync_status === 1).length;
@@ -393,7 +391,7 @@ export function countPendingSync(
 export function calculateExpectedEndTimestamp(
   startedAtMs: number,
   targetDurationMs: number,
-  accumulatedMs: number
+  accumulatedMs: number,
 ): number {
   const remainingMs = Math.max(0, targetDurationMs - accumulatedMs);
   return startedAtMs + remainingMs;
@@ -417,7 +415,7 @@ export function generateStreakMatrix(
   targetDays: number,
   currentStreak: number,
   logs: HabitDailyLog[],
-  taskId: string
+  taskId: string,
 ): MatrixDayCell[] {
   const cells: MatrixDayCell[] = [];
   const taskLogs = logs.filter((l) => l.taskId === taskId);
@@ -455,15 +453,11 @@ export function generateStreakMatrix(
 /**
  * Generates CSV string for export
  */
-export function generateCSVExport(
-  task: TaskItem,
-  sessions: TimeSession[],
-  logs: HabitDailyLog[]
-): string {
+export function generateCSVExport(task: TaskItem, sessions: TimeSession[], logs: HabitDailyLog[]): string {
   const lines: string[] = [];
   lines.push(`Mã tác vụ,Tên tác vụ,Chế độ,Danh mục,Chuỗi hiện tại,Chuỗi kỷ lục,Định mức (phút)`);
   lines.push(
-    `"${task.id}","${task.name}","${task.mode}","${task.category}",${task.currentStreak},${task.bestStreak},${Math.round(task.targetDurationMs / 60000)}`
+    `"${task.id}","${task.name}","${task.mode}","${task.category}",${task.currentStreak},${task.bestStreak},${Math.round(task.targetDurationMs / 60000)}`,
   );
   lines.push('');
 
@@ -473,7 +467,7 @@ export function generateCSVExport(
     const taskSessions = sessions.filter((s) => s.taskId === task.id);
     for (const s of taskSessions) {
       lines.push(
-        `"${s.id}","${s.logicalDate}","${new Date(s.startedAt).toLocaleString()}","${new Date(s.endedAt).toLocaleString()}",${(s.durationMs / 60000).toFixed(1)},${((s.trimmedMs || 0) / 60000).toFixed(1)}`
+        `"${s.id}","${s.logicalDate}","${new Date(s.startedAt).toLocaleString()}","${new Date(s.endedAt).toLocaleString()}",${(s.durationMs / 60000).toFixed(1)},${((s.trimmedMs || 0) / 60000).toFixed(1)}`,
       );
     }
   } else {
@@ -482,7 +476,7 @@ export function generateCSVExport(
     const taskLogs = logs.filter((l) => l.taskId === task.id);
     for (const l of taskLogs) {
       lines.push(
-        `"${l.id}","${l.logicalDate}",${l.completed ? 'Có' : 'Không'},${(l.actualDurationMs / 60000).toFixed(1)},"${l.recoveryType || 'on_time'}","${l.confirmedAt ? new Date(l.confirmedAt).toLocaleString() : ''}"`
+        `"${l.id}","${l.logicalDate}",${l.completed ? 'Có' : 'Không'},${(l.actualDurationMs / 60000).toFixed(1)},"${l.recoveryType || 'on_time'}","${l.confirmedAt ? new Date(l.confirmedAt).toLocaleString() : ''}"`,
       );
     }
   }
@@ -493,11 +487,7 @@ export function generateCSVExport(
 /**
  * Generates Markdown report string for export
  */
-export function generateMarkdownExport(
-  task: TaskItem,
-  sessions: TimeSession[],
-  logs: HabitDailyLog[]
-): string {
+export function generateMarkdownExport(task: TaskItem, sessions: TimeSession[], logs: HabitDailyLog[]): string {
   const lines: string[] = [];
   lines.push(`# Báo Cáo Bền Bỉ: ${task.name}`);
   lines.push(`- **Chế độ**: ${task.mode === 'habit' ? 'Thói quen đếm ngược' : 'Đo lường dự án'}`);
@@ -518,7 +508,7 @@ export function generateMarkdownExport(
     lines.push(`| :--- | :--- | :--- | :--- | :--- |`);
     for (const s of taskSessions) {
       lines.push(
-        `| ${s.logicalDate} | ${new Date(s.startedAt).toLocaleTimeString()} | ${new Date(s.endedAt).toLocaleTimeString()} | ${(s.durationMs / 60000).toFixed(0)}m | ${((s.trimmedMs || 0) / 60000).toFixed(0)}m |`
+        `| ${s.logicalDate} | ${new Date(s.startedAt).toLocaleTimeString()} | ${new Date(s.endedAt).toLocaleTimeString()} | ${(s.durationMs / 60000).toFixed(0)}m | ${((s.trimmedMs || 0) / 60000).toFixed(0)}m |`,
       );
     }
   } else {
@@ -528,7 +518,7 @@ export function generateMarkdownExport(
     lines.push(`| :--- | :--- | :--- | :--- |`);
     for (const l of taskLogs) {
       lines.push(
-        `| ${l.logicalDate} | ${l.completed ? '✅' : '❌'} | ${(l.actualDurationMs / 60000).toFixed(0)}m | ${l.recoveryType || 'on_time'} |`
+        `| ${l.logicalDate} | ${l.completed ? '✅' : '❌'} | ${(l.actualDurationMs / 60000).toFixed(0)}m | ${l.recoveryType || 'on_time'} |`,
       );
     }
   }
@@ -541,7 +531,7 @@ export function generateMarkdownExport(
  */
 export function mergeLocalAndCloudData(
   local: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] },
-  cloud: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] }
+  cloud: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] },
 ): { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] } {
   const taskMap = new Map<string, TaskItem>();
 

@@ -1,13 +1,5 @@
 import React from 'react';
-import {
-  Sparkles,
-  HeartPulse,
-  Briefcase,
-  BookOpen,
-  Layers,
-  Plus,
-  Search,
-} from 'lucide-react';
+import { Sparkles, HeartPulse, Briefcase, BookOpen, Layers, Plus, Search } from 'lucide-react';
 import type { TaskCategory, TaskItem } from '../utils/engine';
 
 interface TaskFilterBarProps {
@@ -38,19 +30,31 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
   }[] = [
     { value: 'all', label: 'Tất cả', icon: Layers, iconClass: '', count: tasks.length },
     {
-      value: 'health', label: 'Sức khoẻ', icon: HeartPulse, iconClass: 'text-rose-500',
+      value: 'health',
+      label: 'Sức khoẻ',
+      icon: HeartPulse,
+      iconClass: 'text-rose-500',
       count: tasks.filter((t) => t.category === 'health').length,
     },
     {
-      value: 'work', label: 'Công việc', icon: Briefcase, iconClass: 'text-[#3B6998]',
+      value: 'work',
+      label: 'Công việc',
+      icon: Briefcase,
+      iconClass: 'text-[#3B6998]',
       count: tasks.filter((t) => t.category === 'work').length,
     },
     {
-      value: 'study', label: 'Học hành', icon: BookOpen, iconClass: 'text-indigo-500',
+      value: 'study',
+      label: 'Học hành',
+      icon: BookOpen,
+      iconClass: 'text-indigo-500',
       count: tasks.filter((t) => t.category === 'study').length,
     },
     {
-      value: 'habit', label: 'Thói quen', icon: Sparkles, iconClass: 'text-[#FF6B00]',
+      value: 'habit',
+      label: 'Thói quen',
+      icon: Sparkles,
+      iconClass: 'text-[#FF6B00]',
       count: tasks.filter((t) => t.category === 'habit').length,
     },
   ];
@@ -73,8 +77,8 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
                 active
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'text-slate-300 hover:bg-slate-800'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <Icon className={`hidden h-3.5 w-3.5 sm:block ${iconClass}`} />
@@ -84,8 +88,8 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
                   value === 'all'
                     ? 'bg-white/20'
                     : darkMode
-                    ? 'bg-slate-800 text-slate-300'
-                    : 'bg-slate-200 text-slate-700'
+                      ? 'bg-slate-800 text-slate-300'
+                      : 'bg-slate-200 text-slate-700'
                 }`}
               >
                 {count}
@@ -116,8 +120,8 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
             tasks.length >= 24
               ? 'bg-red-50 text-red-700 border-red-300'
               : darkMode
-              ? 'bg-slate-900 text-sky-300 border-slate-800'
-              : 'bg-[#E8F0FE] text-[#1E3A5F] border-[#3B6998]/30'
+                ? 'bg-slate-900 text-sky-300 border-slate-800'
+                : 'bg-[#E8F0FE] text-[#1E3A5F] border-[#3B6998]/30'
           }`}
         >
           <span>{tasks.length}/24</span>

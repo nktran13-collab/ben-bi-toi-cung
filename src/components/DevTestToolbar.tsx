@@ -96,9 +96,7 @@ export const DevTestToolbar: React.FC<DevTestToolbarProps> = ({
           <div className="bg-[#1E3A5F] text-white px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FlaskConical className="w-4 h-4 text-[#FCC934]" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Bảng Kiểm Thử Giai Đoạn 3
-              </h3>
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Bảng Kiểm Thử Giai Đoạn 3</h3>
             </div>
             <button
               type="button"
@@ -118,9 +116,7 @@ export const DevTestToolbar: React.FC<DevTestToolbarProps> = ({
                   <Sparkles className="w-4 h-4 text-[#FF6B00]" />
                   <span>🧪 4 Kịch Bản Kiểm Thử Giai Đoạn 3</span>
                 </span>
-                <span className="text-xs bg-[#FF6B00] text-white px-2 py-0.2 rounded-full font-bold">
-                  GĐ3
-                </span>
+                <span className="text-xs bg-[#FF6B00] text-white px-2 py-0.2 rounded-full font-bold">GĐ3</span>
               </div>
 
               <div className="grid grid-cols-1 gap-1.5 pt-1">
@@ -211,9 +207,7 @@ export const DevTestToolbar: React.FC<DevTestToolbarProps> = ({
                 <span>Hàng đợi chờ đồng bộ:</span>
                 <span
                   className={`font-mono font-bold px-2 py-0.5 rounded-full ${
-                    pendingSyncCount > 0
-                      ? 'bg-[#FF6B00]/20 text-[#FF6B00]'
-                      : 'bg-[#81C995]/20 text-emerald-800'
+                    pendingSyncCount > 0 ? 'bg-[#FF6B00]/20 text-[#FF6B00]' : 'bg-[#81C995]/20 text-emerald-800'
                   }`}
                 >
                   {pendingSyncCount} bản ghi (sync_status = 1)
@@ -238,9 +232,7 @@ export const DevTestToolbar: React.FC<DevTestToolbarProps> = ({
                   <Radio className="w-4 h-4 text-[#3B6998]" />
                   <span>Đồng Bộ Đa Tab (Broadcast)</span>
                 </span>
-                <span className="text-xs text-slate-500 font-mono">
-                  {CURRENT_DEVICE_ID.substring(0, 12)}...
-                </span>
+                <span className="text-xs text-slate-500 font-mono">{CURRENT_DEVICE_ID.substring(0, 12)}...</span>
               </div>
 
               {lastRealtimeEventMessage && (
@@ -266,25 +258,17 @@ export const DevTestToolbar: React.FC<DevTestToolbarProps> = ({
                   <Bell className="w-4 h-4 text-[#FF6B00]" />
                   <span>Thông Báo Đẩy & PWA</span>
                 </span>
-                <span className="text-xs font-semibold text-slate-500">
-                  Quyền: {notificationPermission}
-                </span>
+                <span className="text-xs font-semibold text-slate-500">Quyền: {notificationPermission}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={
-                    notificationPermission === 'granted'
-                      ? onTestNotification
-                      : onRequestNotificationPermission
-                  }
+                  onClick={notificationPermission === 'granted' ? onTestNotification : onRequestNotificationPermission}
                   className="py-1.5 px-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-lg font-semibold text-xs flex items-center justify-center gap-1"
                 >
                   <Bell className="w-3.5 h-3.5 text-[#FF6B00]" />
-                  <span>
-                    {notificationPermission === 'granted' ? 'Thử Thông Báo' : 'Bật Quyền Báo'}
-                  </span>
+                  <span>{notificationPermission === 'granted' ? 'Thử Thông Báo' : 'Bật Quyền Báo'}</span>
                 </button>
 
                 <button

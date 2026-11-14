@@ -34,9 +34,7 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
     <section
       aria-label="Tổng quan tiến độ kỷ luật hôm nay"
       className={`mb-6 rounded-2xl p-3 sm:p-5 border shadow-xs transition-colors ${
-        darkMode
-          ? 'bg-slate-900/90 border-slate-800 text-slate-100'
-          : 'bg-white border-slate-200/90 text-slate-800'
+        darkMode ? 'bg-slate-900/90 border-slate-800 text-slate-100' : 'bg-white border-slate-200/90 text-slate-800'
       }`}
     >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
@@ -51,9 +49,7 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
             <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
               {completedHabitsToday}/{habitCount}
             </span>
-            <span className="font-mono text-sm font-bold text-[#FF6B00]">
-              {dailyHabitProgressPercent}%
-            </span>
+            <span className="font-mono text-sm font-bold text-[#FF6B00]">{dailyHabitProgressPercent}%</span>
           </div>
           <div className="mt-2 w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
@@ -70,9 +66,7 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
             <span>Tập trung hôm nay</span>
           </div>
           <div className="mt-1.5 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
-              {totalFocusedTodayMinutes}
-            </span>
+            <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">{totalFocusedTodayMinutes}</span>
             <span className="text-xs font-semibold text-slate-400">phút</span>
           </div>
           <div className="mt-1 text-[11px] leading-tight text-slate-400">

@@ -1,18 +1,12 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'vitest';
 import {
   getLogicalDate,
   calculateElapsedTime,
   calculateHabitRemaining,
-  calculateProjectProgress,
-  formatDuration,
-  calculateEarnedShields,
   calculateCheckpoint,
-  calculatePersistenceDensity,
-  trimSessionDuration,
   countPendingSync,
   calculateExpectedEndTimestamp,
-  formatClockTime,
   mergeLocalAndCloudData,
   getMaxShieldCapacity,
   generateStreakMatrix,
@@ -155,7 +149,7 @@ test('mergeLocalAndCloudData merges datasets while preserving active sessions & 
 
   const merged = mergeLocalAndCloudData(
     { tasks: [localTask], sessions: [], logs: [] },
-    { tasks: [cloudTask], sessions: [], logs: [] }
+    { tasks: [cloudTask], sessions: [], logs: [] },
   );
 
   assert.equal(merged.tasks.length, 1);
@@ -289,15 +283,15 @@ test('getEffectiveTargetDurationMs doubles quota only while inCompensationQuest 
   const baseMs = 30 * 60 * 1000;
   assert.equal(
     getEffectiveTargetDurationMs({ mode: 'habit', targetDurationMs: baseMs, inCompensationQuest: false }),
-    baseMs
+    baseMs,
   );
   assert.equal(
     getEffectiveTargetDurationMs({ mode: 'habit', targetDurationMs: baseMs, inCompensationQuest: true }),
-    baseMs * 2
+    baseMs * 2,
   );
   assert.equal(
     getEffectiveTargetDurationMs({ mode: 'project', targetDurationMs: baseMs, inCompensationQuest: true }),
-    baseMs
+    baseMs,
   );
 });
 
@@ -350,4 +344,3 @@ test('evaluateDailyRollover resets completed_today from yesterday and detects mi
   assert.deepEqual(rollover.detectedBreak, { taskId: 'h2', missedDays: 1 });
   assert.equal(rollover.updatedTasks[1].lastStreakCheckDate, '2026-11-07');
 });
-
