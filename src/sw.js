@@ -1,8 +1,19 @@
 // Service Worker for "Bền bỉ tới cùng" (Persistence To The End)
-// Public shell/asset caching, Web Push & Notification handling
+// Workbox injectManifest build: the precache list below is filled in at build time.
 
-const CACHE_VERSION = 4;
-const CACHE_NAME = `ben-bi-cache-v${CACHE_VERSION}`;
+const manifestEntries = self.__WB_MANIFEST || [];
+const manifestPaths = manifestEntries.map((entry) => new URL(entry.url, self.location.href).pathname);
+
+function shortHash(input) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) hash = (Math.imul(hash, 31) + input.charCodeAt(i)) | 0;
+  return (hash >>> 0).toString(36);
+}
+
+const BUILD_ID = shortHash(manifestPaths.slice().sort().join('|'));
+const SHELL_CACHE = `ben-bi-shell-${BUILD_ID}`;
+const FONT_CACHE = 'ben-bi-fonts-v1';
+
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -14,78 +25,44 @@ const PRECACHE_ASSETS = [
   '/apple-touch-icon.png'
 ];
 
+const PRECACHE_URLS = [...new Set([...PRECACHE_ASSETS, ...manifestPaths])];
+const PRECACHED_PATHS = new Set(PRECACHE_URLS);
+
 function canCache(response) {
   return response.status === 200 && !response.redirected &&
     !/(?:^|,)\s*(?:private|no-store)\b/i.test(response.headers.get('Cache-Control') || '');
 }
 
-async function storeResponse(key, response) {
+async function fetchInto(cache, url) {
   try {
-    const cache = await caches.open(CACHE_NAME);
-    await cache.put(key, response);
+    const response = await fetch(url, { cache: 'reload' });
+    if (!canCache(response)) return null;
+    await cache.put(url, response.clone());
+    return response;
   } catch (err) {
-    // A storage failure must not replace a successful network response.
-    console.warn('[SW] Cache write failure:', err);
+    console.warn('[SW] Precache fetch failure:', url, err);
+    return null;
   }
-}
-
-// Install: precache the public shell, then the hashed build assets it references,
-// so the very first offline launch after install still renders the app.
-async function precacheShell() {
-  const cache = await caches.open(CACHE_NAME);
-  const shellResponses = new Map();
-
-  await Promise.all(PRECACHE_ASSETS.map(async (asset) => {
-    try {
-      const response = await fetch(asset, { cache: 'reload' });
-      if (!canCache(response)) return;
-      await cache.put(asset, response.clone());
-      shellResponses.set(asset, response);
-    } catch (err) {
-      console.warn('[SW] Precache asset fetch failure:', err);
-    }
-  }));
-
-  const root = shellResponses.get('/');
-  if (!root) return;
-
-  const html = await root.text();
-  const buildAssets = new Set();
-  for (const match of html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|mjs|css))"/g)) {
-    buildAssets.add(match[1]);
-  }
-
-  await Promise.all([...buildAssets].map(async (asset) => {
-    try {
-      const response = await fetch(asset, { cache: 'reload' });
-      if (canCache(response)) await cache.put(asset, response);
-    } catch (err) {
-      console.warn('[SW] Precache build asset failure:', err);
-    }
-  }));
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    precacheShell()
-      .catch((err) => console.warn('[SW] Precache failed:', err))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(SHELL_CACHE);
+    await Promise.all(PRECACHE_URLS.map((url) => fetchInto(cache, url)));
+    await self.skipWaiting();
+  })().catch((err) => console.warn('[SW] Precache failed:', err)));
 });
 
-// Activate: delete only this app's older versions, not other apps' caches.
+// Activate: delete only this app's older shell caches, keep fonts and other apps' caches.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => {
-            const version = /^ben-bi-cache-v(\d+)$/.exec(name);
-            return version && Number(version[1]) < CACHE_VERSION;
-          })
-          .map((name) => caches.delete(name))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then((cacheNames) => Promise.all(
+      cacheNames
+        .filter((name) =>
+          /^ben-bi-cache-v\d+$/.test(name) ||
+          (name.startsWith('ben-bi-shell-') && name !== SHELL_CACHE))
+        .map((name) => caches.delete(name))
+    )).then(() => self.clients.claim())
   );
 });
 
@@ -98,19 +75,24 @@ self.addEventListener('fetch', (event) => {
   const isFontFile = url.hostname === 'fonts.gstatic.com';
   if (req.method === 'GET' && (isFontCss || isFontFile)) {
     event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
+      const cache = await caches.open(FONT_CACHE);
       const cached = await cache.match(req);
-      if (cached) return cached;
-      const response = await fetch(req);
-      // no-cors stylesheet/font responses are opaque (status 0) but still usable.
-      if (response.ok || response.type === 'opaque') {
-        try {
-          await cache.put(req, response.clone());
-        } catch (err) {
-          console.warn('[SW] Font cache write failure:', err);
+      const refresh = fetch(req).then(async (response) => {
+        // no-cors stylesheet/font responses are opaque (status 0) but still usable.
+        if (response.ok || response.type === 'opaque') {
+          try {
+            await cache.put(req, response.clone());
+          } catch (err) {
+            console.warn('[SW] Font cache write failure:', err);
+          }
         }
+        return response;
+      });
+      if (cached) {
+        event.waitUntil(refresh.catch(() => {}));
+        return cached;
       }
-      return response;
+      return refresh;
     })());
     return;
   }
@@ -127,7 +109,7 @@ self.addEventListener('fetch', (event) => {
 
   const isShell = url.pathname === '/' || url.pathname === '/index.html';
   const isNavigation = req.mode === 'navigate';
-  const isStaticAsset = PRECACHE_ASSETS.includes(url.pathname) ||
+  const isStaticAsset = PRECACHED_PATHS.has(url.pathname) ||
     /^\/assets\/.+\.(?:js|mjs|css|woff2?|ttf|otf|png|jpe?g|gif|svg|webp|avif|ico)$/i.test(url.pathname) ||
     /^\/icons\/.+\.(?:png|jpe?g|svg|webp|ico)$/i.test(url.pathname);
 
@@ -141,11 +123,12 @@ self.addEventListener('fetch', (event) => {
       try {
         const response = await fetch(req);
         if (isShell && canCache(response)) {
-          await storeResponse('/', response.clone());
+          const cache = await caches.open(SHELL_CACHE);
+          await cache.put('/', response.clone());
         }
         return response;
       } catch {
-        const cache = await caches.open(CACHE_NAME);
+        const cache = await caches.open(SHELL_CACHE);
         const cachedRoot = await cache.match('/', { ignoreVary: true });
         return cachedRoot || new Response('Ứng dụng Bền Bỉ đang ngoại tuyến.', {
           status: 503,
@@ -156,14 +139,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Allowlisted public assets: stale-while-revalidate in this app's cache only.
+  // Allowlisted public assets: stale-while-revalidate in this build's shell cache.
   const networkResponse = fetch(req).then(async (response) => {
-    if (canCache(response)) await storeResponse(req, response.clone());
+    if (canCache(response)) {
+      const cache = await caches.open(SHELL_CACHE);
+      await cache.put(req, response.clone());
+    }
     return response;
   });
   event.waitUntil(networkResponse.catch(() => {}));
   event.respondWith((async () => {
-    const cache = await caches.open(CACHE_NAME);
+    const cache = await caches.open(SHELL_CACHE);
     // Install-time fetches carry no Origin header, while page module requests do;
     // with `Vary: Origin` (Vercel/Vite) a plain match would miss. Vary is irrelevant here.
     const cached = await cache.match(req, { ignoreVary: true });

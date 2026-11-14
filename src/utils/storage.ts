@@ -1,6 +1,7 @@
 import type { TaskItem, TimeSession, HabitDailyLog, UserAccount } from './engine.ts';
 import { getLogicalDate } from './engine.ts';
 import { parseSnapshot, type SyncSnapshot } from './sync.ts';
+import { dbDeleteCache, dbGetCache, dbPutCache } from './db.ts';
 
 const STORAGE_KEYS = {
   TASKS: 'benbi_tasks_v2',
@@ -30,6 +31,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const ACTIVE_ACCOUNT_KEY = 'benbi_active_account_v3';
+export const CACHE_NOTICE_KEY = 'benbi_cache_notice_v4';
 
 export function anonymousAccount(): UserAccount {
   return {
@@ -217,9 +219,7 @@ export function exportRecoveryJSON(): string {
     .map(key => [key, localStorage.getItem(key)])), null, 2);
 }
 
-export function readCache(id: string): LocalCache | null {
-  const raw = localStorage.getItem(cacheKey(id));
-  if (raw === null) return null;
+function parseCacheRaw(raw: string, id: string): LocalCache | null {
   try {
     const cache = JSON.parse(raw) as LocalCache;
     const account = cache?.account;
@@ -253,12 +253,35 @@ export function readCache(id: string): LocalCache | null {
   }
 }
 
-export function writeCache(cache: LocalCache): void {
-  localStorage.setItem(cacheKey(cache.account.id), JSON.stringify(cache));
-  localStorage.setItem(ACTIVE_ACCOUNT_KEY, cache.account.id);
+export async function readCache(id: string): Promise<LocalCache | null> {
+  const stored = await dbGetCache(id);
+  if (stored) return stored;
+
+  // One-time migration from the pre-Dexie localStorage cache.
+  const raw = localStorage.getItem(cacheKey(id));
+  if (raw === null) return null;
+  const parsed = parseCacheRaw(raw, id);
+  if (!parsed) return null;
+  if (await dbPutCache(parsed)) localStorage.removeItem(cacheKey(id));
+  return parsed;
 }
 
-export function clearAccountCache(id: string): void {
+export async function writeCache(cache: LocalCache): Promise<void> {
+  const id = cache.account.id;
+  const stored = await dbPutCache(cache);
+  if (stored) {
+    localStorage.removeItem(cacheKey(id));
+  } else {
+    // IndexedDB unavailable (private mode/quota): keep the sync localStorage copy as fallback.
+    localStorage.setItem(cacheKey(id), JSON.stringify(cache));
+  }
+  localStorage.setItem(ACTIVE_ACCOUNT_KEY, id);
+  // Other tabs cannot observe IndexedDB writes, so a tiny notice drives cross-tab merges.
+  localStorage.setItem(CACHE_NOTICE_KEY, JSON.stringify({ accountId: id, at: Date.now() }));
+}
+
+export async function clearAccountCache(id: string): Promise<void> {
+  await dbDeleteCache(id);
   localStorage.removeItem(cacheKey(id));
 }
 
@@ -283,9 +306,9 @@ function parseLegacySnapshot(data: {
   });
 }
 
-export function loadLocalCache(): LocalCache {
+export async function loadLocalCache(): Promise<LocalCache> {
   const activeId = localStorage.getItem(ACTIVE_ACCOUNT_KEY) || 'guest';
-  const cached = readCache(activeId);
+  const cached = await readCache(activeId);
   if (cached) return cached;
 
   const rawTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
@@ -323,7 +346,7 @@ export function loadLocalCache(): LocalCache {
   } catch {}
 
   // Remove legacy copies only after the guest snapshot is safely persisted.
-  writeCache(cache);
+  await writeCache(cache);
   for (const key of Object.values(STORAGE_KEYS)) localStorage.removeItem(key);
   localStorage.removeItem('benbi_cross_tab_event');
   for (let i = localStorage.length - 1; i >= 0; i--) {

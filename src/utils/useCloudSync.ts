@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction 
 import type { Session } from '@supabase/supabase-js';
 import type { TaskItem, TimeSession, HabitDailyLog } from './engine';
 import {
-  anonymousAccount, cacheKey, clearAccountCache, DEFAULT_SETTINGS, getCleanStarterTasks,
+  anonymousAccount, CACHE_NOTICE_KEY, clearAccountCache, DEFAULT_SETTINGS, getCleanStarterTasks,
   hasRecoveryData, loadLocalCache, readCache, writeCache, type AppSettings, type LocalCache,
 } from './storage';
 import {
-  acknowledgeSnapshot, mergeSnapshots, parseSnapshot, pendingChanges,
+  acknowledgeSnapshot, mergeSnapshots, pendingChanges,
   recordLocalChanges, snapshotFingerprint, type SyncSnapshot,
 } from './sync';
 import { cloudEnabled, cloudError, fetchCloudState, sendLoginOtp, supabase, synchronizeSnapshot, verifyLoginOtp } from './cloud';
@@ -20,18 +20,17 @@ function cleanGuest(): LocalCache {
 }
 
 export function useCloudSync() {
-  const [initial] = useState(() => {
-    try { return { cache: loadLocalCache(), error: null as string | null, recovery: hasRecoveryData() }; }
-    catch { return { cache: cleanGuest(), error: 'Không đọc hoặc ghi được bộ nhớ thiết bị. Dữ liệu gốc chưa bị xóa; đừng đóng trang khi còn thay đổi chưa sao lưu.', recovery: false }; }
-  });
-  const [cache, setCache] = useState(initial.cache);
+  const [initial] = useState(() => ({ recovery: hasRecoveryData() }));
+  const [cache, setCache] = useState(cleanGuest);
   const cacheRef = useRef(cache);
+  const [hydrated, setHydrated] = useState(false);
+  const hydrationRef = useRef<Promise<void> | null>(null);
   const [recoveryAvailable, setRecoveryAvailable] = useState(initial.recovery);
   const [needsAuthentication, setNeedsAuthentication] = useState(false);
   useEffect(() => { realtimeManager.setAccount(cache.account.id); }, [cache.account.id]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [storageError, setStorageError] = useState<string | null>(initial.error);
+  const [storageError, setStorageError] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(!cloudEnabled);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isSimulatedOffline, setIsSimulatedOffline] = useState(false);
@@ -47,19 +46,22 @@ export function useCloudSync() {
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCountRef = useRef(0);
   const syncRef = useRef<() => Promise<boolean>>(async () => false);
+  const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const persist = useCallback((next: LocalCache) => {
     cacheRef.current = next;
     if (mountedRef.current) setCache(next);
-    try {
-      writeCache(next);
-      if (mountedRef.current) {
-        setStorageError(null);
-        setRecoveryAvailable(hasRecoveryData());
-      }
-    } catch {
-      if (mountedRef.current) setStorageError('Không ghi được bộ nhớ thiết bị. Hãy xuất bản sao JSON trước khi đóng ứng dụng.');
-    }
+    writeQueueRef.current = writeQueueRef.current
+      .then(() => writeCache(next))
+      .then(() => {
+        if (mountedRef.current) {
+          setStorageError(null);
+          setRecoveryAvailable(hasRecoveryData());
+        }
+      })
+      .catch(() => {
+        if (mountedRef.current) setStorageError('Không ghi được bộ nhớ thiết bị. Hãy xuất bản sao JSON trước khi đóng ứng dụng.');
+      });
   }, []);
 
   const cancelRetry = useCallback(() => {
@@ -170,6 +172,7 @@ export function useCloudSync() {
   syncRef.current = syncNow;
 
   const adoptSession = useCallback(async (session: Session | null) => {
+    await hydrationRef.current;
     if (!mountedRef.current) return;
     if (!session || session.user.is_anonymous) {
       userIdRef.current = null;
@@ -197,7 +200,7 @@ export function useCloudSync() {
     userIdRef.current = user.id;
     const previous = cacheRef.current;
     let stored: LocalCache | null;
-    try { stored = previous.account.id === user.id ? previous : readCache(user.id); }
+    try { stored = previous.account.id === user.id ? previous : await readCache(user.id); }
     catch {
       setStorageError('Không thể giữ bản dữ liệu cũ trước khi đăng nhập. Hãy sao lưu hoặc giải phóng bộ nhớ thiết bị.');
       setAuthReady(true);
@@ -221,6 +224,24 @@ export function useCloudSync() {
 
   useEffect(() => {
     mountedRef.current = true;
+    hydrationRef.current = (async () => {
+      try {
+        const restored = await loadLocalCache();
+        if (!mountedRef.current) return;
+        // A session adopted during hydration already restored the matching account cache.
+        if (userIdRef.current === null && cacheRef.current.account.isAnonymous) {
+          cacheRef.current = restored;
+          setCache(restored);
+          setRecoveryAvailable(hasRecoveryData());
+        }
+      } catch {
+        if (mountedRef.current) {
+          setStorageError('Không đọc hoặc ghi được bộ nhớ thiết bị. Dữ liệu gốc chưa bị xóa; đừng đóng trang khi còn thay đổi chưa sao lưu.');
+        }
+      } finally {
+        if (mountedRef.current) setHydrated(true);
+      }
+    })();
     return () => {
       mountedRef.current = false;
       epochRef.current++;
@@ -311,16 +332,25 @@ export function useCloudSync() {
         persist(cleanGuest());
         return;
       }
-      if (event.key !== cacheKey(current.account.id) || !event.newValue) return;
-      try {
-        const incoming = JSON.parse(event.newValue) as LocalCache;
-        if (incoming.account.id !== current.account.id || !incoming.initialized || !current.initialized) return;
-        const merged = mergeSnapshots(current.snapshot, parseSnapshot(incoming.snapshot));
-        if (snapshotFingerprint(merged) === snapshotFingerprint(current.snapshot)) return;
-        persist({ ...current, snapshot: merged });
-      } catch {
+      if (event.key !== CACHE_NOTICE_KEY || !event.newValue) return;
+      const noticedAccount: string | null = (() => {
+        try {
+          return (JSON.parse(event.newValue) as { accountId?: string }).accountId ?? null;
+        } catch {
+          return null;
+        }
+      })();
+      if (noticedAccount !== current.account.id || !current.initialized) return;
+      void readCache(current.account.id).then((incoming) => {
+        if (!incoming || !mountedRef.current) return;
+        const latest = cacheRef.current;
+        if (incoming.account.id !== latest.account.id || !incoming.initialized || !latest.initialized) return;
+        const merged = mergeSnapshots(latest.snapshot, incoming.snapshot);
+        if (snapshotFingerprint(merged) === snapshotFingerprint(latest.snapshot)) return;
+        persist({ ...latest, snapshot: merged });
+      }).catch(() => {
         setSyncError('Không đọc được thay đổi từ tab khác. Vui lòng đồng bộ lại.');
-      }
+      });
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
@@ -360,12 +390,13 @@ export function useCloudSync() {
       userIdRef.current = null;
       cancelRetry();
       inFlightRef.current = null;
-      const shared = readCache(current.account.id);
+      await writeQueueRef.current;
+      const shared = await readCache(current.account.id);
       const latest = cacheRef.current.account.id === current.account.id ? cacheRef.current : current;
       const snapshot = shared ? mergeSnapshots(latest.snapshot, shared.snapshot) : latest.snapshot;
       const retained = pendingChanges(snapshot, latest.acknowledged) > 0;
-      if (retained) writeCache({ ...latest, snapshot });
-      else clearAccountCache(current.account.id);
+      if (retained) await writeCache({ ...latest, snapshot });
+      else await clearAccountCache(current.account.id);
       localStorage.setItem('benbi_logout_v3', JSON.stringify({ accountId: current.account.id, at: Date.now() }));
       localStorage.removeItem('benbi_cross_tab_event');
       persist(cleanGuest());
@@ -384,7 +415,7 @@ export function useCloudSync() {
     needsAuthentication, recoveryAvailable,
     isSyncing, syncError: storageError ?? syncError, syncNow, sendOtp, verifyOtp, logout, cloudEnabled,
     isOffline: isOffline || isSimulatedOffline, isSimulatedOffline, setIsSimulatedOffline,
-    isLoadingAccount: !authReady || (!cache.account.isAnonymous && !cache.initialized && !needsAuthentication),
+    isLoadingAccount: !authReady || !hydrated || (!cache.account.isAnonymous && !cache.initialized && !needsAuthentication),
     pendingSyncCount,
   };
 }
