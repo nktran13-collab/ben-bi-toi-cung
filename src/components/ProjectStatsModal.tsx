@@ -93,22 +93,38 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     ? Math.round(totalDurationMs / activeDaysCount / 60000)
     : 0;
 
-  // Group durations by last 14 logical days (04:00 AM rollover) for Project bar chart
-  const last14Days: { dateStr: string; label: string; durationMinutes: number }[] = [];
-  for (let i = 13; i >= 0; i--) {
+  // Group durations by last 30 logical days (04:00 AM rollover) for Project bar chart
+  const last30Days: { dateStr: string; label: string; dayNum: string; durationMinutes: number }[] = [];
+  for (let i = 29; i >= 0; i--) {
     const targetTime = now - i * DAY_MS;
     const dateStr = getLogicalDate(targetTime, 4);
     const parts = dateStr.split('-');
-    const dayName = i === 0 ? 'Nay' : `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}`;
+    const dayNum = parseInt(parts[2], 10);
     const minutes = Math.round(
       taskSessions
         .filter((s) => s.logicalDate === dateStr)
         .reduce((sum, s) => sum + s.durationMs, 0) / 60000
     );
-    last14Days.push({ dateStr, label: dayName, durationMinutes: minutes });
+    last30Days.push({
+      dateStr,
+      label: `${dayNum}/${parseInt(parts[1], 10)}`,
+      dayNum: `${dayNum}`,
+      durationMinutes: minutes,
+    });
   }
 
-  const maxMinutesIn14Days = Math.max(...last14Days.map((d) => d.durationMinutes));
+  const maxMinutesIn30Days = Math.max(...last30Days.map((d) => d.durationMinutes));
+  const activeDaysIn30 = last30Days.filter((d) => d.durationMinutes > 0).length;
+  const totalMinutesIn30 = last30Days.reduce((sum, d) => sum + d.durationMinutes, 0);
+
+  const getHeatColor = (minutes: number): string => {
+    if (minutes <= 0) return 'bg-slate-100 text-slate-400 border-slate-200';
+    if (minutes === maxMinutesIn30Days) return 'bg-[#FF6B00] text-white border-[#FF6B00]';
+    const ratio = minutes / maxMinutesIn30Days;
+    if (ratio < 1 / 3) return 'bg-[#D0E1FD] text-[#1E3A5F] border-[#B9CFF0]';
+    if (ratio < 2 / 3) return 'bg-[#7FA8D4] text-white border-[#7FA8D4]';
+    return 'bg-[#1E3A5F] text-white border-[#1E3A5F]';
+  };
 
   // Habit Streak Matrix
   const targetMilestone = task.targetMilestoneDays || 30;
@@ -461,14 +477,14 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
             </div>
           </div>
 
-          {/* TẦNG 2: Trực quan hóa dữ liệu (Project Bar Chart or Habit 66-day Matrix) */}
+          {/* TẦNG 2: Trực quan hóa dữ liệu (Project Heatmap or Habit 66-day Matrix) */}
           <div className="bg-[#F4F7FA] p-5 rounded-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-[#1E3A5F]" />
                 <h3 className="text-sm font-bold text-slate-800">
                   {task.mode === 'project'
-                    ? 'Tầng 2 • Phân bố thời gian 14 ngày gần nhất (phút)'
+                    ? 'Tầng 2 • Bản đồ nhiệt 30 ngày gần nhất'
                     : `Tầng 2 • Ma trận chuỗi ${targetMilestone} ngày (UCL habit formation)`}
                 </h3>
               </div>
@@ -476,47 +492,58 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
             </div>
 
             {task.mode === 'project' ? (
-              /* Project 14-day Bar Chart */
-              <div className="space-y-2">
-                <div className="flex items-end justify-between gap-1 sm:gap-2 h-44 pt-4 border-b border-slate-300">
-                  {last14Days.map((d, idx) => {
-                    const isMax = d.durationMinutes > 0 && d.durationMinutes === maxMinutesIn14Days;
-                    const heightPercent = maxMinutesIn14Days > 0
-                      ? Math.max(6, Math.min(100, (d.durationMinutes / maxMinutesIn14Days) * 100))
-                      : 6;
-
-                    return (
-                      <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
-                        <span className={`text-[10px] sm:text-xs font-mono font-bold mb-1 transition-opacity ${
-                          isMax ? 'text-[#FF6B00] opacity-100' : 'text-slate-500 opacity-0 group-hover:opacity-100'
-                        }`}>
-                          {d.durationMinutes}m
-                        </span>
-                        <div
-                          className={`w-full max-w-[28px] rounded-t-md transition-all duration-300 ${
-                            isMax
-                              ? 'bg-[#FF6B00] shadow-sm'
-                              : d.durationMinutes > 0
-                              ? 'bg-[#1E3A5F] group-hover:bg-[#3B6998]'
-                              : 'bg-slate-200'
-                          }`}
-                          style={{ height: `${heightPercent}%` }}
-                        />
-                        <span className="text-[10px] sm:text-xs font-semibold text-slate-600 mt-2 truncate w-full text-center">
-                          {d.label}
-                        </span>
-                      </div>
-                    );
-                  })}
+              /* Project 30-day Heatmap */
+              <div className="space-y-3">
+                <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5 sm:gap-2">
+                  {last30Days.map((d, idx) => (
+                    <div
+                      key={d.dateStr}
+                      title={`${d.label}: ${d.durationMinutes} phút`}
+                      className={`flex h-9 sm:h-12 flex-col items-center justify-center rounded-lg border text-[11px] sm:text-xs font-bold leading-none transition-colors ${getHeatColor(
+                        d.durationMinutes
+                      )} ${idx === last30Days.length - 1 ? 'ring-2 ring-[#FF6B00]/60 ring-offset-1' : ''}`}
+                    >
+                      <span>{d.dayNum}</span>
+                      <span className="hidden sm:block text-[9px] font-semibold opacity-90 mt-1">
+                        {d.durationMinutes > 0 ? `${d.durationMinutes}m` : '—'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs text-slate-500 pt-1 gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 bg-[#FF6B00] rounded-xs inline-block" />
-                    <span>Cam (#FF6B00): Ngày tập trung cao nhất ({maxMinutesIn14Days} phút)</span>
+
+                <div className="text-xs text-slate-500 pt-2 border-t border-slate-200">
+                  {maxMinutesIn30Days > 0 ? (
+                    <>
+                      <span className="font-semibold text-slate-600">{activeDaysIn30}/30 ngày</span> có làm việc • tổng{' '}
+                      <span className="font-semibold text-slate-600">{totalMinutesIn30} phút</span> • cao nhất{' '}
+                      <span className="font-semibold text-[#FF6B00]">{maxMinutesIn30Days} phút</span>
+                    </>
+                  ) : (
+                    <span className="font-semibold text-slate-400">Chưa có phiên làm việc trong 30 ngày gần nhất</span>
+                  )}
+                </div>
+
+                {/* Heat Legend */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-medium text-slate-600">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-[#FF6B00] rounded-xs inline-block shrink-0" />
+                    <span>Cao nhất</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 bg-[#1E3A5F] rounded-xs inline-block" />
-                    <span>Xanh Jean: Ngày có làm việc</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-[#1E3A5F] rounded-xs inline-block shrink-0" />
+                    <span>Nhiều</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-[#7FA8D4] rounded-xs inline-block shrink-0" />
+                    <span>Vừa</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-[#D0E1FD] rounded-xs inline-block shrink-0" />
+                    <span>Ít</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 bg-slate-100 border border-slate-200 rounded-xs inline-block shrink-0" />
+                    <span>Chưa làm</span>
                   </div>
                 </div>
               </div>
