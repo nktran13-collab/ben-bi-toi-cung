@@ -130,18 +130,18 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
               </div>
             </div>
 
-            {/* 4. Sinh học 04:00 AM & Cloud Sync */}
+            {/* 4. Configurable Rollover & Cloud Sync */}
             <div className="bg-emerald-50/70 dark:bg-emerald-950/20 p-3.5 rounded-2xl border border-emerald-200/80 dark:border-emerald-900/40 flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <Cloud className="w-5 h-5" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>Đồng Bộ Đám Mây & 04:00 AM</span>
+                  <span>Đồng Bộ Đám Mây & Giờ Ngày Mới</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Ngày mới chuyển lúc <strong>04:00 sáng</strong> cho người thức khuya. Xác thực email bằng mã OTP để
-                  đồng bộ dữ liệu giữa các thiết bị khi có mạng.
+                  Ngày mới mặc định chuyển lúc <strong>04:00 sáng</strong> cho người thức khuya và có thể đổi trong{' '}
+                  <strong>Cài đặt</strong>. Xác thực email bằng mã OTP để đồng bộ dữ liệu giữa các thiết bị khi có mạng.
                 </p>
               </div>
             </div>

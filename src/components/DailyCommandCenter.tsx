@@ -11,6 +11,7 @@ interface DailyCommandCenterProps {
   totalActiveStreaks: number;
   hoursUntilRollover: number;
   minsUntilRollover: number;
+  rolloverHour: number;
   onOpenResetOptions: () => void;
 }
 
@@ -24,6 +25,7 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
   totalActiveStreaks,
   hoursUntilRollover,
   minsUntilRollover,
+  rolloverHour,
   onOpenResetOptions,
 }) => {
   const cardClass = `p-3 sm:p-3.5 rounded-xl border ${
@@ -113,7 +115,9 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
               {hoursUntilRollover}g {String(minsUntilRollover).padStart(2, '0')}p
             </span>
           </div>
-          <div className="mt-1 text-[11px] leading-tight text-slate-400">Mốc 04:00 sáng</div>
+          <div className="mt-1 text-[11px] leading-tight text-slate-400">
+            Mốc {String(rolloverHour).padStart(2, '0')}:00 sáng
+          </div>
         </div>
       </div>
     </section>

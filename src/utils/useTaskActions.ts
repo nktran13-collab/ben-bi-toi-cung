@@ -28,6 +28,7 @@ interface UseTaskActionsOptions {
   showToast: (msg: string) => void;
   breakStreakMissedDays: number;
   idleRawDurationMs: number;
+  dayRolloverHour: number;
   setMilestoneTask: (task: TaskItem | null) => void;
   setRetroactiveItem: (item: RetroactiveConfirmation | null) => void;
   setIdleDetectionTask: (task: TaskItem | null) => void;
@@ -48,6 +49,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
     showToast,
     breakStreakMissedDays,
     idleRawDurationMs,
+    dayRolloverHour,
     setMilestoneTask,
     setRetroactiveItem,
     setIdleDetectionTask,
@@ -187,7 +189,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
   const handleConfirmHabit = useCallback(
     (taskId: string) => {
       const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
+      const logicalDate = getLogicalDate(now, dayRolloverHour);
 
       soundEngine.playSuccessChime();
       notificationService.cancelScheduledPush(taskId);
@@ -274,7 +276,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
         setMilestoneTask(shouldTriggerMilestoneModal);
       }
     },
-    [tasks, setTasks, setLogs, showToast, setMilestoneTask],
+    [tasks, setTasks, setLogs, showToast, setMilestoneTask, dayRolloverHour],
   );
 
   // Upgrade habit to the UCL 66-day milestone
@@ -295,7 +297,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
   const handleConfirmYesterday = useCallback(
     (taskId: string) => {
       const now = Date.now();
-      const currentLogical = getLogicalDate(now, 4);
+      const currentLogical = getLogicalDate(now, dayRolloverHour);
       const yesterdayDate = getPreviousLogicalDate(currentLogical);
 
       soundEngine.playSuccessChime();
@@ -342,7 +344,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       setRetroactiveItem(null);
       showToast('✅ Đã truy lĩnh và bảo toàn chuỗi ngày hôm qua thành công!');
     },
-    [tasks, setTasks, setLogs, setRetroactiveItem, showToast],
+    [tasks, setTasks, setLogs, setRetroactiveItem, showToast, dayRolloverHour],
   );
 
   const handleDiscardYesterday = useCallback(
@@ -371,7 +373,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
   const handleSaveIdleTrimmed = useCallback(
     (taskId: string, trimmedDurationMs: number) => {
       const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
+      const logicalDate = getLogicalDate(now, dayRolloverHour);
       soundEngine.playSuccessChime();
 
       setSessions((prev) => [
@@ -411,7 +413,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       setIdleDetectionTask(null);
       showToast(`Đã lưu phiên làm việc ${formatDuration(trimmedDurationMs, true)} sau khi cắt gọt.`);
     },
-    [idleRawDurationMs, setSessions, setTasks, setIdleDetectionTask, showToast],
+    [idleRawDurationMs, setSessions, setTasks, setIdleDetectionTask, showToast, dayRolloverHour],
   );
 
   const handleDiscardIdle = useCallback(
@@ -480,7 +482,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
   const handleCompleteSprintSession = useCallback(
     (taskId: string) => {
       const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
+      const logicalDate = getLogicalDate(now, dayRolloverHour);
       soundEngine.playSuccessChime();
 
       const targetTask = tasks.find((t) => t.id === taskId);
@@ -526,7 +528,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
 
       showToast(`✅ Đã chốt & lưu phiên làm việc ${formatDuration(sessionDuration)} vào nhật ký dự án.`);
     },
-    [tasks, setSessions, setTasks, showToast],
+    [tasks, setSessions, setTasks, showToast, dayRolloverHour],
   );
 
   const handleDeleteTask = useCallback(
@@ -546,7 +548,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
     (taskId: string) => {
       soundEngine.playSoftChime(587.33, 0.3, 0.8);
       const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
+      const logicalDate = getLogicalDate(now, dayRolloverHour);
       const yesterdayDate = getPreviousLogicalDate(logicalDate);
 
       setTasks((prev) =>
@@ -579,14 +581,14 @@ export function useTaskActions(options: UseTaskActionsOptions) {
 
       showToast('🛡️ Đã sử dụng Khiên Bền Bỉ để bảo vệ chuỗi thành công!');
     },
-    [breakStreakMissedDays, setTasks, setLogs, showToast],
+    [breakStreakMissedDays, setTasks, setLogs, showToast, dayRolloverHour],
   );
 
   const handleAcceptCompensation = useCallback(
     (taskId: string) => {
       soundEngine.playSoftChime(784, 0.3, 0.8);
       const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
+      const logicalDate = getLogicalDate(now, dayRolloverHour);
       setTasks((prev) =>
         prev.map((t) =>
           t.id === taskId
@@ -602,14 +604,14 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       );
       showToast('⚡ Đã kích hoạt Nhiệm vụ Đền bù x2 thời gian cho hôm nay!');
     },
-    [setTasks, showToast],
+    [setTasks, showToast, dayRolloverHour],
   );
 
   const handleResetToCheckpoint = useCallback(
     (taskId: string) => {
       soundEngine.playTap(false);
       const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
+      const logicalDate = getLogicalDate(now, dayRolloverHour);
       setTasks((prev) =>
         prev.map((t) => {
           if (t.id !== taskId) return t;
@@ -626,14 +628,14 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       );
       showToast('Đã trở về cột mốc bảo lưu gần nhất.');
     },
-    [setTasks, showToast],
+    [setTasks, showToast, dayRolloverHour],
   );
 
   const handleFullResetStreak = useCallback(
     (taskId: string) => {
       soundEngine.playTap(false);
       const now = Date.now();
-      const logicalDate = getLogicalDate(now, 4);
+      const logicalDate = getLogicalDate(now, dayRolloverHour);
       setTasks((prev) =>
         prev.map((t) =>
           t.id === taskId
@@ -650,7 +652,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       );
       showToast('Đã đặt lại chuỗi về Ngày 0.');
     },
-    [setTasks, showToast],
+    [setTasks, showToast, dayRolloverHour],
   );
 
   // Add task with 24-task limit enforcement

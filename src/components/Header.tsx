@@ -8,6 +8,7 @@ import {
   Plus,
   Sparkles,
   Clock,
+  Settings,
   Cloud,
   CloudOff,
   RefreshCw,
@@ -46,6 +47,8 @@ interface HeaderProps {
   onPromptInstall: () => void;
   onOpenPWAGuide: () => void;
   onOpenWelcomeModal?: () => void;
+  onOpenSettings: () => void;
+  dayRolloverHour: number;
   needsReauth?: boolean;
 }
 
@@ -93,6 +96,8 @@ export const Header: React.FC<HeaderProps> = ({
   onPromptInstall,
   onOpenPWAGuide,
   onOpenWelcomeModal,
+  onOpenSettings,
+  dayRolloverHour,
   needsReauth = false,
 }) => {
   const headerRef = useRef<HTMLElement | null>(null);
@@ -100,10 +105,11 @@ export const Header: React.FC<HeaderProps> = ({
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const logicalDate = getLogicalDate(Date.now(), 4);
+  const logicalDate = getLogicalDate(Date.now(), dayRolloverHour);
   const now = new Date();
   const currentHour = now.getHours();
-  const isPastMidnight = currentHour < 4;
+  const isPastMidnight = currentHour < dayRolloverHour;
+  const rolloverLabel = `${String(dayRolloverHour).padStart(2, '0')}:00`;
 
   // Publish the real header height so in-flow overlays (toast) sit below it
   // instead of overlapping when the header wraps to several rows on phones.
@@ -173,9 +179,9 @@ export const Header: React.FC<HeaderProps> = ({
               {isPastMidnight && (
                 <span
                   className="text-xs bg-[#FF6B00]/20 text-[#FFF3E0] px-2 py-0.5 rounded border border-[#FF6B00]/40 font-semibold"
-                  title="Chế độ sinh học 04:00 sáng tính giờ vào ngày hôm trước"
+                  title={`Chế độ sinh học ${rolloverLabel} sáng tính giờ vào ngày hôm trước`}
                 >
-                  Ca đêm (&lt; 04:00)
+                  Ca đêm (&lt; {rolloverLabel})
                 </span>
               )}
             </div>
@@ -290,6 +296,16 @@ export const Header: React.FC<HeaderProps> = ({
                 title={darkMode ? 'Chuyển sang Giao diện Sáng' : 'Chuyển sang Giao diện Tối (Dịu mắt ban đêm)'}
               >
                 {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+
+              {/* Day Rollover Settings */}
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="p-1.5 rounded-lg border border-[#3B6998]/60 bg-[#152a45] text-[#E8F0FE]/80 hover:text-white hover:bg-[#3B6998]/50 transition-colors cursor-pointer"
+                title={`Cài đặt: ngày mới bắt đầu lúc ${rolloverLabel} (mặc định 04:00)`}
+              >
+                <Settings className="w-4 h-4" />
               </button>
 
               {/* Sound Toggle */}
@@ -416,6 +432,12 @@ export const Header: React.FC<HeaderProps> = ({
             label="Âm thanh chuông"
             hint={soundEnabled ? 'Bật' : 'Tắt'}
             onClick={runAndClose(onToggleSound)}
+          />
+          <MenuItem
+            icon={<Settings className="w-4 h-4 text-[#3B6998] dark:text-[#81C995]" />}
+            label="Cài đặt"
+            hint={rolloverLabel}
+            onClick={runAndClose(onOpenSettings)}
           />
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
           {onOpenWelcomeModal && (

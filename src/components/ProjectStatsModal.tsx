@@ -40,6 +40,7 @@ interface ProjectStatsModalProps {
   onCompleteSprintSession?: (taskId: string) => void;
   onDeleteTask?: (taskId: string) => void;
   onEditTask?: (task: TaskItem) => void;
+  dayRolloverHour?: number;
 }
 
 export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
@@ -53,6 +54,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   onCompleteSprintSession,
   onDeleteTask,
   onEditTask,
+  dayRolloverHour = 4,
 }) => {
   const [trimMinutes, setTrimMinutes] = useState(15);
   const [trimSuccessMessage, setTrimSuccessMessage] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   const last30Days: { dateStr: string; label: string; dayNum: string; durationMinutes: number }[] = [];
   for (let i = 29; i >= 0; i--) {
     const targetTime = now - i * DAY_MS;
-    const dateStr = getLogicalDate(targetTime, 4);
+    const dateStr = getLogicalDate(targetTime, dayRolloverHour);
     const parts = dateStr.split('-');
     const dayNum = parseInt(parts[2], 10);
     const minutes = Math.round(
@@ -474,7 +476,9 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                     : `Tầng 2 • Ma trận chuỗi ${targetMilestone} ngày (UCL habit formation)`}
                 </h3>
               </div>
-              <span className="text-xs text-slate-500 font-medium hidden sm:inline">Rollover: 04:00 AM</span>
+              <span className="text-xs text-slate-500 font-medium hidden sm:inline">
+                Rollover: {String(dayRolloverHour).padStart(2, '0')}:00
+              </span>
             </div>
 
             {task.mode === 'project' ? (

@@ -7,6 +7,7 @@ interface RetroactiveConfirmModalProps {
   isOpen: boolean;
   onConfirmYesterday: (taskId: string) => void;
   onDiscard: (taskId: string) => void;
+  dayRolloverHour?: number;
 }
 
 export const RetroactiveConfirmModal: React.FC<RetroactiveConfirmModalProps> = ({
@@ -14,11 +15,13 @@ export const RetroactiveConfirmModal: React.FC<RetroactiveConfirmModalProps> = (
   isOpen,
   onConfirmYesterday,
   onDiscard,
+  dayRolloverHour = 4,
 }) => {
   if (!isOpen || !item) return null;
 
   const endedDate = new Date(item.endedAtMs);
   const timeStr = endedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const rolloverLabel = `${String(dayRolloverHour).padStart(2, '0')}:00`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -44,7 +47,7 @@ export const RetroactiveConfirmModal: React.FC<RetroactiveConfirmModalProps> = (
                 <strong className="text-[#1E3A5F]">"{item.taskName}"</strong> vào lúc{' '}
                 <strong className="text-[#FF6B00]">{timeStr}</strong> hôm trước (ngày logic{' '}
                 <span className="font-semibold text-slate-800">{item.logicalDate}</span>) nhưng chưa kịp nhấn giữ xác
-                nhận trước giờ chuyển ngày 04:00 AM.
+                nhận trước giờ chuyển ngày {rolloverLabel}.
               </div>
             </div>
           </div>

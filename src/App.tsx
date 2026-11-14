@@ -28,6 +28,7 @@ import { useTimerWatchdogs } from './utils/useTimerWatchdogs';
 import { useTaskActions } from './utils/useTaskActions';
 import { useWakeLock } from './utils/useWakeLock';
 import { usePWAInstall } from './utils/usePWAInstall';
+import { usePushReminders } from './utils/usePushReminders';
 import { notificationService } from './utils/notifications';
 import { realtimeManager } from './utils/realtime';
 import { setupMediaSession } from './utils/mediaSession';
@@ -47,6 +48,7 @@ import { DevTestToolbar } from './components/DevTestToolbar';
 import { MilestoneUpgradeModal } from './components/MilestoneUpgradeModal';
 import { RetroactiveConfirmModal } from './components/RetroactiveConfirmModal';
 import { IdleDetectionModal } from './components/IdleDetectionModal';
+import { SettingsModal } from './components/SettingsModal';
 import { ZenFocusModal } from './components/ZenFocusModal';
 import { WelcomeModal } from './components/WelcomeModal';
 
@@ -79,10 +81,18 @@ export default function App() {
     recoveryAvailable,
   } = useCloudSync();
   const [dataLoaded, setDataLoaded] = useState(false);
+  const {
+    status: pushStatus,
+    busy: pushBusy,
+    error: pushError,
+    enable: enablePush,
+    disable: disablePush,
+  } = usePushReminders(account.id, account.isAnonymous);
   const soundEnabled = settings.soundEnabled;
   const wakeLockRequested = settings.wakeLockRequested;
   const darkMode = !!settings.darkMode;
   const devModeEnabled = !!settings.devModeEnabled;
+  const dayRolloverHour = settings.dayRolloverHour;
   const setSoundEnabled = useCallback(
     (value: React.SetStateAction<boolean>) => {
       setSettings((current) => ({
@@ -161,6 +171,7 @@ export default function App() {
   const [retroactiveItem, setRetroactiveItem] = useState<RetroactiveConfirmation | null>(null);
   const [idleDetectionTask, setIdleDetectionTask] = useState<TaskItem | null>(null);
   const [idleRawDurationMs, setIdleRawDurationMs] = useState<number>(0);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // PWA Installability hook
   const { isInstallable: isPWAInstallable, promptInstall } = usePWAInstall();
@@ -171,7 +182,7 @@ export default function App() {
   // Low-frequency clock for minute-level metrics (NOT the per-second timer display:
   // running cards own their own 1s clock so App no longer re-renders 6x/second).
   const [metricsNowMs, setMetricsNowMs] = useState(Date.now());
-  const [currentLogicalDate, setCurrentLogicalDate] = useState(() => getLogicalDate(Date.now(), 4));
+  const [currentLogicalDate, setCurrentLogicalDate] = useState(() => getLogicalDate(Date.now(), dayRolloverHour));
 
   // Show auto-dismissing toast notification
   const showToast = useCallback((msg: string) => {
@@ -203,7 +214,7 @@ export default function App() {
   // The hook provides cached data immediately; run initial rollover and welcome checks once.
   useEffect(() => {
     const now = Date.now();
-    const initialLogicalDate = getLogicalDate(now, 4);
+    const initialLogicalDate = getLogicalDate(now, dayRolloverHour);
     const yesterdayDate = getPreviousLogicalDate(initialLogicalDate);
 
     const rollover = evaluateDailyRollover(tasks, initialLogicalDate, now);
@@ -226,7 +237,7 @@ export default function App() {
         t.status === 'pending_confirmation' &&
         t.timerEndedAtMs &&
         t.timerEndedAtMs < now &&
-        getLogicalDate(t.timerEndedAtMs, 4) === yesterdayDate,
+        getLogicalDate(t.timerEndedAtMs, dayRolloverHour) === yesterdayDate,
     );
 
     if (pendingYesterdayTask && pendingYesterdayTask.timerEndedAtMs) {
@@ -248,6 +259,8 @@ export default function App() {
     } catch {}
 
     setDataLoaded(true);
+    // Intentionally runs once on first data load; later rollovers are handled by the minute clock.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync dark mode class on document.documentElement
@@ -266,7 +279,7 @@ export default function App() {
   useEffect(() => {
     const tick = () => {
       setMetricsNowMs(Date.now());
-      const nextDate = getLogicalDate(Date.now(), 4);
+      const nextDate = getLogicalDate(Date.now(), dayRolloverHour);
       setCurrentLogicalDate((prev) => (prev === nextDate ? prev : nextDate));
     };
     const interval = setInterval(tick, 30_000);
@@ -280,7 +293,12 @@ export default function App() {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [dayRolloverHour]);
+
+  // Apply a new rollover hour immediately instead of waiting for the next minute tick.
+  useEffect(() => {
+    setCurrentLogicalDate(getLogicalDate(Date.now(), dayRolloverHour));
+  }, [dayRolloverHour]);
 
   useEffect(() => {
     if (!dataLoaded || isLoadingAccount) return;
@@ -335,6 +353,7 @@ export default function App() {
     showToast,
     breakStreakMissedDays,
     idleRawDurationMs,
+    dayRolloverHour,
     setMilestoneTask,
     setRetroactiveItem,
     setIdleDetectionTask,
@@ -368,21 +387,21 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ben-bi-backup-${getLogicalDate(Date.now(), 4)}.json`;
+    a.download = `ben-bi-backup-${getLogicalDate(Date.now(), dayRolloverHour)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('📦 Đã tải xuống file sao lưu dữ liệu (.json) thành công!');
-  }, [tasks, sessions, logs, settings, showToast]);
+  }, [tasks, sessions, logs, settings, showToast, dayRolloverHour]);
 
   const handleExportRecovery = useCallback(() => {
     const blob = new Blob([exportRecoveryJSON()], { type: 'application/json;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ben-bi-recovery-${getLogicalDate(Date.now(), 4)}.json`;
+    a.download = `ben-bi-recovery-${getLogicalDate(Date.now(), dayRolloverHour)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, []);
+  }, [dayRolloverHour]);
 
   const handleImportBackupJSON = useCallback(
     (jsonStr: string): boolean => {
@@ -449,13 +468,31 @@ export default function App() {
   const handleLogout = useCallback(async () => {
     setIsLoggingOut(true);
     try {
+      await disablePush().catch(() => {});
       await logout();
       soundEngine.playTap(false);
       showToast('Đã đăng xuất. Bạn đang sử dụng chế độ khách.');
     } finally {
       setIsLoggingOut(false);
     }
-  }, [logout, showToast]);
+  }, [disablePush, logout, showToast]);
+
+  const handleTogglePush = useCallback(
+    async (next: boolean) => {
+      try {
+        if (next) {
+          await enablePush();
+          showToast('🔔 Đã bật nhắc nhở đẩy hằng ngày.');
+        } else {
+          await disablePush();
+          showToast('Đã tắt nhắc nhở đẩy.');
+        }
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'Không đổi được cài đặt nhắc nhở.');
+      }
+    },
+    [enablePush, disablePush, showToast],
+  );
 
   // Request Notification Permission
   const handleRequestNotificationPermission = useCallback(async () => {
@@ -511,7 +548,7 @@ export default function App() {
     const habitTask = tasks.find((t) => t.mode === 'habit') || tasks[0];
     if (habitTask) {
       const now = Date.now();
-      const yesterdayDate = getPreviousLogicalDate(getLogicalDate(now, 4));
+      const yesterdayDate = getPreviousLogicalDate(getLogicalDate(now, dayRolloverHour));
       setRetroactiveItem({
         taskId: habitTask.id,
         taskName: habitTask.name,
@@ -520,7 +557,7 @@ export default function App() {
         accumulatedMs: habitTask.targetDurationMs,
       });
     }
-  }, [tasks]);
+  }, [tasks, dayRolloverHour]);
 
   const handleTestIdleDetection = useCallback(() => {
     const projectTask = tasks.find((t) => t.mode === 'project') || tasks[0];
@@ -586,7 +623,7 @@ export default function App() {
   const totalFocusedTodayMinutes = Math.round((todayLogsMs + todaySessionsMs + activeTimersMs) / 60000);
 
   const highestStreak = tasks.reduce((max, t) => Math.max(max, t.currentStreak), 0);
-  const msUntilRollover = getMillisecondsUntilRollover(metricsNowMs, 4);
+  const msUntilRollover = getMillisecondsUntilRollover(metricsNowMs, dayRolloverHour);
   const hoursUntilRollover = Math.floor(msUntilRollover / 3600000);
   const minsUntilRollover = Math.floor((msUntilRollover % 3600000) / 60000);
 
@@ -663,6 +700,8 @@ export default function App() {
           onPromptInstall={promptInstall}
           onOpenPWAGuide={() => setIsPWAGuideOpen(true)}
           onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          dayRolloverHour={dayRolloverHour}
           needsReauth={needsAuthentication}
         />
 
@@ -680,6 +719,7 @@ export default function App() {
             totalActiveStreaks={totalActiveStreaks}
             hoursUntilRollover={hoursUntilRollover}
             minsUntilRollover={minsUntilRollover}
+            rolloverHour={dayRolloverHour}
             onOpenResetOptions={() => setIsAuthModalOpen(true)}
           />
 
@@ -756,6 +796,7 @@ export default function App() {
             userEmail={account.email}
             isOpen={!!statsModalTaskId}
             onClose={() => setStatsModalTaskId(null)}
+            dayRolloverHour={dayRolloverHour}
             onTrimLatestSession={handleTrimLatestSession}
             onCompleteSprintSession={handleCompleteSprintSession}
             onDeleteTask={handleDeleteTask}
@@ -802,6 +843,7 @@ export default function App() {
           <RetroactiveConfirmModal
             item={retroactiveItem}
             isOpen={!!retroactiveItem}
+            dayRolloverHour={dayRolloverHour}
             onConfirmYesterday={handleConfirmYesterday}
             onDiscard={handleDiscardYesterday}
           />
@@ -816,6 +858,21 @@ export default function App() {
             onDiscard={handleDiscardIdle}
           />
         )}
+
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          dayRolloverHour={dayRolloverHour}
+          onChangeDayRolloverHour={(hour) => setSettings((current) => ({ ...current, dayRolloverHour: hour }))}
+          pushStatus={pushStatus}
+          pushBusy={pushBusy}
+          pushError={pushError}
+          onTogglePush={handleTogglePush}
+          onRequestLogin={() => {
+            setIsSettingsOpen(false);
+            setIsAuthModalOpen(true);
+          }}
+        />
 
         <AddTaskModal
           isOpen={isAddTaskModalOpen}
