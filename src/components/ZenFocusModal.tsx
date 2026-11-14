@@ -146,25 +146,29 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
   return (
     <div className="safe-fullscreen fixed inset-0 z-50 bg-gradient-to-br from-[#0B1528] via-[#132542] to-[#1E3A5F] text-white flex flex-col justify-between p-6 sm:p-10 select-none animate-fade-in">
       {/* Top Bar */}
-      <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-bold tracking-wider uppercase text-[#FCC934] flex items-center gap-1.5">
-            <Maximize2 className="w-3.5 h-3.5" />
-            <span>Không Gian Tập Trung Sâu (Zen Focus)</span>
+      <div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-2 sm:gap-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <span className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#FCC934] sm:min-h-9 sm:px-3 sm:text-xs">
+            <Maximize2 className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" />
+            <span className="sm:hidden">Zen Focus</span>
+            <span className="hidden sm:inline">Không Gian Tập Trung Sâu (Zen Focus)</span>
           </span>
           {isHabit && (
-            <span className="px-3 py-1 rounded-full bg-[#FF6B00]/20 border border-[#FF6B00]/40 text-xs font-bold text-[#FF9E40] flex items-center gap-1">
-              <Flame className="w-3.5 h-3.5 fill-current" />
-              <span>Chuỗi {task.currentStreak} ngày</span>
+            <span className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-[#FF6B00]/40 bg-[#FF6B00]/20 px-2.5 text-[11px] font-bold text-[#FF9E40] sm:min-h-9 sm:px-3 sm:text-xs">
+              <Flame className="h-3.5 w-3.5 shrink-0 fill-current" />
+              <span className="sm:hidden">Chuỗi {task.currentStreak}</span>
+              <span className="hidden sm:inline">Chuỗi {task.currentStreak} ngày</span>
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
           <button
             type="button"
             onClick={handleToggleAmbient}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+            aria-pressed={ambientPlaying}
+            aria-label={ambientPlaying ? 'Tắt sóng tập trung' : 'Bật sóng tập trung'}
+            className={`flex h-11 w-11 items-center justify-center rounded-xl border text-xs font-bold transition-all cursor-pointer sm:h-9 sm:w-auto sm:gap-2 sm:px-3.5 ${
               ambientPlaying
                 ? 'bg-[#FF6B00] text-white border-[#FF6B00] shadow-lg shadow-[#FF6B00]/30'
                 : 'bg-white/10 hover:bg-white/15 text-slate-200 border-white/15'
@@ -173,13 +177,13 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
           >
             {ambientPlaying ? (
               <>
-                <Headphones className="w-4 h-4 animate-pulse" />
-                <span>Sóng Tập Trung: BẬT</span>
+                <Headphones className="h-[18px] w-[18px] animate-pulse sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Sóng Tập Trung: BẬT</span>
               </>
             ) : (
               <>
-                <VolumeX className="w-4 h-4 text-slate-400" />
-                <span>Sóng Tập Trung: TẮT</span>
+                <VolumeX className="h-[18px] w-[18px] text-slate-400 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Sóng Tập Trung: TẮT</span>
               </>
             )}
           </button>
@@ -187,10 +191,11 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-colors cursor-pointer"
+            aria-label="Thoát chế độ Zen"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white transition-colors hover:bg-white/20 cursor-pointer sm:h-9 sm:w-9"
             title="Thoát chế độ Zen (ESC)"
           >
-            <X className="w-5 h-5" />
+            <X className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
           </button>
         </div>
       </div>
