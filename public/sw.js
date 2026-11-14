@@ -1,7 +1,7 @@
 // Service Worker for "Bền bỉ tới cùng" (Persistence To The End)
 // Public shell/asset caching, Web Push & Notification handling
 
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const CACHE_NAME = `ben-bi-cache-v${CACHE_VERSION}`;
 const PRECACHE_ASSETS = [
   '/',
@@ -27,17 +27,47 @@ async function storeResponse(key, response) {
   }
 }
 
-// Install: precache only successful public shell responses.
+// Install: precache the public shell, then the hashed build assets it references,
+// so the very first offline launch after install still renders the app.
+async function precacheShell() {
+  const cache = await caches.open(CACHE_NAME);
+  const shellResponses = new Map();
+
+  await Promise.all(PRECACHE_ASSETS.map(async (asset) => {
+    try {
+      const response = await fetch(asset, { cache: 'reload' });
+      if (!canCache(response)) return;
+      await cache.put(asset, response.clone());
+      shellResponses.set(asset, response);
+    } catch (err) {
+      console.warn('[SW] Precache asset fetch failure:', err);
+    }
+  }));
+
+  const root = shellResponses.get('/');
+  if (!root) return;
+
+  const html = await root.text();
+  const buildAssets = new Set();
+  for (const match of html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|mjs|css))"/g)) {
+    buildAssets.add(match[1]);
+  }
+
+  await Promise.all([...buildAssets].map(async (asset) => {
+    try {
+      const response = await fetch(asset, { cache: 'reload' });
+      if (canCache(response)) await cache.put(asset, response);
+    } catch (err) {
+      console.warn('[SW] Precache build asset failure:', err);
+    }
+  }));
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    Promise.all(PRECACHE_ASSETS.map(async (asset) => {
-      try {
-        const response = await fetch(asset, { cache: 'reload' });
-        if (canCache(response)) await storeResponse(asset, response);
-      } catch (err) {
-        console.warn('[SW] Precache asset fetch failure:', err);
-      }
-    })).then(() => self.skipWaiting())
+    precacheShell()
+      .catch((err) => console.warn('[SW] Precache failed:', err))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -92,7 +122,7 @@ self.addEventListener('fetch', (event) => {
         return response;
       } catch {
         const cache = await caches.open(CACHE_NAME);
-        const cachedRoot = await cache.match('/');
+        const cachedRoot = await cache.match('/', { ignoreVary: true });
         return cachedRoot || new Response('Ứng dụng Bền Bỉ đang ngoại tuyến.', {
           status: 503,
           headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -110,7 +140,9 @@ self.addEventListener('fetch', (event) => {
   event.waitUntil(networkResponse.catch(() => {}));
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
-    const cached = await cache.match(req);
+    // Install-time fetches carry no Origin header, while page module requests do;
+    // with `Vary: Origin` (Vercel/Vite) a plain match would miss. Vary is irrelevant here.
+    const cached = await cache.match(req, { ignoreVary: true });
     return cached || networkResponse;
   })());
 });

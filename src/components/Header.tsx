@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import {
   Shield,
   Sun,
@@ -71,13 +71,31 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenWelcomeModal,
   needsReauth = false,
 }) => {
+  const headerRef = useRef<HTMLElement | null>(null);
   const logicalDate = getLogicalDate(Date.now(), 4);
   const now = new Date();
   const currentHour = now.getHours();
   const isPastMidnight = currentHour < 4;
 
+  // Publish the real header height so in-flow overlays (toast) sit below it
+  // instead of overlapping when the header wraps to several rows on phones.
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const publish = () => {
+      document.documentElement.style.setProperty(
+        '--app-header-h',
+        `${Math.round(el.getBoundingClientRect().height)}px`
+      );
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <header className="sticky top-0 z-30 bg-[#1E3A5F] dark:bg-[#0F1E36] text-white shadow-md border-b border-[#3B6998]/80 transition-colors">
+    <header ref={headerRef} className="sticky top-0 z-30 bg-[#1E3A5F] dark:bg-[#0F1E36] text-white shadow-md border-b border-[#3B6998]/80 transition-colors">
       <div className="max-w-6xl mx-auto px-4 py-3 sm:py-3.5 flex flex-wrap items-center justify-between gap-3">
         {/* Brand & Concept */}
         <div className="flex items-center gap-3">

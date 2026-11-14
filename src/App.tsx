@@ -1294,7 +1294,7 @@ export default function App() {
     <div
       inert={isLoadingAccount}
       aria-hidden={isLoadingAccount || undefined}
-      className={`min-h-screen flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white pb-24 transition-colors ${
+      className={`min-h-screen flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white pb-12 transition-colors ${
         darkMode ? 'bg-[#0B1324] text-slate-100' : 'bg-[#F4F7FA] text-slate-800'
       }`}
     >
@@ -1339,7 +1339,7 @@ export default function App() {
 
       {/* Toast Alert Banner */}
       {toastMessage && (
-        <div className="sticky top-16 z-40 max-w-xl mx-auto w-full px-4 mt-2">
+        <div className="sticky top-[var(--app-header-h,64px)] z-40 max-w-xl mx-auto w-full px-4 mt-2">
           <div className="bg-[#1E3A5F] text-white text-xs px-4 py-2.5 rounded-xl shadow-lg border border-[#3B6998] flex items-center justify-between gap-3 animate-fade-in">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#FCC934] shrink-0" />
@@ -1695,21 +1695,6 @@ export default function App() {
           </div>
         )}
       </main>
-
-      {/* Floating Action Button (FAB) for Instant Quick Add on Mobile */}
-      <button
-        type="button"
-        disabled={tasks.length >= 24}
-        onClick={() => {
-          setEditingTask(null);
-          setIsAddTaskModalOpen(true);
-        }}
-        className="sm:hidden fixed bottom-6 right-5 z-40 bg-gradient-to-r from-[#FF6B00] to-[#E65100] text-white p-3.5 rounded-full shadow-2xl hover:shadow-[#FF6B00]/40 active:scale-90 transition-all flex items-center justify-center border-2 border-white/20 cursor-pointer disabled:opacity-40"
-        aria-label="Thêm tác vụ mới"
-        title="Thêm tác vụ mới"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
 
       {/* 3-Tier Deep Report & Share Card Modal */}
       {selectedStatsTask && (
