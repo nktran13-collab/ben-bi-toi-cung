@@ -1,10 +1,10 @@
 // Service Worker for "Bền bỉ tới cùng" (Persistence To The End)
-// Offline-first precache, runtime stale-while-revalidate, Web Push & Notification handling
+// Public shell/asset caching, Web Push & Notification handling
 
-const CACHE_NAME = 'ben-bi-cache-v1';
+const CACHE_VERSION = 2;
+const CACHE_NAME = `ben-bi-cache-v${CACHE_VERSION}`;
 const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
   '/manifest.json',
   '/icon.svg',
   '/pwa-192x192.png',
@@ -12,85 +12,107 @@ const PRECACHE_ASSETS = [
   '/apple-touch-icon.png'
 ];
 
-// Install: precache essential shell assets and activate immediately
+function canCache(response) {
+  return response.status === 200 && !response.redirected &&
+    !/(?:^|,)\s*(?:private|no-store)\b/i.test(response.headers.get('Cache-Control') || '');
+}
+
+async function storeResponse(key, response) {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(key, response);
+  } catch (err) {
+    // A storage failure must not replace a successful network response.
+    console.warn('[SW] Cache write failure:', err);
+  }
+}
+
+// Install: precache only successful public shell responses.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS).catch((err) => {
+    Promise.all(PRECACHE_ASSETS.map(async (asset) => {
+      try {
+        const response = await fetch(asset, { cache: 'reload' });
+        if (canCache(response)) await storeResponse(asset, response);
+      } catch (err) {
         console.warn('[SW] Precache asset fetch failure:', err);
-      });
-    }).then(() => self.skipWaiting())
+      }
+    })).then(() => self.skipWaiting())
   );
 });
 
-// Activate: clean up old cache versions and claim clients
+// Activate: delete only this app's older versions, not other apps' caches.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
+          .filter((name) => {
+            const version = /^ben-bi-cache-v(\d+)$/.exec(name);
+            return version && Number(version[1]) < CACHE_VERSION;
+          })
           .map((name) => caches.delete(name))
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Fetch: Network-first for navigation, Stale-While-Revalidate for static & CDN assets
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Skip non-GET requests and non-http(s) schemes (e.g., chrome-extension:)
-  if (req.method !== 'GET' || !url.protocol.startsWith('http')) {
+  // Private/API requests and development modules must go straight to the network.
+  // Query-bearing URLs may contain auth codes or Vite import/HMR parameters.
+  if (req.method !== 'GET' || url.origin !== self.location.origin ||
+      !/^https?:$/.test(url.protocol) || req.headers.has('Authorization') ||
+      url.pathname === '/api' || url.pathname.startsWith('/api/') || url.search ||
+      /^\/(?:@vite|@id|@fs|@react-refresh|__vite_ping|__open-in-editor|src|node_modules)(?:\/|$)/.test(url.pathname) ||
+      /\.(?:tsx?|jsx)$/.test(url.pathname)) {
     return;
   }
 
-  // HTML navigation requests: Network-first with cache fallback
-  if (req.mode === 'navigate') {
-    event.respondWith(
-      fetch(req)
-        .then((networkRes) => {
-          if (networkRes && networkRes.status === 200) {
-            const resClone = networkRes.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
-          }
-          return networkRes;
-        })
-        .catch(async () => {
-          const cached = await caches.match(req);
-          if (cached) return cached;
-          const fallback = await caches.match('/index.html');
-          if (fallback) return fallback;
-          return new Response('Ứng dụng Bền Bỉ đang ngoại tuyến.', {
-            headers: { 'Content-Type': 'text/html; charset=utf-8' }
-          });
-        })
-    );
-    return;
-  }
+  const isShell = url.pathname === '/' || url.pathname === '/index.html';
+  const isNavigation = req.mode === 'navigate';
+  const isStaticAsset = PRECACHE_ASSETS.includes(url.pathname) ||
+    /^\/assets\/.+\.(?:js|mjs|css|woff2?|ttf|otf|png|jpe?g|gif|svg|webp|avif|ico)$/i.test(url.pathname) ||
+    /^\/icons\/.+\.(?:png|jpe?g|svg|webp|ico)$/i.test(url.pathname);
 
-  // Static assets (scripts, styles, images, fonts): Stale-While-Revalidate
-  event.respondWith(
-    caches.match(req).then((cachedResponse) => {
-      const fetchPromise = fetch(req)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(req, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // Network failed, return cached response if present
-          return cachedResponse;
+  // Do not cache arbitrary same-origin endpoints, even if they return HTTP 200.
+  if (!isNavigation && !isShell && !isStaticAsset) return;
+
+  // Always refresh the shell online. Only canonical shell URLs can update '/';
+  // other navigations may fall back to it but must never persist private HTML.
+  if (isNavigation || isShell) {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(req);
+        if (isShell && canCache(response)) {
+          await storeResponse('/', response.clone());
+        }
+        return response;
+      } catch {
+        const cache = await caches.open(CACHE_NAME);
+        const cachedRoot = await cache.match('/');
+        return cachedRoot || new Response('Ứng dụng Bền Bỉ đang ngoại tuyến.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
         });
+      }
+    })());
+    return;
+  }
 
-      return cachedResponse || fetchPromise;
-    })
-  );
+  // Allowlisted public assets: stale-while-revalidate in this app's cache only.
+  const networkResponse = fetch(req).then(async (response) => {
+    if (canCache(response)) await storeResponse(req, response.clone());
+    return response;
+  });
+  event.waitUntil(networkResponse.catch(() => {}));
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(req);
+    return cached || networkResponse;
+  })());
 });
 
 // Web Push event listener

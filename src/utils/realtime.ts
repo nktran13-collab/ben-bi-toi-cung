@@ -4,6 +4,7 @@ const CHANNEL_NAME = 'benbi_realtime_sync_v2';
 export const CURRENT_DEVICE_ID = `device_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`;
 
 class RealtimeSyncManager {
+  private accountId = 'guest';
   private channel: BroadcastChannel | null = null;
   private listeners: ((payload: RealtimeSyncPayload) => void)[] = [];
 
@@ -37,7 +38,7 @@ class RealtimeSyncManager {
   }
 
   private notifyListeners(payload: RealtimeSyncPayload) {
-    if (payload.senderDeviceId === CURRENT_DEVICE_ID) return; // Ignore self
+    if (payload.senderDeviceId === CURRENT_DEVICE_ID || payload.accountId !== this.accountId) return;
     this.listeners.forEach((listener) => {
       try {
         listener(payload);
@@ -54,9 +55,14 @@ class RealtimeSyncManager {
     };
   }
 
-  public publish(payload: Omit<RealtimeSyncPayload, 'senderDeviceId' | 'timestamp'>) {
+  public setAccount(id: string) {
+    this.accountId = id;
+  }
+
+  public publish(payload: Omit<RealtimeSyncPayload, 'senderDeviceId' | 'timestamp' | 'accountId'>) {
     const fullPayload: RealtimeSyncPayload = {
       ...payload,
+      accountId: this.accountId,
       senderDeviceId: CURRENT_DEVICE_ID,
       timestamp: Date.now(),
     };

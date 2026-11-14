@@ -143,7 +143,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   <span>Đồng Bộ Đám Mây & 04:00 AM</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Ngày mới chuyển lúc <strong>04:00 sáng</strong> cho người thức khuya. Đăng nhập Email là dữ liệu tự đồng bộ đa thiết bị tức thì.
+                  Ngày mới chuyển lúc <strong>04:00 sáng</strong> cho người thức khuya. Xác thực email bằng mã OTP để đồng bộ dữ liệu giữa các thiết bị khi có mạng.
                 </p>
               </div>
             </div>
@@ -163,7 +163,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
             <span className="hidden sm:inline text-slate-300 dark:text-slate-600">•</span>
             <span className="flex items-center gap-1 font-medium">
               <BookmarkCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Offline-First bảo vệ 100%
+              Dùng ngoại tuyến, đồng bộ khi có mạng
             </span>
           </div>
 

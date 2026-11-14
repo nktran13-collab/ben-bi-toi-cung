@@ -44,6 +44,7 @@ interface HeaderProps {
   onPromptInstall: () => void;
   onOpenPWAGuide: () => void;
   onOpenWelcomeModal?: () => void;
+  needsReauth?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -68,6 +69,7 @@ export const Header: React.FC<HeaderProps> = ({
   onPromptInstall,
   onOpenPWAGuide,
   onOpenWelcomeModal,
+  needsReauth = false,
 }) => {
   const logicalDate = getLogicalDate(Date.now(), 4);
   const now = new Date();
@@ -146,16 +148,19 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onOpenAuthModal}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
-              !account.isAnonymous
+              needsReauth
+                ? 'bg-amber-950/60 text-amber-100 border-amber-400/80'
+                : !account.isAnonymous
                 ? 'bg-[#152a45] text-white border-[#81C995]/70'
                 : 'bg-[#152a45] text-[#E8F0FE]/90 border-[#3B6998]/60 hover:text-white hover:bg-[#3B6998]/50'
             }`}
-            title="Quản lý Tài khoản, Đồng bộ Đám mây & Sao lưu JSON"
+            title={needsReauth ? 'Phiên đăng nhập đã hết hạn. Bấm để xác thực lại email.' : 'Quản lý Tài khoản, Đồng bộ Đám mây & Sao lưu JSON'}
           >
             <User className="w-3.5 h-3.5 text-[#FCC934]" />
             <span className="max-w-[95px] sm:max-w-[125px] truncate">
               {account.isAnonymous ? 'Sao lưu / Cloud' : account.email?.split('@')[0]}
             </span>
+            {needsReauth && <span className="w-2 h-2 rounded-full bg-amber-400" aria-label="Cần đăng nhập lại" />}
           </button>
 
           {/* Total Shields Badge */}

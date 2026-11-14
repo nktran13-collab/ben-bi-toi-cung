@@ -82,8 +82,6 @@ export interface UserAccount {
   email: string | null;
   isAnonymous: boolean;
   provider: 'anonymous' | 'mock_otp' | 'supabase' | 'email_sync';
-  supabaseUrl?: string;
-  supabaseAnonKey?: string;
   lastSyncedAtMs: number | null;
   createdAtMs: number;
 }
@@ -91,6 +89,7 @@ export interface UserAccount {
 export interface RealtimeSyncPayload {
   type: 'TIMER_START' | 'TIMER_PAUSE' | 'TIMER_RESET' | 'HABIT_CONFIRM' | 'DATA_MERGE';
   senderDeviceId: string;
+  accountId: string;
   timestamp: number;
   taskId?: string;
   startedAtMs?: number | null;

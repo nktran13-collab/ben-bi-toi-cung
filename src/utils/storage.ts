@@ -1,11 +1,6 @@
-import {
-  TaskItem,
-  TimeSession,
-  HabitDailyLog,
-  UserAccount,
-  getLogicalDate,
-  mergeLocalAndCloudData,
-} from './engine';
+import type { TaskItem, TimeSession, HabitDailyLog, UserAccount } from './engine.ts';
+import { getLogicalDate } from './engine.ts';
+import { parseSnapshot, type SyncSnapshot } from './sync.ts';
 
 const STORAGE_KEYS = {
   TASKS: 'benbi_tasks_v2',
@@ -25,7 +20,7 @@ export interface AppSettings {
   devModeEnabled?: boolean;
 }
 
-const DEFAULT_SETTINGS: AppSettings = {
+export const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
   wakeLockRequested: true,
   dayRolloverHour: 4,
@@ -34,14 +29,26 @@ const DEFAULT_SETTINGS: AppSettings = {
   devModeEnabled: false,
 };
 
-const DEFAULT_ANONYMOUS_ACCOUNT: UserAccount = {
-  id: `anon_${Math.random().toString(36).substring(2, 10)}`,
-  email: null,
-  isAnonymous: true,
-  provider: 'anonymous',
-  lastSyncedAtMs: null,
-  createdAtMs: Date.now(),
-};
+const ACTIVE_ACCOUNT_KEY = 'benbi_active_account_v3';
+
+export function anonymousAccount(): UserAccount {
+  return {
+    id: 'guest',
+    email: null,
+    isAnonymous: true,
+    provider: 'anonymous',
+    lastSyncedAtMs: null,
+    createdAtMs: Date.now(),
+  };
+}
+
+export interface LocalCache {
+  snapshot: SyncSnapshot;
+  account: UserAccount;
+  initialized: boolean;
+  acknowledged: SyncSnapshot | null;
+  migrationEmail?: string;
+}
 
 // Initial realistic seed tasks with UUIDs and sync_status
 export function getInitialSeedTasks(): {
@@ -192,238 +199,138 @@ export function getInitialSeedTasks(): {
   return { tasks, sessions, logs };
 }
 
-export function loadStoredData(): {
-  tasks: TaskItem[];
-  sessions: TimeSession[];
-  logs: HabitDailyLog[];
-  settings: AppSettings;
-  account: UserAccount;
-  simulatedOffline: boolean;
-} {
+export function cacheKey(id: string): string {
+  return `benbi_state_v3_${id}`;
+}
+
+function preserveRecovery(key: string, raw: string): void {
+  localStorage.setItem(`benbi_recovery_${Date.now()}_${crypto.randomUUID()}`, JSON.stringify({ key, raw }));
+}
+
+export function hasRecoveryData(): boolean {
+  return Object.keys(localStorage).some(key => key.startsWith('benbi_recovery_'));
+}
+
+export function exportRecoveryJSON(): string {
+  return JSON.stringify(Object.fromEntries(Object.keys(localStorage)
+    .filter(key => key.startsWith('benbi_recovery_'))
+    .map(key => [key, localStorage.getItem(key)])), null, 2);
+}
+
+export function readCache(id: string): LocalCache | null {
+  const raw = localStorage.getItem(cacheKey(id));
+  if (raw === null) return null;
   try {
-    const rawTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
-    const rawSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
-    const rawLogs = localStorage.getItem(STORAGE_KEYS.HABIT_LOGS);
-    const rawSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    const rawAccount = localStorage.getItem(STORAGE_KEYS.USER_ACCOUNT);
-    const rawSimOffline = localStorage.getItem(STORAGE_KEYS.SIMULATED_OFFLINE);
-
-    const simulatedOffline = rawSimOffline === 'true';
-
-    if (rawTasks && rawSessions && rawLogs) {
-      return {
-        tasks: JSON.parse(rawTasks),
-        sessions: JSON.parse(rawSessions),
-        logs: JSON.parse(rawLogs),
-        settings: rawSettings ? JSON.parse(rawSettings) : DEFAULT_SETTINGS,
-        account: rawAccount ? JSON.parse(rawAccount) : DEFAULT_ANONYMOUS_ACCOUNT,
-        simulatedOffline,
-      };
+    const cache = JSON.parse(raw) as LocalCache;
+    const account = cache?.account;
+    if (!account || account.id !== id || !id ||
+      (account.email !== null && typeof account.email !== 'string') ||
+      typeof account.isAnonymous !== 'boolean' ||
+      !['anonymous', 'supabase'].includes(account.provider) ||
+      !Number.isFinite(account.createdAtMs) ||
+      (account.lastSyncedAtMs !== null && !Number.isFinite(account.lastSyncedAtMs)) ||
+      typeof cache.initialized !== 'boolean' ||
+      (cache.migrationEmail !== undefined && typeof cache.migrationEmail !== 'string')) {
+      throw new Error('Thông tin bộ nhớ đệm không hợp lệ.');
     }
-  } catch (e) {
-    console.warn('Failed to parse localStorage data, initializing seed', e);
+    const snapshot = parseSnapshot(cache.snapshot);
+    let acknowledged: SyncSnapshot | null = null;
+    try {
+      acknowledged = cache.acknowledged === null ? null : parseSnapshot(cache.acknowledged);
+    } catch {
+      preserveRecovery(cacheKey(id), raw);
+    }
+    return {
+      snapshot,
+      account,
+      initialized: cache.initialized,
+      acknowledged,
+      ...(cache.migrationEmail !== undefined ? { migrationEmail: cache.migrationEmail } : {}),
+    };
+  } catch {
+    preserveRecovery(cacheKey(id), raw);
+    return null;
+  }
+}
+
+export function writeCache(cache: LocalCache): void {
+  localStorage.setItem(cacheKey(cache.account.id), JSON.stringify(cache));
+  localStorage.setItem(ACTIVE_ACCOUNT_KEY, cache.account.id);
+}
+
+export function clearAccountCache(id: string): void {
+  localStorage.removeItem(cacheKey(id));
+}
+
+function parseLegacySnapshot(data: {
+  tasks: unknown;
+  sessions?: unknown;
+  logs?: unknown;
+  settings?: unknown;
+}): SyncSnapshot {
+  if (data.settings !== undefined &&
+    (!data.settings || typeof data.settings !== 'object' || Array.isArray(data.settings))) {
+    throw new Error('Cài đặt không hợp lệ.');
+  }
+  return parseSnapshot({
+    version: 3,
+    tasks: data.tasks,
+    sessions: data.sessions === undefined ? [] : data.sessions,
+    logs: data.logs === undefined ? [] : data.logs,
+    settings: { ...DEFAULT_SETTINGS, ...data.settings },
+    settingsUpdatedAtMs: 0,
+    tombstones: [],
+  });
+}
+
+export function loadLocalCache(): LocalCache {
+  const activeId = localStorage.getItem(ACTIVE_ACCOUNT_KEY) || 'guest';
+  const cached = readCache(activeId);
+  if (cached) return cached;
+
+  const rawTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
+  const rawSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
+  const rawLogs = localStorage.getItem(STORAGE_KEYS.HABIT_LOGS);
+  const rawSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+  const rawAccount = localStorage.getItem(STORAGE_KEYS.USER_ACCOUNT);
+  let snapshot: SyncSnapshot;
+  try {
+    snapshot = [rawTasks, rawSessions, rawLogs, rawSettings].some(raw => raw !== null)
+      ? parseLegacySnapshot({
+        tasks: rawTasks === null ? [] : JSON.parse(rawTasks),
+        sessions: rawSessions === null ? [] : JSON.parse(rawSessions),
+        logs: rawLogs === null ? [] : JSON.parse(rawLogs),
+        settings: rawSettings === null ? undefined : JSON.parse(rawSettings),
+      })
+      : parseLegacySnapshot(getCleanStarterTasks());
+  } catch {
+    preserveRecovery('legacy-v2', JSON.stringify({ rawTasks, rawSessions, rawLogs, rawSettings, rawAccount }));
+    snapshot = parseLegacySnapshot(getCleanStarterTasks());
   }
 
-  const seed = getInitialSeedTasks();
-  saveStoredData(seed.tasks, seed.sessions, seed.logs, DEFAULT_SETTINGS, DEFAULT_ANONYMOUS_ACCOUNT, false);
-  return {
-    tasks: seed.tasks,
-    sessions: seed.sessions,
-    logs: seed.logs,
-    settings: DEFAULT_SETTINGS,
-    account: DEFAULT_ANONYMOUS_ACCOUNT,
-    simulatedOffline: false,
+  const cache: LocalCache = {
+    snapshot,
+    account: anonymousAccount(),
+    initialized: true,
+    acknowledged: null,
   };
-}
-
-export function saveStoredData(
-  tasks: TaskItem[],
-  sessions: TimeSession[],
-  logs: HabitDailyLog[],
-  settings?: AppSettings,
-  account?: UserAccount,
-  simulatedOffline?: boolean
-) {
   try {
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
-    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
-    localStorage.setItem(STORAGE_KEYS.HABIT_LOGS, JSON.stringify(logs));
-    if (settings) {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    const legacyAccount = rawAccount === null ? null : JSON.parse(rawAccount);
+    if (legacyAccount && ['email_sync', 'mock_otp'].includes(legacyAccount.provider) &&
+      typeof legacyAccount.email === 'string' && legacyAccount.email.trim()) {
+      cache.migrationEmail = legacyAccount.email.trim().toLowerCase();
     }
-    if (account) {
-      localStorage.setItem(STORAGE_KEYS.USER_ACCOUNT, JSON.stringify(account));
-    }
-    if (simulatedOffline !== undefined) {
-      localStorage.setItem(STORAGE_KEYS.SIMULATED_OFFLINE, String(simulatedOffline));
-    }
-  } catch (e) {
-    console.warn('LocalStorage save error', e);
+  } catch {}
+
+  // Remove legacy copies only after the guest snapshot is safely persisted.
+  writeCache(cache);
+  for (const key of Object.values(STORAGE_KEYS)) localStorage.removeItem(key);
+  localStorage.removeItem('benbi_cross_tab_event');
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('benbi_cloud_db_')) localStorage.removeItem(key);
   }
-}
-
-/**
- * Fetches user data from real Cloud Storage (Vercel Blob via /api/sync)
- */
-export async function fetchCloudData(email: string): Promise<{
-  found: boolean;
-  data: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[]; settings?: AppSettings } | null;
-  lastSyncedAtMs?: number;
-}> {
-  const normalizedEmail = email.trim().toLowerCase();
-  try {
-    const res = await fetch(`/api/sync?email=${encodeURIComponent(normalizedEmail)}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      throw new Error(`Cloud fetch error: ${res.status}`);
-    }
-    const json = await res.json();
-    return {
-      found: Boolean(json.found),
-      data: json.data || null,
-      lastSyncedAtMs: json.lastSyncedAtMs || Date.now(),
-    };
-  } catch (err) {
-    console.warn('fetchCloudData network error, checking local backup', err);
-    const cloudKey = `benbi_cloud_db_${normalizedEmail}`;
-    const raw = localStorage.getItem(cloudKey);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        return { found: true, data: parsed, lastSyncedAtMs: Date.now() };
-      } catch {}
-    }
-    return { found: false, data: null };
-  }
-}
-
-/**
- * Cloud Sync:
- * Synchronizes pending items (`sync_status === 1`) to real cloud storage (/api/sync)
- * backed by Vercel Blob with offline queue support.
- */
-export async function syncDataToCloud(
-  account: UserAccount,
-  local: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] },
-  isOffline: boolean
-): Promise<{
-  success: boolean;
-  syncedTasks: TaskItem[];
-  syncedSessions: TimeSession[];
-  syncedLogs: HabitDailyLog[];
-  updatedAccount: UserAccount;
-  message: string;
-}> {
-  if (isOffline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-    return {
-      success: false,
-      syncedTasks: local.tasks,
-      syncedSessions: local.sessions,
-      syncedLogs: local.logs,
-      updatedAccount: account,
-      message: 'Thiết bị đang ở chế độ Ngoại tuyến (Offline). Thay đổi được giữ trong hàng đợi cục bộ.',
-    };
-  }
-
-  // If user is anonymous, save to local simulated store
-  if (!account.email) {
-    const cloudKey = `benbi_cloud_db_${account.id}`;
-    let cloudDb: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] } = {
-      tasks: [],
-      sessions: [],
-      logs: [],
-    };
-    try {
-      const raw = localStorage.getItem(cloudKey);
-      if (raw) cloudDb = JSON.parse(raw);
-    } catch {}
-    const merged = mergeLocalAndCloudData(local, cloudDb);
-    try {
-      localStorage.setItem(cloudKey, JSON.stringify(merged));
-    } catch {}
-    return {
-      success: true,
-      syncedTasks: merged.tasks,
-      syncedSessions: merged.sessions,
-      syncedLogs: merged.logs,
-      updatedAccount: { ...account, lastSyncedAtMs: Date.now() },
-      message: 'Đã lưu bản sao dữ liệu cục bộ.',
-    };
-  }
-
-  const normalizedEmail = account.email.trim().toLowerCase();
-
-  try {
-    const res = await fetch('/api/sync', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: normalizedEmail,
-        tasks: local.tasks,
-        sessions: local.sessions,
-        logs: local.logs,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Sync HTTP status: ${res.status}`);
-    }
-
-    const json = await res.json();
-    if (json.success && json.data) {
-      const cloudData = json.data;
-      const updatedAccount: UserAccount = {
-        ...account,
-        lastSyncedAtMs: json.lastSyncedAtMs || Date.now(),
-      };
-
-      try {
-        localStorage.setItem(`benbi_cloud_db_${normalizedEmail}`, JSON.stringify(cloudData));
-      } catch {}
-
-      return {
-        success: true,
-        syncedTasks: cloudData.tasks.map((t: TaskItem) => ({ ...t, sync_status: 0 })),
-        syncedSessions: cloudData.sessions.map((s: TimeSession) => ({ ...s, sync_status: 0 })),
-        syncedLogs: cloudData.logs.map((l: HabitDailyLog) => ({ ...l, sync_status: 0 })),
-        updatedAccount,
-        message: 'Đã đồng bộ thành công toàn bộ dữ liệu lên đám mây.',
-      };
-    } else {
-      throw new Error(json.error || 'Sync returned failure');
-    }
-  } catch (err: any) {
-    console.warn('Real cloud sync failed, using offline fallback', err);
-    const cloudKey = `benbi_cloud_db_${normalizedEmail}`;
-    let cloudDb: { tasks: TaskItem[]; sessions: TimeSession[]; logs: HabitDailyLog[] } = {
-      tasks: [],
-      sessions: [],
-      logs: [],
-    };
-    try {
-      const raw = localStorage.getItem(cloudKey);
-      if (raw) cloudDb = JSON.parse(raw);
-    } catch {}
-    const merged = mergeLocalAndCloudData(local, cloudDb);
-    try {
-      localStorage.setItem(cloudKey, JSON.stringify(merged));
-    } catch {}
-
-    return {
-      success: false,
-      syncedTasks: local.tasks,
-      syncedSessions: local.sessions,
-      syncedLogs: local.logs,
-      updatedAccount: account,
-      message: 'Không thể kết nối đến máy chủ đám mây. Dữ liệu đã được lưu an toàn trong thiết bị.',
-    };
-  }
+  return cache;
 }
 
 /**
@@ -490,18 +397,17 @@ export function parseFullBackupJSON(jsonStr: string): {
   tasks: TaskItem[];
   sessions: TimeSession[];
   logs: HabitDailyLog[];
-  settings?: AppSettings;
+  settings: AppSettings;
 } | null {
   try {
     const parsed = JSON.parse(jsonStr);
-    if (!parsed || !Array.isArray(parsed.tasks)) {
-      return null;
-    }
+    if (!parsed || !Array.isArray(parsed.tasks)) return null;
+    const snapshot = parseLegacySnapshot(parsed);
     return {
-      tasks: parsed.tasks,
-      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-      logs: Array.isArray(parsed.logs) ? parsed.logs : [],
-      settings: parsed.settings,
+      tasks: snapshot.tasks,
+      sessions: snapshot.sessions,
+      logs: snapshot.logs,
+      settings: snapshot.settings,
     };
   } catch {
     return null;

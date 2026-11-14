@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Sparkles,
   HeartPulse,
@@ -21,36 +21,29 @@ import {
 } from 'lucide-react';
 import {
   TaskItem,
-  TimeSession,
   HabitDailyLog,
   TaskCategory,
   TaskMode,
-  UserAccount,
-  RealtimeSyncPayload,
   RetroactiveConfirmation,
   getLogicalDate,
   getPreviousLogicalDate,
   calculateEarnedShields,
   calculateCheckpoint,
-  countPendingSync,
   formatClockTime,
   formatDuration,
   getEffectiveTargetDurationMs,
   evaluateDailyRollover,
   getMillisecondsUntilRollover,
-  mergeLocalAndCloudData,
 } from './utils/engine';
 import { soundEngine } from './utils/audio';
 import {
-  loadStoredData,
-  saveStoredData,
-  syncDataToCloud,
-  fetchCloudData,
   getCleanStarterTasks,
   getInitialSeedTasks,
   exportFullBackupJSON,
+  exportRecoveryJSON,
   parseFullBackupJSON,
 } from './utils/storage';
+import { useCloudSync } from './utils/useCloudSync';
 import { useWakeLock } from './utils/useWakeLock';
 import { usePWAInstall } from './utils/usePWAInstall';
 import { notificationService } from './utils/notifications';
@@ -72,27 +65,45 @@ import { ZenFocusModal } from './components/ZenFocusModal';
 import { WelcomeModal } from './components/WelcomeModal';
 
 export default function App() {
-  // App State
+  // The sync hook owns the canonical data and per-account offline cache.
+  const {
+    tasks, sessions, logs, settings, account,
+    setTasks, setSessions, setLogs, setSettings, replaceData,
+    isSyncing, syncError, syncNow, sendOtp, verifyOtp, logout, cloudEnabled,
+    isOffline, isSimulatedOffline, setIsSimulatedOffline, isLoadingAccount, pendingSyncCount,
+    needsAuthentication, recoveryAvailable,
+  } = useCloudSync();
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [sessions, setSessions] = useState<TimeSession[]>([]);
-  const [logs, setLogs] = useState<HabitDailyLog[]>([]);
-  const [account, setAccount] = useState<UserAccount>({
-    id: 'anon_init',
-    email: null,
-    isAnonymous: true,
-    provider: 'anonymous',
-    lastSyncedAtMs: null,
-    createdAtMs: Date.now(),
-  });
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [wakeLockRequested, setWakeLockRequested] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [devModeEnabled, setDevModeEnabled] = useState(false);
-  const [isSimulatedOffline, setIsSimulatedOffline] = useState(false);
+  const soundEnabled = settings.soundEnabled;
+  const wakeLockRequested = settings.wakeLockRequested;
+  const darkMode = !!settings.darkMode;
+  const devModeEnabled = !!settings.devModeEnabled;
+  const setSoundEnabled = useCallback((value: React.SetStateAction<boolean>) => {
+    setSettings((current) => ({
+      ...current,
+      soundEnabled: typeof value === 'function' ? value(current.soundEnabled) : value,
+    }));
+  }, [setSettings]);
+  const setWakeLockRequested = useCallback((value: React.SetStateAction<boolean>) => {
+    setSettings((current) => ({
+      ...current,
+      wakeLockRequested: typeof value === 'function' ? value(current.wakeLockRequested) : value,
+    }));
+  }, [setSettings]);
+  const setDarkMode = useCallback((value: React.SetStateAction<boolean>) => {
+    setSettings((current) => ({
+      ...current,
+      darkMode: typeof value === 'function' ? value(!!current.darkMode) : value,
+    }));
+  }, [setSettings]);
+  const setDevModeEnabled = useCallback((value: React.SetStateAction<boolean>) => {
+    setSettings((current) => ({
+      ...current,
+      devModeEnabled: typeof value === 'function' ? value(!!current.devModeEnabled) : value,
+    }));
+  }, [setSettings]);
   const [currentCategory, setCurrentCategory] = useState<'all' | TaskCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
 
   // Realtime cross-tab state tracking
   const [lastRealtimeMessage, setLastRealtimeMessage] = useState<string | null>(null);
@@ -113,6 +124,8 @@ export default function App() {
   const [isPWAGuideOpen, setIsPWAGuideOpen] = useState(false);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [accountActionError, setAccountActionError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Special Psychology Modals
   const [milestoneTask, setMilestoneTask] = useState<TaskItem | null>(null);
@@ -137,27 +150,34 @@ export default function App() {
     }, 4000);
   }, []);
 
-  // Load from local storage on mount + Run Daily Rollover & Retroactive checks
+  // Clear task selections only when the account changes, never during routine sync.
+  const selectedAccountId = useRef(account.id);
   useEffect(() => {
-    const loaded = loadStoredData();
+    if (selectedAccountId.current === account.id) return;
+    selectedAccountId.current = account.id;
+    setStatsModalTaskId(null);
+    setBreakStreakModalTaskId(null);
+    setBreakStreakMissedDays(1);
+    setZenFocusTaskId(null);
+    setEditingTask(null);
+    setIsAddTaskModalOpen(false);
+    setMilestoneTask(null);
+    setRetroactiveItem(null);
+    setIdleDetectionTask(null);
+    setIdleRawDurationMs(0);
+    setLastRealtimeMessage(null);
+    setAccountActionError(null);
+  }, [account.id]);
+
+  // The hook provides cached data immediately; run initial rollover and welcome checks once.
+  useEffect(() => {
     const now = Date.now();
     const currentLogicalDate = getLogicalDate(now, 4);
     const yesterdayDate = getPreviousLogicalDate(currentLogicalDate);
 
-    // Evaluate daily rollover (04:00 AM reset + automatic streak break detection)
-    const rollover = evaluateDailyRollover(loaded.tasks, currentLogicalDate, now);
-    const initialTasks = rollover.hasChanges ? rollover.updatedTasks : loaded.tasks;
-
-    setTasks(initialTasks);
-    setSessions(loaded.sessions);
-    setLogs(loaded.logs);
-    setAccount(loaded.account);
-    setSoundEnabled(loaded.settings.soundEnabled);
-    setWakeLockRequested(loaded.settings.wakeLockRequested);
-    setDarkMode(!!loaded.settings.darkMode);
-    setDevModeEnabled(!!loaded.settings.devModeEnabled);
-    setIsSimulatedOffline(loaded.simulatedOffline);
-    soundEngine.setMuted(!loaded.settings.soundEnabled);
+    const rollover = evaluateDailyRollover(tasks, currentLogicalDate, now);
+    const initialTasks = rollover.hasChanges ? rollover.updatedTasks : tasks;
+    if (rollover.hasChanges) setTasks(initialTasks);
 
     if (notificationService.isSupported()) {
       setNotificationPermission(notificationService.getPermission());
@@ -206,134 +226,16 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // Save to local storage whenever data changes
+  // Apply sound preferences from local edits, imports, and cloud updates alike.
   useEffect(() => {
-    if (!dataLoaded) return;
-    saveStoredData(
-      tasks,
-      sessions,
-      logs,
-      {
-        soundEnabled,
-        wakeLockRequested,
-        dayRolloverHour: 4,
-        notificationsEnabled: notificationPermission === 'granted',
-        darkMode,
-        devModeEnabled,
-      },
-      account,
-      isSimulatedOffline
-    );
-  }, [
-    tasks,
-    sessions,
-    logs,
-    soundEnabled,
-    wakeLockRequested,
-    darkMode,
-    devModeEnabled,
-    account,
-    isSimulatedOffline,
-    notificationPermission,
-    dataLoaded,
-  ]);
-
-  // Background refresh on startup: pull any changes made on other devices without wiping pending local items
-  useEffect(() => {
-    if (!dataLoaded || account.isAnonymous || !account.email || isSimulatedOffline) {
-      return;
-    }
-    fetchCloudData(account.email).then((cloud) => {
-      if (cloud.found && cloud.data) {
-        const cloudTasks = cloud.data.tasks || [];
-        const cloudSessions = cloud.data.sessions || [];
-        const cloudLogs = cloud.data.logs || [];
-
-        setTasks((prevTasks) => {
-          const cloudTaskIds = new Set(cloudTasks.map((t: TaskItem) => t.id));
-          const pendingOrNewLocal = prevTasks.filter(
-            (t) => t.sync_status === 1 || !cloudTaskIds.has(t.id)
-          );
-
-          const localMap = new Map(prevTasks.map((t) => [t.id, t]));
-          const resolvedCloudTasks = cloudTasks.map((ct: TaskItem) => {
-            const local = localMap.get(ct.id);
-            if (local && (local.updated_at_ms || 0) > (ct.updated_at_ms || 0)) {
-              return local;
-            }
-            return ct;
-          });
-
-          const mergedTasks = [...resolvedCloudTasks, ...pendingOrNewLocal];
-          saveStoredData(mergedTasks, cloudSessions, cloudLogs, undefined, account, false);
-
-          if (pendingOrNewLocal.length > 0) {
-            syncDataToCloud(
-              account,
-              { tasks: mergedTasks, sessions: cloudSessions, logs: cloudLogs },
-              false
-            ).catch(console.warn);
-          }
-
-          return mergedTasks;
-        });
-
-        setSessions(cloudSessions);
-        setLogs(cloudLogs);
-      }
-    }).catch((e) => console.warn('Background sync on mount failed', e));
-  }, [account.email, account.isAnonymous, dataLoaded, isSimulatedOffline]);
-
-  // Online auto-sync listener
-  useEffect(() => {
-    const handleOnline = () => {
-      if (!account.isAnonymous && account.email && !isSimulatedOffline) {
-        syncDataToCloud(account, { tasks, sessions, logs }, false).then((res) => {
-          if (res.success) {
-            setTasks(res.syncedTasks);
-            setSessions(res.syncedSessions);
-            setLogs(res.syncedLogs);
-            setAccount(res.updatedAccount);
-            showToast('🟢 Đã kết nối mạng trở lại & đồng bộ đám mây thành công.');
-          }
-        });
-      }
-    };
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, [account, tasks, sessions, logs, isSimulatedOffline, showToast]);
-
-  // Debounced auto-sync when tasks, sessions or logs change
-  useEffect(() => {
-    if (!dataLoaded || account.isAnonymous || !account.email || isSimulatedOffline || isSyncing) {
-      return;
-    }
-    const hasPending =
-      tasks.some((t) => t.sync_status === 1) ||
-      sessions.some((s) => s.sync_status === 1) ||
-      logs.some((l) => l.sync_status === 1);
-
-    if (!hasPending) return;
-
-    const timer = setTimeout(() => {
-      syncDataToCloud(account, { tasks, sessions, logs }, false).then((res) => {
-        if (res.success) {
-          setTasks(res.syncedTasks);
-          setSessions(res.syncedSessions);
-          setLogs(res.syncedLogs);
-          setAccount(res.updatedAccount);
-        }
-      });
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, [tasks, sessions, logs, account, isSimulatedOffline, isSyncing, dataLoaded]);
+    soundEngine.setMuted(!soundEnabled);
+  }, [soundEnabled]);
 
   // Delta-Timestamp Engine: Update current time tick & check live 04:00 AM rollover
   const currentLogicalDate = getLogicalDate(currentTimeMs, 4);
 
   useEffect(() => {
-    if (!dataLoaded) return;
+    if (!dataLoaded || isLoadingAccount) return;
     const rollover = evaluateDailyRollover(tasks, currentLogicalDate, Date.now());
     if (rollover.hasChanges) {
       setTasks(rollover.updatedTasks);
@@ -342,7 +244,7 @@ export default function App() {
         setBreakStreakMissedDays(rollover.detectedBreak.missedDays);
       }
     }
-  }, [currentLogicalDate, dataLoaded, tasks]);
+  }, [currentLogicalDate, dataLoaded, isLoadingAccount, tasks, setTasks]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -362,86 +264,9 @@ export default function App() {
     };
   }, []);
 
-  // Realtime Cross-Tab / Cross-Device Sync Listener
-  useEffect(() => {
-    const unsubscribe = realtimeManager.subscribe((payload: RealtimeSyncPayload) => {
-      const timeStr = formatClockTime(payload.timestamp);
-
-      if (payload.type === 'TIMER_START' && payload.taskId) {
-        setLastRealtimeMessage(`[${timeStr}] Bắt đầu chạy tác vụ từ thiết bị khác`);
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === payload.taskId
-              ? {
-                  ...t,
-                  status: 'running',
-                  startedAtMs: payload.startedAtMs || Date.now(),
-                  accumulatedMs: payload.accumulatedMs ?? t.accumulatedMs,
-                }
-              : t
-          )
-        );
-      } else if (payload.type === 'TIMER_PAUSE' && payload.taskId) {
-        setLastRealtimeMessage(`[${timeStr}] Tạm dừng tác vụ từ thiết bị khác`);
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === payload.taskId
-              ? {
-                  ...t,
-                  status: 'paused',
-                  startedAtMs: null,
-                  accumulatedMs: payload.accumulatedMs ?? t.accumulatedMs,
-                }
-              : t
-          )
-        );
-      } else if (payload.type === 'TIMER_RESET' && payload.taskId) {
-        setLastRealtimeMessage(`[${timeStr}] Đặt lại tác vụ từ thiết bị khác`);
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === payload.taskId
-              ? {
-                  ...t,
-                  status: 'idle',
-                  startedAtMs: null,
-                  accumulatedMs: 0,
-                }
-              : t
-          )
-        );
-      } else if (payload.type === 'HABIT_CONFIRM' && payload.taskId) {
-        setLastRealtimeMessage(`[${timeStr}] Xác nhận hoàn thành thói quen từ thiết bị khác`);
-        soundEngine.playSuccessChime();
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === payload.taskId
-              ? {
-                  ...t,
-                  status: 'completed_today',
-                  currentStreak: payload.newStreak ?? t.currentStreak + 1,
-                  shields: payload.shields ?? t.shields,
-                  inCompensationQuest: false,
-                  startedAtMs: null,
-                  accumulatedMs: getEffectiveTargetDurationMs(t),
-                }
-              : t
-          )
-        );
-      } else if (payload.type === 'DATA_MERGE' && payload.dataSnapshot) {
-        setLastRealtimeMessage(`[${timeStr}] Nhận gói dữ liệu đồng bộ đám mây`);
-        setTasks(payload.dataSnapshot.tasks);
-        setSessions(payload.dataSnapshot.sessions);
-        setLogs(payload.dataSnapshot.logs);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
   // Habit countdown completion detector: 00:00 -> PENDING_CONFIRMATION + FM Chime + Push Notification!
   useEffect(() => {
+    if (!dataLoaded || isLoadingAccount) return;
     tasks.forEach((task) => {
       if (task.mode === 'habit' && task.status === 'running' && task.startedAtMs !== null) {
         const effectiveTargetMs = getEffectiveTargetDurationMs(task);
@@ -472,10 +297,11 @@ export default function App() {
         }
       }
     });
-  }, [currentTimeMs, tasks]);
+  }, [currentTimeMs, tasks, dataLoaded, isLoadingAccount, setTasks]);
 
   // Idle Timer Detection (> 180 min continuous session for Project mode)
   useEffect(() => {
+    if (!dataLoaded || isLoadingAccount) return;
     tasks.forEach((task) => {
       if (task.mode === 'project' && task.status === 'running' && task.startedAtMs !== null) {
         const continuousRunMs = currentTimeMs - task.startedAtMs;
@@ -504,7 +330,7 @@ export default function App() {
         }
       }
     });
-  }, [currentTimeMs, tasks]);
+  }, [currentTimeMs, tasks, dataLoaded, isLoadingAccount, setTasks]);
 
   // Toggle Timer (Single Tap) with Atomic Local Write & Realtime Broadcast
   const handleToggleTimer = useCallback((taskId: string) => {
@@ -567,7 +393,7 @@ export default function App() {
   }, []);
 
   // Media Session API: Bind lock screen controls to active running task
-  const runningTask = tasks.find((t) => t.status === 'running') || null;
+  const runningTask = isLoadingAccount ? null : tasks.find((t) => t.status === 'running') || null;
   useEffect(() => {
     setupMediaSession(runningTask, {
       onPlay: () => {
@@ -1009,16 +835,8 @@ export default function App() {
       setLogs(remainingLogs);
       setStatsModalTaskId(null);
       showToast('Đã xóa tác vụ thành công.');
-
-      if (!account.isAnonymous && account.email && !isSimulatedOffline) {
-        syncDataToCloud(
-          account,
-          { tasks: remainingTasks, sessions: remainingSessions, logs: remainingLogs },
-          false
-        ).catch(console.warn);
-      }
     },
-    [tasks, sessions, logs, account, isSimulatedOffline, showToast]
+    [tasks, sessions, logs, setTasks, setSessions, setLogs, showToast]
   );
 
   // Streak Break Recoveries
@@ -1150,6 +968,10 @@ export default function App() {
         | 'updated_at_ms'
       >
     ) => {
+      if (tasks.length >= 24) {
+        showToast('Đã đạt giới hạn tối đa 24 tác vụ. Vui lòng hoàn tất hoặc xóa bớt tác vụ.');
+        return;
+      }
       soundEngine.playSoftChime(659.25, 0.25, 0.5);
       const now = Date.now();
       const newTask: TaskItem = {
@@ -1166,41 +988,15 @@ export default function App() {
         updated_at_ms: now,
       };
 
-      let didAdd = false;
-      let updatedTasksList: TaskItem[] = [];
-
-      setTasks((prev) => {
-        if (prev.length >= 24) {
-          showToast('⚠️ Đã đạt giới hạn tối đa 24 tác vụ. Vui lòng hoàn tất hoặc xóa bớt tác vụ.');
-          return prev;
-        }
-        didAdd = true;
-        updatedTasksList = [newTask, ...prev];
-        return updatedTasksList;
-      });
-
-      if (!didAdd) return;
-
-      // Persist immediately to localStorage
-      saveStoredData(updatedTasksList, sessions, logs, undefined, account, isSimulatedOffline);
+      setTasks((prev) => [newTask, ...prev]);
 
       // Reset category filter & search query so the newly created task is always visible immediately
       setCurrentCategory('all');
       setSearchQuery('');
 
       showToast(`Đã tạo tác vụ "${newTask.name}".`);
-
-      // If signed in with email, sync immediately to cloud without waiting for debounce
-      if (!account.isAnonymous && account.email && !isSimulatedOffline) {
-        syncDataToCloud(account, { tasks: updatedTasksList, sessions, logs }, false).then((res) => {
-          if (res.success) {
-            setTasks(res.syncedTasks);
-            setAccount(res.updatedAccount);
-          }
-        }).catch(console.warn);
-      }
     },
-    [sessions, logs, account, isSimulatedOffline, showToast]
+    [tasks, setTasks, showToast]
   );
 
   // Edit Existing Task
@@ -1238,14 +1034,7 @@ export default function App() {
 
   // Backup & Restore JSON + Starter Reset Handlers
   const handleExportBackupJSON = useCallback(() => {
-    const json = exportFullBackupJSON(tasks, sessions, logs, {
-      soundEnabled,
-      wakeLockRequested,
-      dayRolloverHour: 4,
-      notificationsEnabled: notificationPermission === 'granted',
-      darkMode,
-      devModeEnabled,
-    });
+    const json = exportFullBackupJSON(tasks, sessions, logs, settings);
     const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1254,72 +1043,41 @@ export default function App() {
     a.click();
     URL.revokeObjectURL(url);
     showToast('📦 Đã tải xuống file sao lưu dữ liệu (.json) thành công!');
-  }, [
-    tasks,
-    sessions,
-    logs,
-    soundEnabled,
-    wakeLockRequested,
-    notificationPermission,
-    darkMode,
-    devModeEnabled,
-    showToast,
-  ]);
+  }, [tasks, sessions, logs, settings, showToast]);
+
+  const handleExportRecovery = useCallback(() => {
+    const blob = new Blob([exportRecoveryJSON()], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ben-bi-recovery-${getLogicalDate(Date.now(), 4)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
 
   const handleImportBackupJSON = useCallback(
     (jsonStr: string): boolean => {
       const parsed = parseFullBackupJSON(jsonStr);
       if (!parsed) return false;
-      setTasks(parsed.tasks);
-      setSessions(parsed.sessions);
-      setLogs(parsed.logs);
-      if (parsed.settings) {
-        if (parsed.settings.darkMode !== undefined) setDarkMode(parsed.settings.darkMode);
-        if (parsed.settings.soundEnabled !== undefined) {
-          setSoundEnabled(parsed.settings.soundEnabled);
-          soundEngine.setMuted(!parsed.settings.soundEnabled);
-        }
-      }
+      replaceData(parsed);
       soundEngine.playSuccessChime();
       showToast('✅ Đã khôi phục toàn bộ dữ liệu từ bản sao lưu!');
       return true;
     },
-    [showToast]
+    [replaceData, showToast]
   );
 
   const handleResetToCleanStarter = useCallback(() => {
-    const clean = getCleanStarterTasks();
-    setTasks(clean.tasks);
-    setSessions(clean.sessions);
-    setLogs(clean.logs);
+    replaceData(getCleanStarterTasks());
     soundEngine.playSoftChime(523.25, 0.25, 0.5);
     showToast('🌱 Đã đặt lại toàn bộ chuỗi về Ngày 0 để bạn bắt đầu hành trình thực tế!');
-
-    if (!account.isAnonymous && account.email && !isSimulatedOffline) {
-      syncDataToCloud(
-        account,
-        { tasks: clean.tasks, sessions: clean.sessions, logs: clean.logs },
-        false
-      ).catch(console.warn);
-    }
-  }, [account, isSimulatedOffline, showToast]);
+  }, [replaceData, showToast]);
 
   const handleLoadDemoSeed = useCallback(() => {
-    const seed = getInitialSeedTasks();
-    setTasks(seed.tasks);
-    setSessions(seed.sessions);
-    setLogs(seed.logs);
+    replaceData(getInitialSeedTasks());
     soundEngine.playSoftChime(659.25, 0.25, 0.5);
     showToast('✨ Đã nạp bộ dữ liệu mẫu 21 ngày để trải nghiệm tính năng!');
-
-    if (!account.isAnonymous && account.email && !isSimulatedOffline) {
-      syncDataToCloud(
-        account,
-        { tasks: seed.tasks, sessions: seed.sessions, logs: seed.logs },
-        false
-      ).catch(console.warn);
-    }
-  }, [account, isSimulatedOffline, showToast]);
+  }, [replaceData, showToast]);
 
   const handleCloseWelcomeModal = useCallback((dontShowAgain: boolean) => {
     setIsWelcomeModalOpen(false);
@@ -1332,166 +1090,49 @@ export default function App() {
     } catch {}
   }, []);
 
-  // Cloud Sync Handler (Converts sync_status = 1 -> 0)
+  // Only report cloud success when the hook confirms a completed sync.
   const handleTriggerSyncNow = useCallback(async () => {
+    if (account.isAnonymous) {
+      showToast('Vui lòng đăng nhập bằng email đã xác thực để đồng bộ đám mây.');
+      return;
+    }
     if (isSyncing) return;
-    setIsSyncing(true);
 
     try {
-      const result = await syncDataToCloud(account, { tasks, sessions, logs }, isSimulatedOffline);
-      if (result.success) {
-        setTasks(result.syncedTasks);
-        setSessions(result.syncedSessions);
-        setLogs(result.syncedLogs);
-        setAccount(result.updatedAccount);
+      const saved = await syncNow();
+      if (saved) {
         soundEngine.playSoftChime(880, 0.15, 0.3);
-        showToast(result.message);
-
-        realtimeManager.publish({
-          type: 'DATA_MERGE',
-          dataSnapshot: {
-            tasks: result.syncedTasks,
-            sessions: result.syncedSessions,
-            logs: result.syncedLogs,
-          },
-        });
+        showToast('Đã đồng bộ với đám mây thành công.');
       } else {
-        showToast(result.message);
+        showToast(
+          !cloudEnabled
+            ? 'Chưa cấu hình đồng bộ đám mây. Dữ liệu chỉ nằm trên thiết bị.'
+            : isOffline
+            ? 'Đang ngoại tuyến. Thay đổi đang chờ đồng bộ trên thiết bị.'
+            : 'Chưa đồng bộ được. Xem lỗi trong phần tài khoản và thử lại.'
+        );
       }
-    } catch (e) {
-      console.warn('Sync failed:', e);
-      showToast('Đồng bộ thất bại. Vui lòng kiểm tra kết nối.');
-    } finally {
-      setIsSyncing(false);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Đồng bộ thất bại. Vui lòng thử lại.');
     }
-  }, [account, tasks, sessions, logs, isSimulatedOffline, isSyncing, showToast]);
+  }, [account.isAnonymous, isSyncing, syncNow, cloudEnabled, isOffline, showToast]);
 
-  // Auth: Email Login & Cross-Device Cloud Sync
-  const handleLoginSuccess = useCallback(
-    async (
-      email: string,
-      provider: 'email_sync' | 'mock_otp' | 'supabase' = 'email_sync',
-      supabaseUrl?: string,
-      supabaseAnonKey?: string
-    ) => {
-      const normalizedEmail = email.trim().toLowerCase();
-      setIsSyncing(true);
-
-      try {
-        // Step 1: Check if this email already has data in Vercel Blob cloud
-        const cloudResult = await fetchCloudData(normalizedEmail);
-
-        let finalTasks = tasks;
-        let finalSessions = sessions;
-        let finalLogs = logs;
-
-        const updatedAccount: UserAccount = {
-          id: `user_${normalizedEmail.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
-          email: normalizedEmail,
-          isAnonymous: false,
-          provider,
-          supabaseUrl,
-          supabaseAnonKey,
-          lastSyncedAtMs: Date.now(),
-          createdAtMs: account.createdAtMs || Date.now(),
-        };
-
-        if (cloudResult.found && cloudResult.data) {
-          // Cloud data exists for this email!
-          // Restore user's real cloud account data, without polluting it with default mock seed data from Device B
-          const seedIds = new Set([
-            'task-read-30-uuid',
-            'task-meditation-15-uuid',
-            'task-project-frontend-uuid',
-            'task-pushups-core-uuid',
-            'task-project-english-uuid',
-          ]);
-
-          const cloudTasks = cloudResult.data.tasks || [];
-          const cloudSessions = cloudResult.data.sessions || [];
-          const cloudLogs = cloudResult.data.logs || [];
-
-          // Only merge local tasks if user actually created a brand new custom task while anonymous
-          const cloudTaskIds = new Set(cloudTasks.map((t: TaskItem) => t.id));
-          const localCustomTasks = tasks.filter(
-            (t) => !seedIds.has(t.id) && !cloudTaskIds.has(t.id)
-          );
-
-          const finalTasks = [...cloudTasks, ...localCustomTasks];
-          const finalSessions = cloudSessions;
-          const finalLogs = cloudLogs;
-
-          setTasks(finalTasks);
-          setSessions(finalSessions);
-          setLogs(finalLogs);
-          setAccount(updatedAccount);
-          saveStoredData(finalTasks, finalSessions, finalLogs, undefined, updatedAccount, false);
-          soundEngine.playSuccessChime();
-
-          showToast(
-            `🎉 Chào mừng trở lại! Đã khôi phục thành công ${finalTasks.length} tác vụ từ tài khoản ${normalizedEmail}.`
-          );
-
-          // If there were new local custom tasks merged in, sync back to cloud
-          if (localCustomTasks.length > 0) {
-            await syncDataToCloud(
-              updatedAccount,
-              { tasks: finalTasks, sessions: finalSessions, logs: finalLogs },
-              isSimulatedOffline
-            );
-          }
-        } else {
-          // First time this email logs in: upload current local tasks to cloud!
-          setAccount(updatedAccount);
-          saveStoredData(tasks, sessions, logs, undefined, updatedAccount, false);
-          soundEngine.playSuccessChime();
-
-          const syncRes = await syncDataToCloud(
-            updatedAccount,
-            { tasks, sessions, logs },
-            isSimulatedOffline
-          );
-          if (syncRes.success) {
-            setTasks(syncRes.syncedTasks);
-            setSessions(syncRes.syncedSessions);
-            setLogs(syncRes.syncedLogs);
-            setAccount(syncRes.updatedAccount);
-            showToast(
-              `✨ Đã kích hoạt tài khoản ${normalizedEmail} & bảo vệ toàn bộ dữ liệu trên đám mây!`
-            );
-          } else {
-            showToast(`Đã liên kết email ${normalizedEmail}. Dữ liệu đang được lưu an toàn.`);
-          }
-        }
-      } catch (err) {
-        console.error('Login sync error:', err);
-        showToast('Có lỗi xảy ra khi đồng bộ đám mây. Vui lòng thử lại.');
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [account, tasks, sessions, logs, isSimulatedOffline, showToast]
-  );
-
-  // Auth: Logout
-  const handleLogout = useCallback(() => {
-    const anonymousAccount: UserAccount = {
-      id: `anon_${Math.random().toString(36).substring(2, 10)}`,
-      email: null,
-      isAnonymous: true,
-      provider: 'anonymous',
-      lastSyncedAtMs: null,
-      createdAtMs: Date.now(),
-    };
-    setAccount(anonymousAccount);
-    soundEngine.playTap(false);
-    showToast('Đã đăng xuất. Dữ liệu trên thiết bị vẫn được bảo toàn.');
-  }, [showToast]);
+  const handleLogout = useCallback(async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      soundEngine.playTap(false);
+      showToast('Đã đăng xuất. Bạn đang sử dụng chế độ khách.');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }, [logout, showToast]);
 
   // Request Notification Permission
   const handleRequestNotificationPermission = useCallback(async () => {
     const result = await notificationService.requestPermission();
     setNotificationPermission(result);
+    setSettings((current) => ({ ...current, notificationsEnabled: result === 'granted' }));
     if (result === 'granted') {
       notificationService.sendNotification(
         '🔔 Bền Bỉ Tới Cùng',
@@ -1501,7 +1142,7 @@ export default function App() {
     } else {
       showToast('Quyền thông báo bị từ chối.');
     }
-  }, [showToast]);
+  }, [setSettings, showToast]);
 
   const handleTestNotification = useCallback(() => {
     notificationService.sendNotification(
@@ -1584,17 +1225,16 @@ export default function App() {
     if (nextVal) {
       soundEngine.playSoftChime(523.25, 0.2, 0.3);
     }
-  }, [soundEnabled]);
+  }, [soundEnabled, setSoundEnabled]);
 
   // Toggle Wake Lock
   const handleToggleWakeLock = useCallback(() => {
     setWakeLockRequested((prev) => !prev);
-  }, []);
+  }, [setWakeLockRequested]);
 
   // Global counts & Daily Command Center Metrics
   const totalShields = tasks.reduce((acc, t) => acc + t.shields, 0);
   const totalActiveStreaks = tasks.filter((t) => t.currentStreak > 0).length;
-  const pendingSyncCount = countPendingSync(tasks, sessions, logs);
 
   const habitTasks = tasks.filter((t) => t.mode === 'habit');
   const completedHabitsToday = habitTasks.filter((t) => t.status === 'completed_today').length;
@@ -1650,7 +1290,10 @@ export default function App() {
   const selectedZenTask = tasks.find((t) => t.id === zenFocusTaskId) || null;
 
   return (
+    <>
     <div
+      inert={isLoadingAccount}
+      aria-hidden={isLoadingAccount || undefined}
       className={`min-h-screen flex flex-col font-sans selection:bg-[#FF6B00] selection:text-white pb-24 transition-colors ${
         darkMode ? 'bg-[#0B1324] text-slate-100' : 'bg-[#F4F7FA] text-slate-800'
       }`}
@@ -1684,13 +1327,14 @@ export default function App() {
         account={account}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         pendingSyncCount={pendingSyncCount}
-        isSimulatedOffline={isSimulatedOffline}
+        isSimulatedOffline={isOffline}
         onTriggerSyncNow={handleTriggerSyncNow}
         isSyncing={isSyncing}
         isPWAInstallable={isPWAInstallable}
         onPromptInstall={promptInstall}
         onOpenPWAGuide={() => setIsPWAGuideOpen(true)}
         onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
+        needsReauth={needsAuthentication}
       />
 
       {/* Toast Alert Banner */}
@@ -2154,14 +1798,20 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         account={account}
-        onLoginSuccess={handleLoginSuccess}
+        onSendOtp={sendOtp}
+        onVerifyOtp={verifyOtp}
         onLogout={handleLogout}
+        cloudEnabled={cloudEnabled}
+        syncError={syncError}
         onTriggerSyncNow={handleTriggerSyncNow}
         isSyncing={isSyncing}
         onExportBackupJSON={handleExportBackupJSON}
         onImportBackupJSON={handleImportBackupJSON}
         onResetToCleanStarter={handleResetToCleanStarter}
         onLoadDemoSeed={handleLoadDemoSeed}
+        needsReauth={needsAuthentication}
+        recoveryAvailable={recoveryAvailable}
+        onExportRecovery={handleExportRecovery}
       />
 
       <PWAInstallGuideModal
@@ -2186,8 +1836,8 @@ export default function App() {
             setIsSimulatedOffline((prev) => !prev);
             showToast(
               !isSimulatedOffline
-                ? 'Đã chuyển sang chế độ Mất mạng (Offline).'
-                : 'Đã khôi phục kết nối mạng (Online).'
+                ? 'Đã bật mô phỏng ngoại tuyến.'
+                : 'Đã tắt mô phỏng ngoại tuyến. Kết nối thực tế tùy thuộc thiết bị.'
             );
           }}
           pendingSyncCount={pendingSyncCount}
@@ -2208,5 +1858,55 @@ export default function App() {
         />
       )}
     </div>
+    {isLoadingAccount && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="account-loading-title"
+        aria-describedby="account-loading-description"
+        className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/95 p-4"
+      >
+        <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl">
+          <h2 id="account-loading-title" className="text-lg font-bold">
+            {syncError ? 'Chưa tải được dữ liệu tài khoản' : 'Đang tải dữ liệu tài khoản'}
+          </h2>
+          <p id="account-loading-description" className="mt-3 text-sm text-slate-300" role={syncError ? 'alert' : 'status'}>
+            {syncError || 'Vui lòng chờ xác thực và tải dữ liệu trước khi tiếp tục.'}
+          </p>
+          {accountActionError && <p role="alert" className="mt-3 text-sm text-red-300">{accountActionError}</p>}
+          {(syncError || accountActionError) && (
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={isSyncing || isLoggingOut}
+                onClick={() => {
+                  setAccountActionError(null);
+                  void syncNow();
+                }}
+                className="rounded-lg bg-[#FF6B00] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {isSyncing ? 'Đang thử lại...' : 'Thử lại đồng bộ'}
+              </button>
+              <button
+                type="button"
+                disabled={isSyncing || isLoggingOut}
+                onClick={async () => {
+                  setAccountActionError(null);
+                  try {
+                    await handleLogout();
+                  } catch (error) {
+                    setAccountActionError(error instanceof Error ? error.message : 'Không đăng xuất được. Vui lòng thử lại.');
+                  }
+                }}
+                className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold disabled:opacity-50"
+              >
+                {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 }
