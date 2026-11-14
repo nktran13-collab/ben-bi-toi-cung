@@ -5,11 +5,17 @@
 }
 
 html {
-  font-size: 112.5%; /* Global 12.5% increase: base standard moves from 16px to 18px */
+  font-size: 100%; /* 16px on phones keeps pills/buttons at 44px instead of inflating to 50px */
   font-family: 'Nunito', 'Quicksand', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 112.5%; /* Desktop keeps the original 18px base */
+  }
 }
 
 body {

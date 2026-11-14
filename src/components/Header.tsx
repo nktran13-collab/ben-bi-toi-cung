@@ -189,28 +189,30 @@ export const Header: React.FC<HeaderProps> = ({
                 className="flex min-h-11 items-center gap-1.5 bg-rose-950/60 px-2.5 rounded-lg border border-rose-500/50 text-xs text-rose-200 sm:min-h-0 sm:py-1.5"
                 title="Thiết bị đang ở chế độ Ngoại tuyến (Offline). Thay đổi được ghi nguyên tử vào máy."
               >
-                <CloudOff className="w-3.5 h-3.5 text-rose-400" />
-                <span className="font-semibold">Offline ({pendingSyncCount})</span>
+                <CloudOff className="h-[18px] w-[18px] text-rose-400 sm:h-3.5 sm:w-3.5" />
+                <span className="font-semibold">
+                  Offline<span className="hidden sm:inline"> ({pendingSyncCount})</span>
+                </span>
               </div>
             ) : pendingSyncCount > 0 ? (
               <button
                 type="button"
                 onClick={onTriggerSyncNow}
                 disabled={isSyncing}
-                className="flex min-h-11 items-center gap-1.5 bg-[#FFF3E0] text-[#FF6B00] hover:bg-amber-100 px-2.5 rounded-lg border border-[#FF6B00]/40 text-xs font-semibold shadow-xs transition-colors cursor-pointer sm:min-h-0 sm:py-1.5"
+                className="flex min-h-11 items-center gap-1.5 bg-[#152a45] text-[#FCC934] hover:bg-[#3B6998]/60 px-2.5 rounded-lg border border-[#FF6B00]/60 text-xs font-semibold shadow-xs transition-colors cursor-pointer sm:min-h-0 sm:py-1.5"
                 title="Có bản ghi chờ đồng bộ. Bấm để đồng bộ ngay."
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-[18px] w-[18px] text-[#FCC934] sm:h-3.5 sm:w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Đồng bộ</span>
-                <span className="font-mono">({pendingSyncCount})</span>
+                <span className="font-mono text-[11px] leading-none">({pendingSyncCount})</span>
               </button>
             ) : (
               <div
                 className="flex min-h-11 items-center gap-1.5 bg-[#152a45] px-2.5 rounded-lg border border-[#81C995]/50 text-xs text-[#81C995] sm:min-h-0 sm:py-1.5"
                 title="Toàn bộ dữ liệu đã được lưu an toàn"
               >
-                <Cloud className="w-3.5 h-3.5 text-[#81C995]" />
-                <span className="font-semibold hidden md:inline">Đã lưu</span>
+                <Cloud className="h-[18px] w-[18px] text-[#81C995] sm:h-3.5 sm:w-3.5" />
+                <span className="font-semibold">Đã lưu</span>
               </div>
             )}
 
@@ -228,7 +230,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
               title={needsReauth ? 'Phiên đăng nhập đã hết hạn. Bấm để xác thực lại email.' : 'Quản lý Tài khoản, Đồng bộ Đám mây & Sao lưu JSON'}
             >
-              <User className="w-3.5 h-3.5 text-[#FCC934] shrink-0" />
+              <User className="h-[18px] w-[18px] text-[#FCC934] shrink-0 sm:h-3.5 sm:w-3.5" />
               <span className="hidden sm:inline max-w-[125px] truncate">
                 {account.isAnonymous ? 'Sao lưu / Cloud' : account.email?.split('@')[0]}
               </span>
@@ -240,8 +242,8 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex min-h-11 items-center gap-1 bg-[#152a45] px-2.5 rounded-lg border border-[#3B6998]/60 text-xs text-white sm:min-h-0 sm:py-1.5"
               title="Khiên Bền Bỉ tích luỹ (1 khiên mỗi 7 ngày chuỗi) dùng để bảo vệ chuỗi khi lỡ quên"
             >
-              <Shield className="w-3.5 h-3.5 text-[#FCC934] fill-[#FCC934]" />
-              <span className="font-bold font-mono">{totalShields}</span>
+              <Shield className="h-[18px] w-[18px] text-[#FCC934] fill-[#FCC934] sm:h-3.5 sm:w-3.5" />
+              <span className="font-bold font-mono text-[11px] leading-none">{totalShields}</span>
             </div>
           </div>
 
@@ -347,8 +349,8 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex min-h-11 flex-1 items-center justify-center gap-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 text-white text-xs font-bold px-3 rounded-lg shadow-sm transition-all cursor-pointer sm:min-h-0 sm:flex-none sm:py-1.5"
               title="Thêm tác vụ mới"
             >
-              <Plus className="w-4 h-4" />
-              <span className="inline sm:hidden">Tác vụ</span>
+              <Plus className="h-[18px] w-[18px] sm:h-4 sm:w-4" />
+              <span className="inline sm:hidden">Thêm</span>
               <span className="hidden sm:inline">Thêm tác vụ</span>
             </button>
 
@@ -362,7 +364,7 @@ export const Header: React.FC<HeaderProps> = ({
               aria-label="Mở menu cài đặt và tiện ích"
               className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[#3B6998]/60 bg-[#152a45] text-[#E8F0FE] transition-colors hover:bg-[#3B6998] cursor-pointer sm:hidden"
             >
-              <MoreVertical className="w-5 h-5" />
+              <MoreVertical className="h-[18px] w-[18px]" />
             </button>
           </div>
         </div>

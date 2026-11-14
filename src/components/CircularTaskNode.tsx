@@ -261,7 +261,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
 
       {/* SVG Circular Node */}
       <div
-        className="relative w-28 h-28 sm:w-44 sm:h-44 flex items-center justify-center rounded-full my-1 cursor-pointer select-none group transition-transform active:scale-95 shrink-0"
+        className="relative w-32 h-32 sm:w-44 sm:h-44 flex items-center justify-center rounded-full my-1 cursor-pointer select-none group transition-transform active:scale-95 shrink-0"
         onClick={() => {
           if (!isPendingConfirmation && !isCompleted) {
             onToggleTimer(task.id);
@@ -366,7 +366,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <span className="text-[9px] sm:text-xs font-semibold text-amber-500">Tạm dừng</span>
             </div>
           ) : (
-            <div className="flex flex-col items-center max-w-[85px] sm:max-w-[130px] px-1">
+            <div className="flex flex-col items-center max-w-[100px] sm:max-w-[130px] px-1">
               <span
                 className={`text-xs sm:text-base font-bold line-clamp-2 leading-tight ${
                   darkMode ? 'text-slate-100' : 'text-slate-800'
@@ -454,7 +454,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
       {/* Normal Action Bar */}
       {!isPendingConfirmation && (
         <div
-          className={`w-full mt-2 sm:mt-2.5 pt-2 sm:pt-2.5 border-t flex items-center justify-between gap-1 sm:gap-1.5 min-w-0 ${
+          className={`w-full mt-2 sm:mt-2.5 pt-2 sm:pt-2.5 border-t flex items-center justify-between gap-1.5 min-w-0 ${
             darkMode ? 'border-slate-800' : 'border-slate-100'
           }`}
         >
@@ -462,7 +462,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             <button
               type="button"
               onClick={() => onToggleTimer(task.id)}
-              className={`flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 min-h-11 py-2 sm:min-h-0 sm:py-2 px-1.5 sm:px-3 rounded-lg text-[10px] sm:text-xs font-bold shadow-xs transition-colors cursor-pointer truncate ${
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 min-h-11 py-2 sm:min-h-0 sm:py-2 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold shadow-xs transition-colors cursor-pointer truncate ${
                 isRunning
                   ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
                   : 'bg-[#1E3A5F] hover:bg-[#152a45] text-white'
@@ -470,19 +470,19 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             >
               {isRunning ? (
                 <>
-                  <Pause className="w-3 h-3 sm:w-4 sm:h-4 fill-current shrink-0" />
+                  <Pause className="w-4 h-4 fill-current shrink-0" />
                   <span className="truncate">Dừng</span>
                 </>
               ) : (
                 <>
-                  <Play className="w-3 h-3 sm:w-4 sm:h-4 fill-current shrink-0" />
+                  <Play className="w-4 h-4 fill-current shrink-0" />
                   <span className="truncate">{task.accumulatedMs > 0 ? 'Tiếp' : 'Bắt đầu'}</span>
                 </>
               )}
             </button>
           ) : (
-            <div className="flex-1 min-w-0 text-center min-h-11 py-2 sm:min-h-0 sm:py-2 px-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] sm:text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-0.5 sm:gap-1">
-              <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+            <div className="flex-1 min-w-0 text-center min-h-11 py-2 sm:min-h-0 sm:py-2 px-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-lg text-[11px] sm:text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-1">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
               <span className="truncate">Đã ghi nhận</span>
             </div>
           )}
@@ -493,10 +493,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onCompleteSprintSession(task.id)}
-                className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0"
+                className="flex min-w-11 min-h-11 items-center justify-center p-2 sm:min-w-0 sm:min-h-0 sm:p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0"
                 title="Chốt & Lưu phiên làm việc này vào lịch sử dự án"
               >
-                <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                <Check className="w-4 h-4" />
               </button>
             )}
 
@@ -505,14 +505,14 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenZenFocus(task.id)}
-                className={`min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
+                className={`flex min-w-11 min-h-11 items-center justify-center p-2 sm:min-w-0 sm:min-h-0 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
                   darkMode
                     ? 'text-slate-300 border-slate-700 hover:bg-slate-800'
                     : 'text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
                 title="Mở không gian tập trung toàn màn hình (Zen Focus & Sóng âm)"
               >
-                <Maximize2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <Maximize2 className="w-4 h-4" />
               </button>
             )}
 
@@ -521,10 +521,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onResetTimer(task.id)}
-                className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer shrink-0"
+                className="flex min-w-11 min-h-11 items-center justify-center p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shrink-0"
                 title="Đặt lại đồng hồ về 0"
               >
-                <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
+                <RotateCcw className="w-4 h-4" />
               </button>
             )}
 
@@ -533,14 +533,14 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenEditTask(task)}
-                className={`min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 rounded-lg transition-colors cursor-pointer hidden sm:flex shrink-0 ${
+                className={`min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 rounded-lg transition-colors cursor-pointer hidden sm:flex sm:items-center sm:justify-center shrink-0 ${
                   darkMode
                     ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                     : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
                 }`}
                 title="Chỉnh sửa thông tin tác vụ"
               >
-                <Pencil className="w-3 h-3 sm:w-4 sm:h-4" />
+                <Pencil className="w-4 h-4" />
               </button>
             )}
 
@@ -548,14 +548,14 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             <button
               type="button"
               onClick={() => onOpenProjectStats(task.id)}
-              className={`min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
+              className={`flex min-w-11 min-h-11 items-center justify-center p-2 sm:min-w-0 sm:min-h-0 sm:p-2 rounded-lg transition-colors border cursor-pointer shrink-0 ${
                 darkMode
                   ? 'text-sky-300 border-sky-500/30 hover:bg-slate-800'
                   : 'text-[#1E3A5F] hover:bg-[#E8F0FE] border-[#3B6998]/30'
               }`}
               title="Xem báo cáo 3 tầng, ma trận chuỗi & tạo thẻ vinh danh"
             >
-              <BarChart2 className="w-3 h-3 sm:w-4 sm:h-4" />
+              <BarChart2 className="w-4 h-4" />
             </button>
 
             {/* Dev Mode Only: Simulate Break Streak & Fast Forward 5s */}
@@ -563,10 +563,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onSimulateBreakStreak(task.id)}
-                className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 cursor-pointer shrink-0"
+                className="flex min-w-11 min-h-11 items-center justify-center p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 cursor-pointer shrink-0"
                 title="[Dev] Giả lập đứt chuỗi"
               >
-                <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
+                <AlertTriangle className="w-4 h-4" />
               </button>
             )}
 
@@ -574,10 +574,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               <button
                 type="button"
                 onClick={() => onFastForward5s(task.id)}
-                className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-xs font-mono border border-amber-200 cursor-pointer hidden sm:block shrink-0"
+                className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-xs font-mono border border-amber-200 cursor-pointer hidden sm:flex sm:items-center sm:justify-center shrink-0"
                 title="[Dev] Tua nhanh còn 5 giây"
               >
-                <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
+                <Zap className="w-4 h-4" />
               </button>
             )}
           </div>

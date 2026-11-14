@@ -1361,35 +1361,33 @@ export default function App() {
         {/* Daily Command Center Banner */}
         <section
           aria-label="Tổng quan tiến độ kỷ luật hôm nay"
-          className={`mb-6 rounded-2xl p-4 sm:p-5 border shadow-xs transition-colors ${
+          className={`mb-6 rounded-2xl p-3 sm:p-5 border shadow-xs transition-colors ${
             darkMode
               ? 'bg-slate-900/90 border-slate-800 text-slate-100'
               : 'bg-white border-slate-200/90 text-slate-800'
           }`}
         >
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
             {/* Metric 1: Daily Habit Progress */}
             <div
-              className={`p-3.5 rounded-xl border ${
+              className={`p-3 sm:p-3.5 rounded-xl border ${
                 darkMode
                   ? 'bg-slate-800/70 border-slate-700/80'
                   : 'bg-[#F4F7FA] border-slate-200/70'
               }`}
             >
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#81C995]" />
-                  <span>Thói quen hôm nay</span>
-                </span>
-                <span className="font-mono font-bold text-[#FF6B00]">
-                  {dailyHabitProgressPercent}%
-                </span>
+              <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#81C995]" />
+                <span className="sm:hidden">Thói quen</span>
+                <span className="hidden sm:inline">Thói quen hôm nay</span>
               </div>
-              <div className="mt-1.5 flex items-baseline justify-between">
+              <div className="mt-1.5 flex items-baseline justify-between gap-2">
                 <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
                   {completedHabitsToday}/{habitTasks.length}
                 </span>
-                <span className="text-[11px] text-slate-400">đã hoàn tất</span>
+                <span className="font-mono text-sm font-bold text-[#FF6B00]">
+                  {dailyHabitProgressPercent}%
+                </span>
               </div>
               <div className="mt-2 w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div
@@ -1401,15 +1399,15 @@ export default function App() {
 
             {/* Metric 2: Total Focused Time Today */}
             <div
-              className={`p-3.5 rounded-xl border ${
+              className={`p-3 sm:p-3.5 rounded-xl border ${
                 darkMode
                   ? 'bg-slate-800/70 border-slate-700/80'
                   : 'bg-[#F4F7FA] border-slate-200/70'
               }`}
             >
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                <TrendingUp className="w-3.5 h-3.5 text-[#3B6998]" />
-                <span>Tổng tập trung hôm nay</span>
+              <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
+                <TrendingUp className="h-3.5 w-3.5 shrink-0 text-[#3B6998]" />
+                <span>Tập trung hôm nay</span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
                 <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
@@ -1417,21 +1415,21 @@ export default function App() {
                 </span>
                 <span className="text-xs font-semibold text-slate-400">phút</span>
               </div>
-              <div className="mt-1 text-[11px] text-slate-400">
-                {(totalFocusedTodayMinutes / 60).toFixed(1)} giờ tích lũy trong ngày
+              <div className="mt-1 text-[11px] leading-tight text-slate-400">
+                {(totalFocusedTodayMinutes / 60).toFixed(1)} giờ tích lũy
               </div>
             </div>
 
             {/* Metric 3: Highest Active Streak */}
             <div
-              className={`p-3.5 rounded-xl border ${
+              className={`p-3 sm:p-3.5 rounded-xl border ${
                 darkMode
                   ? 'bg-slate-800/70 border-slate-700/80'
                   : 'bg-[#F4F7FA] border-slate-200/70'
               }`}
             >
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                <Flame className="w-3.5 h-3.5 text-[#FF6B00] fill-[#FF6B00]" />
+              <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
+                <Flame className="h-3.5 w-3.5 shrink-0 text-[#FF6B00] fill-[#FF6B00]" />
                 <span>Chuỗi dẫn đầu</span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
@@ -1440,7 +1438,7 @@ export default function App() {
                 </span>
                 <span className="text-xs font-semibold text-slate-400">ngày liên tiếp</span>
               </div>
-              <div className="mt-1 text-[11px] text-slate-400 flex items-center justify-between">
+              <div className="mt-1 text-[11px] leading-tight text-slate-400 flex items-center justify-between gap-1">
                 <span>Đang duy trì {totalActiveStreaks} chuỗi</span>
                 {highestStreak > 0 && (
                   <button
@@ -1458,23 +1456,23 @@ export default function App() {
 
             {/* Metric 4: Biological Rollover Countdown (04:00 AM) */}
             <div
-              className={`p-3.5 rounded-xl border ${
+              className={`p-3 sm:p-3.5 rounded-xl border ${
                 darkMode
                   ? 'bg-slate-800/70 border-slate-700/80'
                   : 'bg-[#F4F7FA] border-slate-200/70'
               }`}
             >
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                <Clock className="w-3.5 h-3.5 text-[#FCC934]" />
-                <span>Quỹ thời gian ngày sinh học</span>
+              <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
+                <Clock className="h-3.5 w-3.5 shrink-0 text-[#FCC934]" />
+                <span>Quỹ thời gian</span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
                 <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
                   {hoursUntilRollover}g {String(minsUntilRollover).padStart(2, '0')}p
                 </span>
               </div>
-              <div className="mt-1 text-[11px] text-slate-400">
-                Chuyển sang ngày mới lúc 04:00 sáng
+              <div className="mt-1 text-[11px] leading-tight text-slate-400">
+                Mốc 04:00 sáng
               </div>
             </div>
           </div>
@@ -1483,14 +1481,14 @@ export default function App() {
         {/* Category Filter Tabs & Search Bar */}
         <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
           <div
-            className={`flex items-center gap-1.5 p-1 rounded-xl border shadow-2xs overflow-x-auto max-w-full ${
+            className={`flex w-full flex-wrap items-center gap-1 rounded-xl border p-1 shadow-2xs sm:w-auto sm:flex-nowrap sm:gap-1.5 sm:overflow-x-auto ${
               darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/90'
             }`}
           >
             <button
               type="button"
               onClick={() => setCurrentCategory('all')}
-              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'all'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1498,9 +1496,9 @@ export default function App() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Layers className="w-3.5 h-3.5" />
+              <Layers className="hidden h-3.5 w-3.5 sm:block" />
               <span>Tất cả</span>
-              <span className="text-xs px-1.5 py-0.2 rounded-full bg-white/20">
+              <span className="text-[11px] leading-none px-1.5 py-0.5 rounded-full bg-white/20">
                 {tasks.length}
               </span>
             </button>
@@ -1508,7 +1506,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentCategory('health')}
-              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'health'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1516,10 +1514,10 @@ export default function App() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
+              <HeartPulse className="hidden h-3.5 w-3.5 text-rose-500 sm:block" />
               <span>Sức khoẻ</span>
               <span
-                className={`text-xs px-1.5 py-0.2 rounded-full ${
+                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full ${
                   darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
                 }`}
               >
@@ -1530,7 +1528,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentCategory('work')}
-              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'work'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1538,10 +1536,10 @@ export default function App() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Briefcase className="w-3.5 h-3.5 text-[#3B6998]" />
+              <Briefcase className="hidden h-3.5 w-3.5 text-[#3B6998] sm:block" />
               <span>Công việc</span>
               <span
-                className={`text-xs px-1.5 py-0.2 rounded-full ${
+                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full ${
                   darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
                 }`}
               >
@@ -1552,7 +1550,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentCategory('study')}
-              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'study'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1560,10 +1558,10 @@ export default function App() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+              <BookOpen className="hidden h-3.5 w-3.5 text-indigo-500 sm:block" />
               <span>Học hành</span>
               <span
-                className={`text-xs px-1.5 py-0.2 rounded-full ${
+                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full ${
                   darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
                 }`}
               >
@@ -1574,7 +1572,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentCategory('habit')}
-              className={`flex items-center gap-1.5 min-h-11 px-3 py-2 sm:min-h-0 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1 min-h-11 px-2.5 py-2 sm:min-h-0 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 currentCategory === 'habit'
                   ? 'bg-[#1E3A5F] text-white shadow-xs'
                   : darkMode
@@ -1582,10 +1580,10 @@ export default function App() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />
+              <Sparkles className="hidden h-3.5 w-3.5 text-[#FF6B00] sm:block" />
               <span>Thói quen</span>
               <span
-                className={`text-xs px-1.5 py-0.2 rounded-full ${
+                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full ${
                   darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
                 }`}
               >
@@ -1596,7 +1594,7 @@ export default function App() {
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <div className="relative flex-1 sm:w-52">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
@@ -1629,7 +1627,7 @@ export default function App() {
                 setEditingTask(null);
                 setIsAddTaskModalOpen(true);
               }}
-              className="min-h-11 sm:min-h-0 px-3.5 py-2 sm:py-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="hidden min-h-11 sm:flex sm:min-h-0 px-3.5 py-2 sm:py-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-xs transition-all items-center gap-1.5 cursor-pointer shrink-0"
               title="Thêm tác vụ mới"
             >
               <Plus className="w-3.5 h-3.5" />
