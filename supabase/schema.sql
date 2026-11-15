@@ -103,6 +103,9 @@ comment on table public.benbi_push_subscriptions is
 revoke all on public.benbi_push_subscriptions from anon;
 revoke all on public.benbi_push_subscriptions from public;
 grant select, delete on public.benbi_push_subscriptions to authenticated;
+-- Edge Function chạy bằng service_role: cần đọc/ghi bảng đăng ký và đọc snapshot thói quen.
+grant select, insert, update, delete on public.benbi_push_subscriptions to service_role;
+grant select on public.benbi_state to service_role;
 
 alter table public.benbi_push_subscriptions enable row level security;
 alter table public.benbi_push_subscriptions force row level security;
@@ -165,17 +168,23 @@ grant execute on function public.benbi_register_push_subscription(text, text, te
 
 -- Lịch gửi nhắc (chạy sau khi deploy Edge Function push-reminders):
 -- 1) Database → Extensions: bật pg_cron và pg_net.
--- 2) Thay <PROJECT_REF> và <PUSH_CRON_SECRET> rồi chạy khối dưới (mỗi giờ một lần).
+-- 2) Lưu secret một lần: select vault.create_secret('<PUSH_CRON_SECRET>', 'benbi_push_cron_secret');
+-- 3) Chạy khối dưới (mỗi giờ một lần). Secret chỉ tồn tại trong Vault, không nằm trong cron.job.
+--    timeout_milliseconds phải nâng lên 30s: mặc định pg_net chỉ 5s, Edge Function cold start lâu hơn sẽ timeout.
 --
 -- select cron.schedule(
 --   'benbi-push-hourly',
 --   '5 * * * *',
---   $$
+--   $job$
 --   select net.http_post(
 --     url := 'https://<PROJECT_REF>.supabase.co/functions/v1/push-reminders',
---     headers := jsonb_build_object('Content-Type', 'application/json', 'x-push-secret', '<PUSH_CRON_SECRET>'),
---     body := '{}'::jsonb
+--     headers := jsonb_build_object(
+--       'Content-Type', 'application/json',
+--       'x-push-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'benbi_push_cron_secret' limit 1)
+--     ),
+--     body := '{}'::jsonb,
+--     timeout_milliseconds := 30000
 --   );
---   $$
+--   $job$
 -- );
 
