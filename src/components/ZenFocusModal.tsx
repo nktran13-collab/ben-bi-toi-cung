@@ -234,7 +234,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
               />
             </svg>
 
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 [@media(max-height:520px)]:p-2">
               {isCompleted ? (
                 <div className="flex flex-col items-center">
                   <CheckCircle2 className="w-12 h-12 text-[#81C995] mb-2" />
@@ -242,10 +242,10 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
                 </div>
               ) : (
                 <>
-                  <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-white tabular-nums">
+                  <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-white tabular-nums [@media(max-height:520px)]:text-[1.375rem]">
                     {displayTime}
                   </span>
-                  <span className="text-xs font-semibold text-blue-200/80 mt-2 flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-blue-200/80 mt-2 flex items-center gap-1.5 [@media(max-height:520px)]:mt-1 [@media(max-height:520px)]:text-[10px]">
                     {isRunning ? (
                       <>
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
