@@ -369,11 +369,16 @@ export default function App() {
   const runningTask = isLoadingAccount ? null : tasks.find((t) => t.status === 'running') || null;
   useEffect(() => {
     setupMediaSession(runningTask, {
+      // iOS fires media-session actions on its own when the screen locks or the
+      // app is backgrounded; only honor them as foreground user gestures, and
+      // never let a stray "play" pause a running task.
       onPlay: () => {
-        if (runningTask) handleToggleTimer(runningTask.id);
+        if (document.visibilityState !== 'visible' || !runningTask || runningTask.status !== 'paused') return;
+        handleToggleTimer(runningTask.id);
       },
       onPause: () => {
-        if (runningTask) handleToggleTimer(runningTask.id);
+        if (document.visibilityState !== 'visible' || !runningTask || runningTask.status !== 'running') return;
+        handleToggleTimer(runningTask.id);
       },
     });
   }, [runningTask, handleToggleTimer]);
