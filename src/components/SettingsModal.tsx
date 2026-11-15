@@ -89,9 +89,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-modal-title"
-        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+        className="relative flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
       >
-        <div className="flex items-center justify-between border-b border-slate-100 bg-[#F4F7FA] px-5 py-4 dark:border-slate-800 dark:bg-slate-800/60">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-[#F4F7FA] px-5 py-4 dark:border-slate-800 dark:bg-slate-800/60 [@media(max-height:520px)]:py-2.5">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1E3A5F] text-[#FCC934]">
               <Clock className="h-4.5 w-4.5" />
@@ -113,12 +113,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
-        <div className="space-y-4 p-5">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 [@media(max-height:520px)]:space-y-3 [@media(max-height:520px)]:p-3">
           <div>
             <span className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Ngày mới bắt đầu lúc
             </span>
-            <div role="radiogroup" aria-label="Giờ bắt đầu ngày mới" className="mt-2 grid grid-cols-4 gap-2">
+            <div
+              role="radiogroup"
+              aria-label="Giờ bắt đầu ngày mới"
+              className="mt-2 grid grid-cols-4 gap-2 [@media(max-height:520px)]:grid-cols-7"
+            >
               {HOUR_OPTIONS.map((hour) => {
                 const selected = hour === dayRolloverHour;
                 return (
@@ -128,7 +132,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     role="radio"
                     aria-checked={selected}
                     onClick={() => onChangeDayRolloverHour(hour)}
-                    className={`rounded-xl border px-2 py-2.5 font-mono text-sm font-bold transition-colors ${
+                    className={`rounded-xl border px-2 py-2.5 font-mono text-sm font-bold transition-colors [@media(max-height:520px)]:py-2 ${
                       selected
                         ? 'border-[#FF6B00] bg-[#FF6B00] text-white shadow-sm'
                         : 'border-slate-200 bg-white text-slate-700 hover:border-[#FF6B00]/50 hover:text-[#FF6B00] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-[#FF6B00]/60'
@@ -141,7 +145,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          <p className="rounded-xl border border-[#3B6998]/25 bg-[#E8F0FE]/60 p-3 text-xs leading-relaxed text-slate-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+          <p className="rounded-xl border border-[#3B6998]/25 bg-[#E8F0FE]/60 p-3 text-xs leading-relaxed text-slate-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300 [@media(max-height:520px)]:hidden">
             Mặc định <strong className="text-[#1E3A5F] dark:text-slate-100">04:00</strong> để người thức khuya vẫn tính
             vào ngày hôm trước. Mốc mới áp dụng từ lần chuyển ngày kế tiếp; dữ liệu đã ghi vẫn giữ ngày logic cũ.
           </p>
