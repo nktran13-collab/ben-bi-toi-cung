@@ -174,7 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-2 text-xs text-[#E8F0FE]/90">
               <span className="flex items-center gap-1 font-mono">
                 <Clock className="w-3.5 h-3.5 text-[#FCC934]" />
-                Ngày sinh học: <strong className="text-white">{logicalDate}</strong>
+                Ngày: <strong className="text-white">{logicalDate}</strong>
               </span>
               {isPastMidnight && (
                 <span
