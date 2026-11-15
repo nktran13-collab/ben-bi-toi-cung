@@ -1,6 +1,6 @@
-// Supabase Edge Function: gửi Web Push nhắc hoàn thành thói quen.
+// Supabase Edge Function: gửi Web Push nhắc hoàn thành nhiệm vụ.
 // Chạy mỗi giờ bằng cron; chỉ gửi cho thiết bị đang đúng reminder_hour theo múi giờ của nó
-// và chỉ khi tài khoản còn thói quen chưa hoàn thành trong ngày logic hiện tại.
+// và chỉ khi tài khoản còn nhiệm vụ (thói quen hoặc dự án) chưa hoàn thành trong ngày logic hiện tại.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 
@@ -47,14 +47,17 @@ function logicalDate(at: Date, timeZone: string, rolloverHour: number): string |
   return localParts(new Date(at.getTime() - rolloverHour * 3_600_000), timeZone)?.date ?? null;
 }
 
-function pendingHabitCount(snapshot: SnapshotLike | null, at: Date, timeZone: string): number {
+function pendingTaskCount(snapshot: SnapshotLike | null, at: Date, timeZone: string): number {
   const tasks = Array.isArray(snapshot?.tasks) ? snapshot.tasks : [];
   const rawRollover = Number(snapshot?.settings?.dayRolloverHour);
   const rollover =
     Number.isInteger(rawRollover) && rawRollover >= 0 && rawRollover <= 23 ? rawRollover : DEFAULT_ROLLOVER_HOUR;
   const today = logicalDate(at, timeZone, rollover);
   if (!today) return 0;
-  return tasks.filter((task) => task && task.mode === 'habit' && task.lastCompletedDate !== today).length;
+  return tasks.filter(
+    (task) =>
+      task && (task.mode === 'habit' || task.mode === 'project') && task.lastCompletedDate !== today,
+  ).length;
 }
 
 Deno.serve(async (request) => {
@@ -113,7 +116,7 @@ Deno.serve(async (request) => {
       continue;
     }
 
-    const pending = pendingHabitCount(snapshots.get(row.user_id) ?? null, now, timeZone);
+    const pending = pendingTaskCount(snapshots.get(row.user_id) ?? null, now, timeZone);
     if (pending === 0) {
       skipped++;
       continue;
@@ -123,8 +126,8 @@ Deno.serve(async (request) => {
     const rollover =
       Number.isInteger(rawRollover) && rawRollover >= 0 && rawRollover <= 23 ? rawRollover : DEFAULT_ROLLOVER_HOUR;
     const payload = JSON.stringify({
-      title: `🔥 Bền Bỉ · ${pending} thói quen chưa xong`,
-      body: `Hôm nay còn ${pending} thói quen. Hoàn tất trước ${String(rollover).padStart(2, '0')}:00 sáng để giữ chuỗi nhé!`,
+      title: `🔥 Bền Bỉ · ${pending} nhiệm vụ chưa xong`,
+      body: `Hôm nay còn ${pending} nhiệm vụ chưa hoàn tất. Hoàn thành trước ${String(rollover).padStart(2, '0')}:00 sáng để giữ chuỗi nhé!`,
       icon: '/pwa-192x192.png',
       badge: '/icon.svg',
       tag: 'ben-bi-daily-reminder',
