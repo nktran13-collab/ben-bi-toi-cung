@@ -100,7 +100,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <h2 id="settings-modal-title" className="text-base font-bold text-[#1E3A5F] dark:text-slate-100">
                 Cài đặt
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Ngày sinh học & nhắc nhở</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Ngày & nhắc nhở</p>
             </div>
           </div>
           <button
