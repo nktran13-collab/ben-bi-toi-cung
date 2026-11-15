@@ -133,199 +133,201 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
   };
 
   return (
-    <div className="safe-fullscreen fixed inset-0 z-50 bg-gradient-to-br from-[#0B1528] via-[#132542] to-[#1E3A5F] text-white flex flex-col justify-between p-6 sm:p-10 select-none animate-fade-in">
-      {/* Top Bar */}
-      <div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-2 sm:gap-4">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <span className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#FCC934] sm:min-h-9 sm:px-3 sm:text-xs">
-            <Maximize2 className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" />
-            <span className="sm:hidden">Zen Focus</span>
-            <span className="hidden sm:inline">Không Gian Tập Trung Sâu (Zen Focus)</span>
-          </span>
-          {isHabit && (
-            <span className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-[#FF6B00]/40 bg-[#FF6B00]/20 px-2.5 text-[11px] font-bold text-[#FF9E40] sm:min-h-9 sm:px-3 sm:text-xs">
-              <Flame className="h-3.5 w-3.5 shrink-0 fill-current" />
-              <span className="sm:hidden">Chuỗi {task.currentStreak}</span>
-              <span className="hidden sm:inline">Chuỗi {task.currentStreak} ngày</span>
+    <div className="safe-fullscreen fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br from-[#0B1528] via-[#132542] to-[#1E3A5F] text-white select-none animate-fade-in">
+      <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-between px-4 sm:px-10">
+        {/* Top Bar */}
+        <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <span className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#FCC934] sm:min-h-9 sm:px-3 sm:text-xs">
+              <Maximize2 className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" />
+              <span className="sm:hidden">Zen Focus</span>
+              <span className="hidden sm:inline">Không Gian Tập Trung Sâu (Zen Focus)</span>
             </span>
-          )}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-          <button
-            type="button"
-            onClick={handleToggleAmbient}
-            aria-pressed={ambientPlaying}
-            aria-label={ambientPlaying ? 'Tắt sóng tập trung' : 'Bật sóng tập trung'}
-            className={`flex h-11 w-11 items-center justify-center rounded-xl border text-xs font-bold transition-all cursor-pointer sm:h-9 sm:w-auto sm:gap-2 sm:px-3.5 ${
-              ambientPlaying
-                ? 'bg-[#FF6B00] text-white border-[#FF6B00] shadow-lg shadow-[#FF6B00]/30'
-                : 'bg-white/10 hover:bg-white/15 text-slate-200 border-white/15'
-            }`}
-            title="Bật/Tắt âm thanh sóng âm Brown Noise giúp não bộ tập trung sâu"
-          >
-            {ambientPlaying ? (
-              <>
-                <Headphones className="h-[18px] w-[18px] animate-pulse sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Sóng Tập Trung: BẬT</span>
-              </>
-            ) : (
-              <>
-                <VolumeX className="h-[18px] w-[18px] text-slate-400 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Sóng Tập Trung: TẮT</span>
-              </>
+            {isHabit && (
+              <span className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-[#FF6B00]/40 bg-[#FF6B00]/20 px-2.5 text-[11px] font-bold text-[#FF9E40] sm:min-h-9 sm:px-3 sm:text-xs">
+                <Flame className="h-3.5 w-3.5 shrink-0 fill-current" />
+                <span className="sm:hidden">Chuỗi {task.currentStreak}</span>
+                <span className="hidden sm:inline">Chuỗi {task.currentStreak} ngày</span>
+              </span>
             )}
-          </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Thoát chế độ Zen"
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white transition-colors hover:bg-white/20 cursor-pointer sm:h-9 sm:w-9"
-            title="Thoát chế độ Zen (ESC)"
-          >
-            <X className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
-          </button>
-        </div>
-      </div>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+            <button
+              type="button"
+              onClick={handleToggleAmbient}
+              aria-pressed={ambientPlaying}
+              aria-label={ambientPlaying ? 'Tắt sóng tập trung' : 'Bật sóng tập trung'}
+              className={`flex h-11 w-11 items-center justify-center rounded-xl border text-xs font-bold transition-all cursor-pointer sm:h-9 sm:w-auto sm:gap-2 sm:px-3.5 ${
+                ambientPlaying
+                  ? 'bg-[#FF6B00] text-white border-[#FF6B00] shadow-lg shadow-[#FF6B00]/30'
+                  : 'bg-white/10 hover:bg-white/15 text-slate-200 border-white/15'
+              }`}
+              title="Bật/Tắt âm thanh sóng âm Brown Noise giúp não bộ tập trung sâu"
+            >
+              {ambientPlaying ? (
+                <>
+                  <Headphones className="h-[18px] w-[18px] animate-pulse sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Sóng Tập Trung: BẬT</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="h-[18px] w-[18px] text-slate-400 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Sóng Tập Trung: TẮT</span>
+                </>
+              )}
+            </button>
 
-      {/* Center Focus Ring */}
-      <div className="flex flex-col items-center justify-center my-auto py-6">
-        <div className="text-center mb-6 max-w-lg">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">{task.name}</h2>
-          {task.notes ? (
-            <p className="text-sm text-blue-200/80 mt-2 italic">“{task.notes}”</p>
-          ) : (
-            <p className="text-xs text-blue-200/60 mt-1.5">
-              {isHabit
-                ? `Mục tiêu định mức: ${Math.round(effectiveTargetMs / 60000)} phút không xao nhãng`
-                : 'Tập trung sâu — Mọi giây phút đều được ghi nhận chính xác'}
-            </p>
-          )}
-        </div>
-
-        <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
-          {/* Breathing glow when running */}
-          {isRunning && (
-            <div className="absolute inset-0 rounded-full bg-[#FF6B00]/15 blur-2xl animate-pulse pointer-events-none" />
-          )}
-
-          <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="transparent"
-              stroke="rgba(255,255,255,0.1)"
-              strokeWidth={strokeWidth}
-            />
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="transparent"
-              stroke={strokeColor}
-              strokeWidth={strokeWidth}
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              className="transition-all duration-300 ease-out"
-            />
-          </svg>
-
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-            {isCompleted ? (
-              <div className="flex flex-col items-center">
-                <CheckCircle2 className="w-12 h-12 text-[#81C995] mb-2" />
-                <span className="text-base font-bold text-[#81C995] uppercase tracking-wider">Đã Hoàn Thành</span>
-              </div>
-            ) : (
-              <>
-                <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-white tabular-nums">
-                  {displayTime}
-                </span>
-                <span className="text-xs font-semibold text-blue-200/80 mt-2 flex items-center gap-1.5">
-                  {isRunning ? (
-                    <>
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      <span>Đang tập trung cao độ</span>
-                    </>
-                  ) : isPendingConfirmation ? (
-                    <span className="text-[#FCC934] font-bold">Đã chạm mốc 00:00!</span>
-                  ) : (
-                    <span>Đang tạm dừng</span>
-                  )}
-                </span>
-              </>
-            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Thoát chế độ Zen"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white transition-colors hover:bg-white/20 cursor-pointer sm:h-9 sm:w-9"
+              title="Thoát chế độ Zen (ESC)"
+            >
+              <X className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
+            </button>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          {isPendingConfirmation ? (
-            <button
-              type="button"
-              onPointerDown={startHold}
-              onPointerUp={cancelHold}
-              onPointerLeave={cancelHold}
-              onClick={() => onConfirmHabit(task.id)}
-              className="relative overflow-hidden px-8 py-4 rounded-2xl bg-gradient-to-r from-[#FF6B00] to-[#E65100] text-white font-bold text-sm shadow-xl cursor-pointer"
-            >
-              <div
-                className="absolute left-0 top-0 bottom-0 bg-[#FCC934]/40 transition-all duration-75"
-                style={{ width: `${holdingProgress}%` }}
+        {/* Center Focus Ring */}
+        <div className="flex flex-col items-center justify-center my-auto py-2 sm:py-6 [@media(max-height:520px)]:py-0">
+          <div className="text-center mb-3 max-w-lg sm:mb-6 [@media(max-height:520px)]:mb-2">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">{task.name}</h2>
+            {task.notes ? (
+              <p className="text-sm text-blue-200/80 mt-2 italic [@media(max-height:520px)]:hidden">“{task.notes}”</p>
+            ) : (
+              <p className="text-xs text-blue-200/60 mt-1.5 [@media(max-height:520px)]:hidden">
+                {isHabit
+                  ? `Mục tiêu định mức: ${Math.round(effectiveTargetMs / 60000)} phút không xao nhãng`
+                  : 'Tập trung sâu — Mọi giây phút đều được ghi nhận chính xác'}
+              </p>
+            )}
+          </div>
+
+          <div className="relative h-64 w-64 flex items-center justify-center sm:h-72 sm:w-72 [@media(max-height:520px)]:h-36 [@media(max-height:520px)]:w-36">
+            {/* Breathing glow when running */}
+            {isRunning && (
+              <div className="absolute inset-0 rounded-full bg-[#FF6B00]/15 blur-2xl animate-pulse pointer-events-none" />
+            )}
+
+            <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="transparent"
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth={strokeWidth}
               />
-              <span className="relative z-10 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#FCC934]" />
-                <span>Xác nhận hoàn thành chuỗi hôm nay</span>
-              </span>
-            </button>
-          ) : !isCompleted ? (
-            <>
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="transparent"
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                className="transition-all duration-300 ease-out"
+              />
+            </svg>
+
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+              {isCompleted ? (
+                <div className="flex flex-col items-center">
+                  <CheckCircle2 className="w-12 h-12 text-[#81C995] mb-2" />
+                  <span className="text-base font-bold text-[#81C995] uppercase tracking-wider">Đã Hoàn Thành</span>
+                </div>
+              ) : (
+                <>
+                  <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-white tabular-nums">
+                    {displayTime}
+                  </span>
+                  <span className="text-xs font-semibold text-blue-200/80 mt-2 flex items-center gap-1.5">
+                    {isRunning ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                        <span>Đang tập trung cao độ</span>
+                      </>
+                    ) : isPendingConfirmation ? (
+                      <span className="text-[#FCC934] font-bold">Đã chạm mốc 00:00!</span>
+                    ) : (
+                      <span>Đang tạm dừng</span>
+                    )}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Action Controls */}
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-4 sm:mt-8 [@media(max-height:520px)]:mt-3">
+            {isPendingConfirmation ? (
               <button
                 type="button"
-                onClick={() => onToggleTimer(task.id)}
-                className={`px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center gap-2.5 shadow-xl transition-all cursor-pointer active:scale-95 ${
-                  isRunning
-                    ? 'bg-amber-500 hover:bg-amber-600 text-slate-950'
-                    : 'bg-[#FF6B00] hover:bg-[#E65100] text-white'
-                }`}
+                onPointerDown={startHold}
+                onPointerUp={cancelHold}
+                onPointerLeave={cancelHold}
+                onClick={() => onConfirmHabit(task.id)}
+                className="relative overflow-hidden px-8 py-4 rounded-2xl bg-gradient-to-r from-[#FF6B00] to-[#E65100] text-white font-bold text-sm shadow-xl cursor-pointer"
               >
-                {isRunning ? (
-                  <>
-                    <Pause className="w-5 h-5 fill-current" />
-                    <span>Tạm dừng</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-5 h-5 fill-current" />
-                    <span>{task.accumulatedMs > 0 ? 'Tiếp tục tập trung' : 'Bắt đầu tập trung'}</span>
-                  </>
-                )}
+                <div
+                  className="absolute left-0 top-0 bottom-0 bg-[#FCC934]/40 transition-all duration-75"
+                  style={{ width: `${holdingProgress}%` }}
+                />
+                <span className="relative z-10 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#FCC934]" />
+                  <span>Xác nhận hoàn thành chuỗi hôm nay</span>
+                </span>
               </button>
-
-              {!isHabit && task.accumulatedMs >= 60000 && (
+            ) : !isCompleted ? (
+              <>
                 <button
                   type="button"
-                  onClick={() => {
-                    onCompleteSprintSession(task.id);
-                    onClose();
-                  }}
-                  className="px-6 py-3.5 rounded-2xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 shadow-xl transition-all cursor-pointer"
+                  onClick={() => onToggleTimer(task.id)}
+                  className={`px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center gap-2.5 shadow-xl transition-all cursor-pointer active:scale-95 ${
+                    isRunning
+                      ? 'bg-amber-500 hover:bg-amber-600 text-slate-950'
+                      : 'bg-[#FF6B00] hover:bg-[#E65100] text-white'
+                  }`}
                 >
-                  <Check className="w-5 h-5" />
-                  <span>Hoàn tất & Lưu phiên</span>
+                  {isRunning ? (
+                    <>
+                      <Pause className="w-5 h-5 fill-current" />
+                      <span>Tạm dừng</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5 fill-current" />
+                      <span>{task.accumulatedMs > 0 ? 'Tiếp tục tập trung' : 'Bắt đầu tập trung'}</span>
+                    </>
+                  )}
                 </button>
-              )}
-            </>
-          ) : null}
-        </div>
-      </div>
 
-      {/* Footer quote */}
-      <div className="text-center text-xs text-blue-200/60">
-        “Chiến thắng không thuộc về người thông minh nhất, mà thuộc về người bền bỉ tới cùng.”
+                {!isHabit && task.accumulatedMs >= 60000 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onCompleteSprintSession(task.id);
+                      onClose();
+                    }}
+                    className="px-6 py-3.5 rounded-2xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 shadow-xl transition-all cursor-pointer"
+                  >
+                    <Check className="w-5 h-5" />
+                    <span>Hoàn tất & Lưu phiên</span>
+                  </button>
+                )}
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Footer quote */}
+        <div className="text-center text-xs text-blue-200/60 [@media(max-height:520px)]:hidden">
+          “Chiến thắng không thuộc về người thông minh nhất, mà thuộc về người bền bỉ tới cùng.”
+        </div>
       </div>
     </div>
   );
