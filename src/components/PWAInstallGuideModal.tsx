@@ -18,9 +18,9 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
 
   return (
     <div className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+      <div className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         {/* Header */}
-        <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between bg-[#1E3A5F] p-5 text-white [@media(max-height:520px)]:p-3.5">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#3B6998] text-[#FCC934]">
               <Smartphone className="w-5 h-5" />
@@ -40,7 +40,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-5 sm:p-6 space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6 [@media(max-height:520px)]:space-y-3 [@media(max-height:520px)]:p-3">
           {/* Quick Install Button for Desktop / Android if event available */}
           {isInstallable && (
             <div className="bg-[#E8F0FE] p-4 rounded-xl border border-[#3B6998]/30 text-center space-y-2">
@@ -127,7 +127,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-[#F4F7FA] px-5 py-3 border-t border-slate-200 flex justify-end">
+        <div className="flex shrink-0 justify-end border-t border-slate-200 bg-[#F4F7FA] px-5 py-3">
           <button
             type="button"
             onClick={onClose}

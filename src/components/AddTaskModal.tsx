@@ -120,9 +120,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   return (
     <div className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
         {/* Header */}
-        <div className="bg-[#1E3A5F] text-white p-4 sm:p-5 flex items-center justify-between sticky top-0 z-10 shrink-0 shadow-xs">
+        <div className="flex shrink-0 items-center justify-between bg-[#1E3A5F] p-4 text-white shadow-xs sm:p-5 [@media(max-height:520px)]:p-3">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               {isEditing ? (
@@ -161,7 +161,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <form
+          onSubmit={handleSubmit}
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6 [@media(max-height:520px)]:space-y-3 [@media(max-height:520px)]:p-3"
+        >
           {isLimitReached && (
             <div className="bg-red-50 text-red-700 text-xs p-3 rounded-lg border border-red-200 font-medium">
               ⚠️ Đã đạt giới hạn tối đa 24 tác vụ. Bạn không thể tạo thêm tác vụ mới để duy trì sự tập trung tối ưu.

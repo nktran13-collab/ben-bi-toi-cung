@@ -206,9 +206,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       aria-labelledby="auth-modal-title"
       className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs"
     >
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col text-slate-800 animate-in fade-in zoom-in-95 duration-150">
+      <div className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="bg-[#1E3A5F] text-white p-5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className="flex shrink-0 items-center justify-between bg-[#1E3A5F] p-5 text-white shadow-sm [@media(max-height:520px)]:p-3.5">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#3B6998] text-[#FCC934] shadow-inner">
               <Cloud className="w-5 h-5" />
@@ -238,7 +238,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-5 sm:p-6 space-y-5">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6 [@media(max-height:520px)]:space-y-3 [@media(max-height:520px)]:p-3">
           {/* Banner: Cross-device persistence highlight */}
           <div className="bg-gradient-to-r from-blue-50 to-amber-50 p-3.5 rounded-xl border border-blue-200/80 flex items-start gap-3">
             <div className="flex items-center gap-1 text-[#FF6B00] shrink-0 mt-0.5">
@@ -604,7 +604,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-[#F4F7FA] px-5 py-3 border-t border-slate-200 flex justify-end">
+        <div className="flex shrink-0 justify-end border-t border-slate-200 bg-[#F4F7FA] px-5 py-3">
           <button
             type="button"
             onClick={handleClose}

@@ -316,9 +316,9 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
   return (
     <div className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col">
+      <div className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         {/* Header Ribbon */}
-        <div className="bg-[#1E3A5F] text-white p-5 flex flex-wrap gap-3 items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-[#1E3A5F] p-5 text-white shadow-sm [@media(max-height:520px)]:p-3.5">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-wider font-bold bg-[#3B6998] px-2.5 py-0.5 rounded-full text-[#E8F0FE]">
@@ -374,7 +374,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
         {/* In-App Delete Confirmation Banner */}
         {confirmingDelete && onDeleteTask && (
-          <div className="bg-red-50 border-b border-red-200 px-5 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex shrink-0 flex-col items-start justify-between gap-3 border-b border-red-200 bg-red-50 px-5 py-3.5 sm:flex-row sm:items-center">
             <div className="text-xs text-red-800">
               <strong>Xác nhận xóa vĩnh viễn:</strong> Bạn có chắc chắn muốn xóa tác vụ <strong>"{task.name}"</strong>{' '}
               cùng toàn bộ lịch sử phiên làm việc?
@@ -400,7 +400,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
         {/* Active Unsaved Sprint Session Banner for Project Mode */}
         {task.mode === 'project' && task.accumulatedMs > 0 && onCompleteSprintSession && (
-          <div className="bg-emerald-50 border-b border-emerald-200 px-5 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex shrink-0 flex-col items-start justify-between gap-3 border-b border-emerald-200 bg-emerald-50 px-5 py-3.5 sm:flex-row sm:items-center">
             <div className="text-xs text-emerald-900 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
@@ -419,7 +419,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
         )}
 
         {/* Content Body */}
-        <div className="p-5 sm:p-6 space-y-6">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-5 sm:p-6 [@media(max-height:520px)]:space-y-4 [@media(max-height:520px)]:p-3">
           {/* TẦNG 1: Hero Summary Cards (#1E3A5F theme) */}
           <div className="bg-[#1E3A5F] text-white p-5 rounded-2xl shadow-lg border border-[#3B6998]">
             <div className="text-xs font-semibold text-[#E8F0FE]/80 uppercase tracking-wider mb-3">

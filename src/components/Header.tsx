@@ -400,7 +400,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div
           ref={menuRef}
           role="menu"
-          className="absolute right-3 top-full z-50 mt-1 w-[calc(100vw-1.5rem)] max-w-xs overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 text-slate-800 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:hidden"
+          className="absolute right-3 top-full z-50 mt-1 max-h-[calc(100dvh-8rem)] w-[calc(100vw-1.5rem)] max-w-xs overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 text-slate-800 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:hidden"
         >
           <MenuItem
             icon={<User className="w-4 h-4 text-[#FCC934]" />}

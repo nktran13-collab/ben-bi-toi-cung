@@ -41,9 +41,9 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
 
   return (
     <div className="safe-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/65 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-xl max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col text-slate-800 dark:text-slate-100 transition-all">
+      <div className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-800 shadow-2xl transition-all dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
         {/* Header Banner */}
-        <div className="bg-gradient-to-r from-[#1E3A5F] via-[#2A4D7A] to-[#FF6B00] text-white p-5 sm:p-6 relative overflow-hidden shrink-0">
+        <div className="relative shrink-0 overflow-hidden bg-gradient-to-r from-[#1E3A5F] via-[#2A4D7A] to-[#FF6B00] p-5 text-white sm:p-6 [@media(max-height:520px)]:p-3.5">
           {/* Subtle decorative circles */}
           <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
           <div className="absolute right-16 -bottom-10 w-24 h-24 rounded-full bg-[#FCC934]/20 blur-lg pointer-events-none" />
@@ -73,14 +73,14 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
             </button>
           </div>
 
-          <p className="mt-3 text-xs sm:text-sm text-[#E8F0FE]/90 leading-relaxed font-normal">
+          <p className="mt-3 text-xs sm:text-sm text-[#E8F0FE]/90 leading-relaxed font-normal [@media(max-height:520px)]:hidden">
             Không gian rèn luyện kỷ luật không bỏ cuộc, giúp bạn biến hành động có chủ đích thành phản xạ tự nhiên sau
             30 – 66 ngày bền bỉ.
           </p>
         </div>
 
         {/* Feature Cards Grid */}
-        <div className="p-5 sm:p-6 space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6 [@media(max-height:520px)]:space-y-3 [@media(max-height:520px)]:p-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* 1. Habit Mode */}
             <div className="bg-orange-50/70 dark:bg-orange-950/20 p-3.5 rounded-2xl border border-orange-200/80 dark:border-orange-900/40 flex items-start gap-3">
@@ -180,7 +180,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-[#F8FAFC] dark:bg-slate-800/80 px-5 py-3.5 sm:px-6 sm:py-4 border-t border-slate-200 dark:border-slate-700 flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5 shrink-0">
+        <div className="flex shrink-0 flex-col-reverse items-center justify-between gap-2.5 border-t border-slate-200 bg-[#F8FAFC] px-5 py-3.5 sm:flex-row sm:px-6 sm:py-4 dark:border-slate-700 dark:bg-slate-800/80 [@media(max-height:520px)]:py-2">
           <button
             type="button"
             onClick={handleRemindLater}
