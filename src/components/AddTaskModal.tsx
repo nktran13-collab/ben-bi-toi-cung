@@ -144,7 +144,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   : 'Thiết lập mục tiêu và định mức kỷ luật hàng ngày'}
               </span>
               {!isEditing && (
-                <span className="text-[11px] sm:text-xs font-mono px-2 py-0.2 rounded-full bg-white/10 text-[#FCC934]">
+                <span className="shrink-0 whitespace-nowrap text-[11px] sm:text-xs font-mono px-2 py-0.2 rounded-full bg-white/10 text-[#FCC934]">
                   {taskCount}/24 tối đa
                 </span>
               )}
