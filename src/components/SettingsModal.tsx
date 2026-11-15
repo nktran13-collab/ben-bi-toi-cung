@@ -1,6 +1,5 @@
 import React from 'react';
 import { Bell, BellOff, Clock, LogIn, X } from 'lucide-react';
-import { PUSH_REMINDER_HOUR } from '../utils/push';
 import type { PushStatus } from '../utils/usePushReminders';
 
 interface SettingsModalProps {
@@ -12,10 +11,13 @@ interface SettingsModalProps {
   pushBusy: boolean;
   pushError: string | null;
   onTogglePush: (enabled: boolean) => void;
+  pushReminderHour: number;
+  onChangePushReminderHour: (hour: number) => void;
   onRequestLogin: () => void;
 }
 
 const HOUR_OPTIONS = [0, 1, 2, 3, 4, 5, 6];
+const REMINDER_HOUR_OPTIONS = [17, 18, 19, 20, 21, 22, 23];
 
 const formatHour = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
@@ -28,12 +30,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   pushBusy,
   pushError,
   onTogglePush,
+  pushReminderHour,
+  onChangePushReminderHour,
   onRequestLogin,
 }) => {
   if (!isOpen) return null;
 
   const pushOn = pushStatus === 'on';
-  const reminderLabel = formatHour(PUSH_REMINDER_HOUR);
+  const reminderLabel = formatHour(pushReminderHour);
 
   const renderPushControl = () => {
     if (pushStatus === 'loading') {
@@ -165,6 +169,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
                 {renderPushControl()}
               </div>
+
+              {(pushStatus === 'off' || pushStatus === 'on') && (
+                <div className="mt-3">
+                  <span className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Giờ gửi (giờ máy)
+                  </span>
+                  <div
+                    role="radiogroup"
+                    aria-label="Giờ gửi nhắc nhở"
+                    className="mt-2 grid grid-cols-4 gap-2 [@media(max-height:520px)]:grid-cols-7"
+                  >
+                    {REMINDER_HOUR_OPTIONS.map((hour) => {
+                      const selected = hour === pushReminderHour;
+                      return (
+                        <button
+                          key={hour}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => onChangePushReminderHour(hour)}
+                          className={`rounded-xl border px-2 py-2.5 font-mono text-sm font-bold transition-colors [@media(max-height:520px)]:py-2 ${
+                            selected
+                              ? 'border-[#FF6B00] bg-[#FF6B00] text-white shadow-sm'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-[#FF6B00]/50 hover:text-[#FF6B00] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-[#FF6B00]/60'
+                          }`}
+                        >
+                          {formatHour(hour)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {pushStatus === 'denied' && (
                 <p className="mt-2 text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">

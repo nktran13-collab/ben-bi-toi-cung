@@ -542,6 +542,12 @@ test('parseSnapshot accepts a complete JSON snapshot and an empty snapshot', () 
   assert.deepEqual(parseSnapshot(snapshot()), snapshot());
 });
 
+test('parseSnapshot keeps a valid optional pushReminderHour and tolerates its absence', () => {
+  const withHour = snapshot({ settings: settings({ pushReminderHour: 21 }) });
+  assert.equal(parseSnapshot(withHour).settings.pushReminderHour, 21);
+  assert.equal(parseSnapshot(snapshot()).settings.pushReminderHour, undefined);
+});
+
 const malformedSnapshots: [string, unknown][] = [
   ['null', null],
   ['undefined', undefined],
@@ -560,6 +566,10 @@ const malformedSnapshots: [string, unknown][] = [
   ['non-finite dayRolloverHour', { ...snapshot(), settings: { ...settings(), dayRolloverHour: NaN } }],
   ['missing notificationsEnabled', { ...snapshot(), settings: { ...settings(), notificationsEnabled: undefined } }],
   ['invalid notificationsEnabled', { ...snapshot(), settings: { ...settings(), notificationsEnabled: 'false' } }],
+  ['string pushReminderHour', { ...snapshot(), settings: { ...settings(), pushReminderHour: '20' } }],
+  ['fractional pushReminderHour', { ...snapshot(), settings: { ...settings(), pushReminderHour: 20.5 } }],
+  ['negative pushReminderHour', { ...snapshot(), settings: { ...settings(), pushReminderHour: -1 } }],
+  ['pushReminderHour above 23', { ...snapshot(), settings: { ...settings(), pushReminderHour: 24 } }],
   ['missing settings timestamp', { ...snapshot(), settingsUpdatedAtMs: undefined }],
   ['string settings timestamp', { ...snapshot(), settingsUpdatedAtMs: '100' }],
   ['NaN settings timestamp', { ...snapshot(), settingsUpdatedAtMs: NaN }],

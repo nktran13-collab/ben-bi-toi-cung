@@ -54,7 +54,7 @@ export async function hasActivePushSubscription(): Promise<boolean> {
   return (await registration.pushManager.getSubscription()) !== null;
 }
 
-export async function registerPushSubscription(): Promise<void> {
+export async function registerPushSubscription(reminderHour = PUSH_REMINDER_HOUR): Promise<void> {
   if (!pushConfigured || !supabase) throw new Error('Chưa cấu hình khóa VAPID cho thông báo đẩy.');
   const registration = await getServiceWorkerRegistration();
   if (!registration) {
@@ -77,7 +77,7 @@ export async function registerPushSubscription(): Promise<void> {
     p256dh_in: record.p256dh,
     auth_in: record.auth,
     time_zone_in: record.timeZone,
-    reminder_hour_in: PUSH_REMINDER_HOUR,
+    reminder_hour_in: reminderHour,
   });
   if (error) throw new Error(cloudError(error));
 }

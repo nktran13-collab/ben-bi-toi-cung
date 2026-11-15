@@ -29,6 +29,7 @@ import { useTaskActions } from './utils/useTaskActions';
 import { useWakeLock } from './utils/useWakeLock';
 import { usePWAInstall } from './utils/usePWAInstall';
 import { usePushReminders } from './utils/usePushReminders';
+import { PUSH_REMINDER_HOUR } from './utils/push';
 import { notificationService } from './utils/notifications';
 import { realtimeManager } from './utils/realtime';
 import { setupMediaSession } from './utils/mediaSession';
@@ -81,13 +82,14 @@ export default function App() {
     recoveryAvailable,
   } = useCloudSync();
   const [dataLoaded, setDataLoaded] = useState(false);
+  const pushReminderHour = settings.pushReminderHour ?? PUSH_REMINDER_HOUR;
   const {
     status: pushStatus,
     busy: pushBusy,
     error: pushError,
     enable: enablePush,
     disable: disablePush,
-  } = usePushReminders(account.id, account.isAnonymous);
+  } = usePushReminders(account.id, account.isAnonymous, pushReminderHour);
   const soundEnabled = settings.soundEnabled;
   const wakeLockRequested = settings.wakeLockRequested;
   const darkMode = !!settings.darkMode;
@@ -868,6 +870,8 @@ export default function App() {
           pushBusy={pushBusy}
           pushError={pushError}
           onTogglePush={handleTogglePush}
+          pushReminderHour={pushReminderHour}
+          onChangePushReminderHour={(hour) => setSettings((current) => ({ ...current, pushReminderHour: hour }))}
           onRequestLogin={() => {
             setIsSettingsOpen(false);
             setIsAuthModalOpen(true);

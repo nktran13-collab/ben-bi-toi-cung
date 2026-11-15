@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cloudError } from './cloud';
 import {
+  PUSH_REMINDER_HOUR,
   getPushPermission,
   hasActivePushSubscription,
   pushConfigured,
@@ -11,11 +12,11 @@ import {
 
 export type PushStatus = 'loading' | 'unconfigured' | 'unsupported' | 'anonymous' | 'denied' | 'off' | 'on';
 
-export function usePushReminders(accountId: string | null, isAnonymous: boolean) {
+export function usePushReminders(accountId: string | null, isAnonymous: boolean, reminderHour = PUSH_REMINDER_HOUR) {
   const [status, setStatus] = useState<PushStatus>('loading');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const syncedAccountRef = useRef<string | null>(null);
+  const syncedKeyRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!pushConfigured) {
@@ -42,12 +43,14 @@ export function usePushReminders(accountId: string | null, isAnonymous: boolean)
     void refresh();
   }, [refresh]);
 
-  // Keep the server row in sync after login when the browser already holds a subscription.
+  // Keep the server row in sync for this account and the chosen reminder hour.
   useEffect(() => {
-    if (status !== 'on' || !accountId || isAnonymous || syncedAccountRef.current === accountId) return;
-    syncedAccountRef.current = accountId;
-    registerPushSubscription().catch((err) => setError(cloudError(err)));
-  }, [status, accountId, isAnonymous]);
+    if (status !== 'on' || !accountId || isAnonymous) return;
+    const key = `${accountId}|${reminderHour}`;
+    if (syncedKeyRef.current === key) return;
+    syncedKeyRef.current = key;
+    registerPushSubscription(reminderHour).catch((err) => setError(cloudError(err)));
+  }, [status, accountId, isAnonymous, reminderHour]);
 
   const enable = useCallback(async () => {
     setBusy(true);
@@ -60,8 +63,8 @@ export function usePushReminders(accountId: string | null, isAnonymous: boolean)
         setError(message);
         throw new Error(message);
       }
-      await registerPushSubscription();
-      syncedAccountRef.current = accountId;
+      await registerPushSubscription(reminderHour);
+      syncedKeyRef.current = `${accountId}|${reminderHour}`;
       setStatus('on');
     } catch (err) {
       setError(cloudError(err));
@@ -70,7 +73,7 @@ export function usePushReminders(accountId: string | null, isAnonymous: boolean)
     } finally {
       setBusy(false);
     }
-  }, [refresh, accountId]);
+  }, [refresh, accountId, reminderHour]);
 
   const disable = useCallback(async () => {
     setBusy(true);

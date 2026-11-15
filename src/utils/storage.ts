@@ -17,6 +17,7 @@ export interface AppSettings {
   wakeLockRequested: boolean;
   dayRolloverHour: number; // default 4
   notificationsEnabled: boolean;
+  pushReminderHour?: number; // default 20
   darkMode?: boolean;
   devModeEnabled?: boolean;
 }
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   wakeLockRequested: true,
   dayRolloverHour: 4,
   notificationsEnabled: false,
+  pushReminderHour: 20,
   darkMode: false,
   devModeEnabled: false,
 };

@@ -177,6 +177,10 @@ export function parseSnapshot(value: unknown): SyncSnapshot {
     data.settings.dayRolloverHour < 0 ||
     data.settings.dayRolloverHour > 23 ||
     typeof data.settings.notificationsEnabled !== 'boolean' ||
+    (data.settings.pushReminderHour !== undefined &&
+      (!Number.isInteger(data.settings.pushReminderHour) ||
+        data.settings.pushReminderHour < 0 ||
+        data.settings.pushReminderHour > 23)) ||
     (data.settings.darkMode !== undefined && typeof data.settings.darkMode !== 'boolean') ||
     (data.settings.devModeEnabled !== undefined && typeof data.settings.devModeEnabled !== 'boolean') ||
     !Number.isFinite(data.settingsUpdatedAtMs) ||
