@@ -55,8 +55,7 @@ function pendingTaskCount(snapshot: SnapshotLike | null, at: Date, timeZone: str
   const today = logicalDate(at, timeZone, rollover);
   if (!today) return 0;
   return tasks.filter(
-    (task) =>
-      task && (task.mode === 'habit' || task.mode === 'project') && task.lastCompletedDate !== today,
+    (task) => task && (task.mode === 'habit' || task.mode === 'project') && task.lastCompletedDate !== today,
   ).length;
 }
 
