@@ -20,15 +20,12 @@ interface WelcomeModalProps {
 }
 
 export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onOpenQuickStart }) => {
-  // Checkbox: Default is checked ("Hiện lại lần sau") or unchecked based on preference
-  const [showNextTime, setShowNextTime] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   if (!isOpen) return null;
 
   const handleStartNow = () => {
-    // If user checked "Hiện lại lần sau", dontShowAgain is false.
-    // If user unchecked it, dontShowAgain is true (won't show automatically next time).
-    onClose(!showNextTime);
+    onClose(dontShowAgain);
     if (onOpenQuickStart) {
       onOpenQuickStart();
     }
@@ -170,11 +167,11 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
             <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={showNextTime}
-                onChange={(e) => setShowNextTime(e.target.checked)}
+                checked={dontShowAgain}
+                onChange={(e) => setDontShowAgain(e.target.checked)}
                 className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-[#FF6B00] focus:ring-[#FF6B00] accent-[#FF6B00] cursor-pointer"
               />
-              <span>Tiếp tục hiện lại bảng mô tả này vào lần mở sau</span>
+              <span>Không hiển thị lại bảng mô tả này vào lần mở sau</span>
             </label>
           </div>
         </div>
