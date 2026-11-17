@@ -1,5 +1,6 @@
 import type { TaskItem, TimeSession, HabitDailyLog } from './engine.ts';
 import type { AppSettings } from './storage.ts';
+import { t } from './i18n.ts';
 
 export const collections = ['tasks', 'sessions', 'logs'] as const;
 export type Collection = (typeof collections)[number];
@@ -188,7 +189,7 @@ export function parseSnapshot(value: unknown): SyncSnapshot {
     !Array.isArray(data.tombstones) ||
     !data.tombstones.every((t) => validRecord({ ...t, sync_status: 0 }) && collections.includes(t.kind))
   ) {
-    throw new Error('Dữ liệu đồng bộ không hợp lệ. Bản trên thiết bị chưa bị thay thế.');
+    throw new Error(t('sync.invalidData'));
   }
   if (
     !data.tasks.every(
@@ -216,7 +217,7 @@ export function parseSnapshot(value: unknown): SyncSnapshot {
         Number.isFinite(l.actualDurationMs),
     )
   ) {
-    throw new Error('Bản ghi tác vụ hoặc lịch sử không hợp lệ.');
+    throw new Error(t('sync.invalidRecords'));
   }
   return data;
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { t } from './i18n';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -89,9 +90,9 @@ function injectDynamicManifest() {
 
   const manifestData = {
     id: '/',
-    name: 'Bền Bỉ Tới Cùng - Persistence To The End',
-    short_name: 'Bền Bỉ',
-    description: 'Ứng dụng PWA Offline-First tối ưu kỷ luật, đếm giờ độ lệch thời gian thực và đồng bộ đa thiết bị.',
+    name: t('pwa.manifestName'),
+    short_name: t('pwa.manifestShortName'),
+    description: t('pwa.manifestDescription'),
     start_url: '/',
     scope: '/',
     display: 'standalone',

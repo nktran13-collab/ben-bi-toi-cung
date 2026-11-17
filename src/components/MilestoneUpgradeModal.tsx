@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Award, Zap, Shield, Sparkles, CheckCircle2 } from 'lucide-react';
 import { TaskItem } from '../utils/engine';
 import { soundEngine } from '../utils/audio';
+import { useI18n } from '../utils/useI18n';
 
 interface MilestoneUpgradeModalProps {
   task: TaskItem;
@@ -11,6 +12,7 @@ interface MilestoneUpgradeModalProps {
 }
 
 export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({ task, isOpen, onUpgrade, onKeep }) => {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -96,11 +98,11 @@ export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({ ta
             <Award className="w-9 h-9 text-[#FCC934] animate-bounce" />
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FF6B00] text-white text-xs font-bold rounded-full uppercase tracking-wider mb-2 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5" /> Chinh phục Mốc 30 Ngày
+            <Sparkles className="w-3.5 h-3.5" /> {t('milestone.badge')}
           </div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Chúc mừng bạn!</h2>
+          <h2 className="text-2xl font-black text-white tracking-tight">{t('milestone.congrats')}</h2>
           <p className="text-xs text-blue-100 mt-1">
-            Tác vụ: <span className="font-semibold text-white">"{task.name}"</span>
+            {t('milestone.task')} <span className="font-semibold text-white">"{task.name}"</span>
           </p>
         </div>
 
@@ -110,11 +112,10 @@ export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({ ta
             <div className="flex items-start gap-3">
               <Zap className="w-5 h-5 text-[#FF6B00] shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-bold text-[#1E3A5F]">Tâm lý học thói quen UCL (London)</h4>
+                <h4 className="text-sm font-bold text-[#1E3A5F]">{t('milestone.uclTitle')}</h4>
                 <p className="text-xs text-slate-700 mt-1 leading-relaxed">
-                  Bạn đã hình thành nền móng 30 ngày vững chắc. Nghiên cứu của TS. Phillippa Lally tại UCL chứng minh
-                  rằng cần trung bình <strong>66 ngày</strong> để một hành vi trở thành phản xạ tự động hóa thần kinh
-                  (Automaticity).
+                  {t('milestone.uclBodyPrefix')} <strong>{t('milestone.uclBodyStrong')}</strong>{' '}
+                  {t('milestone.uclBodySuffix')}
                 </p>
               </div>
             </div>
@@ -125,19 +126,23 @@ export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({ ta
             <div className="flex items-center gap-2.5 text-xs text-slate-700">
               <CheckCircle2 className="w-4 h-4 text-[#81C995] shrink-0" />
               <span>
-                Giữ nguyên chuỗi <strong>🔥 {task.currentStreak} ngày</strong> hiện tại.
+                {t('milestone.keepStreak')}{' '}
+                <strong>
+                  🔥 {task.currentStreak} {t('common.days')}
+                </strong>{' '}
+                {t('milestone.keepStreakTail')}
               </span>
             </div>
             <div className="flex items-center gap-2.5 text-xs text-slate-700">
               <Shield className="w-4 h-4 text-[#FCC934] shrink-0" />
               <span>
-                Mở rộng dung lượng tích trữ Khiên Bền Bỉ từ <strong>2 lên 3 Khiên</strong>.
+                {t('milestone.shieldCapacityPrefix')} <strong>{t('milestone.shieldCapacityStrong')}</strong>.
               </span>
             </div>
             <div className="flex items-center gap-2.5 text-xs text-slate-700">
               <Award className="w-4 h-4 text-[#FF6B00] shrink-0" />
               <span>
-                Kích hoạt các Cột mốc Bảo lưu mới tại <strong>Ngày 45 & Ngày 60</strong>.
+                {t('milestone.checkpointsPrefix')} <strong>{t('milestone.checkpointsStrong')}</strong>.
               </span>
             </div>
           </div>
@@ -148,13 +153,13 @@ export const MilestoneUpgradeModal: React.FC<MilestoneUpgradeModalProps> = ({ ta
               onClick={() => onUpgrade(task.id)}
               className="w-full py-3.5 px-4 bg-gradient-to-r from-[#FF6B00] to-[#E05E00] text-white font-bold rounded-xl shadow-lg hover:shadow-orange-500/25 transition-all flex items-center justify-center gap-2 text-sm active:scale-[0.98]"
             >
-              <span>🚀 Nâng cấp lên Cột mốc 66 ngày</span>
+              <span>{t('milestone.upgrade66')}</span>
             </button>
             <button
               onClick={() => onKeep(task.id)}
               className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl transition-colors text-xs"
             >
-              Giữ nguyên cột mốc 30 ngày
+              {t('milestone.keep30')}
             </button>
           </div>
         </div>

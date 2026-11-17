@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Smartphone, Share, PlusSquare, CheckCircle, Download, Apple } from 'lucide-react';
+import { useI18n } from '../utils/useI18n';
 
 interface PWAInstallGuideModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
   isInstallable,
   onTriggerNativeInstall,
 }) => {
+  const { t } = useI18n();
   if (!isOpen) return null;
 
   return (
@@ -26,13 +28,14 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
               <Smartphone className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-white">Cài Đặt App Ra Màn Hình Chính</h2>
-              <p className="text-xs text-[#E8F0FE]/80">Chạy độc lập (Standalone) như Native App, không giật lag</p>
+              <h2 className="text-base sm:text-lg font-bold text-white">{t('pwa.title')}</h2>
+              <p className="text-xs text-[#E8F0FE]/80">{t('pwa.subtitle')}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label={t('common.close')}
             className="p-1 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors"
           >
             <X className="w-5 h-5" />
@@ -44,7 +47,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
           {/* Quick Install Button for Desktop / Android if event available */}
           {isInstallable && (
             <div className="bg-[#E8F0FE] p-4 rounded-xl border border-[#3B6998]/30 text-center space-y-2">
-              <div className="text-xs font-bold text-[#1E3A5F]">Trình duyệt hỗ trợ cài đặt tự động 1-chạm</div>
+              <div className="text-xs font-bold text-[#1E3A5F]">{t('pwa.autoTitle')}</div>
               <button
                 type="button"
                 onClick={() => {
@@ -54,7 +57,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
                 className="w-full py-2.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-98 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                <span>Cài đặt ứng dụng ngay</span>
+                <span>{t('pwa.installNow')}</span>
               </button>
             </div>
           )}
@@ -63,7 +66,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
               <Apple className="w-4 h-4 text-slate-700" />
-              <span>Hướng dẫn cài đặt trên iPhone / iPad (Safari):</span>
+              <span>{t('pwa.iosTitle')}</span>
             </div>
 
             <div className="space-y-2.5 text-xs text-slate-600">
@@ -74,12 +77,10 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
                 </div>
                 <div>
                   <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                    <span>Nhấn biểu tượng Chia sẻ</span>
+                    <span>{t('pwa.step1')}</span>
                     <Share className="w-4 h-4 text-blue-600" />
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    Nằm ở thanh công cụ dưới đáy màn hình Safari của iPhone.
-                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">{t('pwa.step1Desc')}</div>
                 </div>
               </div>
 
@@ -90,11 +91,11 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
                 </div>
                 <div>
                   <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                    <span>Chọn "Thêm vào MH chính"</span>
+                    <span>{t('pwa.step2')}</span>
                     <PlusSquare className="w-4 h-4 text-slate-700" />
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
-                    Cuộn xuống danh sách hành động và chọn <strong>Add to Home Screen</strong>.
+                    {t('pwa.step2DescPrefix')} <strong>Add to Home Screen</strong>.
                   </div>
                 </div>
               </div>
@@ -106,12 +107,10 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
                 </div>
                 <div>
                   <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                    <span>Bấm "Thêm" (Add)</span>
+                    <span>{t('pwa.step3')}</span>
                     <CheckCircle className="w-4 h-4 text-[#81C995]" />
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    Biểu tượng Bền Bỉ sẽ xuất hiện ngay trên màn hình chính của bạn.
-                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">{t('pwa.step3Desc')}</div>
                 </div>
               </div>
             </div>
@@ -120,8 +119,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
           {/* Android / Chrome guidance */}
           <div className="border-t border-slate-200 pt-3">
             <div className="text-xs text-slate-500">
-              <strong>Đối với Android / Chrome:</strong> Nếu không thấy nút tự động, hãy nhấn vào dấu ba chấm (⋮) ở góc
-              trên bên phải trình duyệt và chọn <em>"Cài đặt ứng dụng"</em> hoặc <em>"Thêm vào màn hình chính"</em>.
+              <strong>{t('pwa.androidPrefix')}</strong> {t('pwa.androidBody')}
             </div>
           </div>
         </div>
@@ -133,7 +131,7 @@ export const PWAInstallGuideModal: React.FC<PWAInstallGuideModalProps> = ({
             onClick={onClose}
             className="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
           >
-            Đã hiểu
+            {t('pwa.done')}
           </button>
         </div>
       </div>

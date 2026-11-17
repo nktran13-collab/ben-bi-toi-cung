@@ -28,6 +28,7 @@ import {
   MatrixDayStatus,
   getLogicalDate,
 } from '../utils/engine';
+import { useI18n } from '../utils/useI18n';
 
 interface ProjectStatsModalProps {
   task: TaskItem;
@@ -56,6 +57,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   onEditTask,
   dayRolloverHour = 4,
 }) => {
+  const { t } = useI18n();
   const [trimMinutes, setTrimMinutes] = useState(15);
   const [trimSuccessMessage, setTrimSuccessMessage] = useState<string | null>(null);
   const [shareCardGenerating, setShareCardGenerating] = useState(false);
@@ -134,7 +136,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   const handleApplyTrim = () => {
     if (onTrimLatestSession) {
       onTrimLatestSession(task.id, trimMinutes);
-      setTrimSuccessMessage(`Đã cắt gọt ${trimMinutes} phút thành công!`);
+      setTrimSuccessMessage(t('stats.trimSuccess', { n: trimMinutes }));
       setTimeout(() => setTrimSuccessMessage(null), 3000);
     }
   };
@@ -190,11 +192,11 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     // Header Branding
     ctx.font = 'bold 36px sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText('BỀN BỈ TỚI CÙNG', 60, 65);
+    ctx.fillText(t('stats.shareBrand'), 60, 65);
 
     ctx.font = '20px sans-serif';
     ctx.fillStyle = '#E8F0FE';
-    ctx.fillText('Hành trình kỷ luật không ma sát • Persistence To The End', 60, 102);
+    ctx.fillText(t('stats.shareTagline'), 60, 102);
 
     // User Tag
     if (userEmail) {
@@ -224,7 +226,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     ctx.font = 'bold 20px sans-serif';
     ctx.fillStyle = task.mode === 'habit' ? '#FF6B00' : '#3B6998';
     ctx.fillText(
-      task.mode === 'habit' ? `🔥 THÓI QUEN KỶ LUẬT (${targetMilestone} NGÀY)` : '⏱️ DỰ ÁN TÍCH LŨY',
+      task.mode === 'habit' ? t('stats.shareModeHabit', { n: targetMilestone }) : t('stats.shareModeProject'),
       100,
       290,
     );
@@ -238,12 +240,14 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
     ctx.font = '16px sans-serif';
     ctx.fillStyle = '#B45309';
-    ctx.fillText(task.mode === 'habit' ? 'CHUỖI HIỆN TẠI' : 'TỔNG TẬP TRUNG', 130, 365);
+    ctx.fillText(task.mode === 'habit' ? t('stats.shareStreakLabel') : t('stats.shareTotalLabel'), 130, 365);
 
     ctx.font = 'bold 44px sans-serif';
     ctx.fillStyle = '#FF6B00';
     ctx.fillText(
-      task.mode === 'habit' ? `🔥 ${task.currentStreak} ngày` : formatDuration(totalDurationMs, true),
+      task.mode === 'habit'
+        ? t('stats.shareStreakValue', { n: task.currentStreak })
+        : formatDuration(totalDurationMs, true),
       130,
       430,
     );
@@ -256,7 +260,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
     ctx.font = '16px sans-serif';
     ctx.fillStyle = '#1E3A5F';
-    ctx.fillText('MẬT ĐỘ BỀN BỈ', 440, 365);
+    ctx.fillText(t('stats.shareDensityLabel'), 440, 365);
 
     ctx.font = 'bold 44px sans-serif';
     ctx.fillStyle = '#1E3A5F';
@@ -270,12 +274,14 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
     ctx.font = '16px sans-serif';
     ctx.fillStyle = '#475569';
-    ctx.fillText(task.mode === 'habit' ? 'KHIÊN BỀN BỈ TÍCH TRỮ' : 'SỐ NGÀY THỰC HIỆN', 750, 365);
+    ctx.fillText(task.mode === 'habit' ? t('stats.shareShieldsLabel') : t('stats.shareActiveDaysLabel'), 750, 365);
 
     ctx.font = 'bold 44px sans-serif';
     ctx.fillStyle = '#1E3A5F';
     ctx.fillText(
-      task.mode === 'habit' ? `🛡️ ${task.shields} khiên` : `${activeDaysCount} / ${historyDays} ngày`,
+      task.mode === 'habit'
+        ? t('stats.shareShieldsValue', { n: task.shields })
+        : t('stats.shareActiveDaysValue', { active: activeDaysCount, history: historyDays }),
       750,
       430,
     );
@@ -283,7 +289,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     // Footer quote
     ctx.font = 'italic 18px sans-serif';
     ctx.fillStyle = '#64748B';
-    ctx.fillText('“Chiến thắng không thuộc về người thông minh nhất, mà thuộc về người bền bỉ tới cùng.”', 100, 525);
+    ctx.fillText(t('stats.shareQuote'), 100, 525);
 
     // Watermark URL
     ctx.textAlign = 'right';
@@ -299,6 +305,22 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
     a.download = `vinh-danh-ben-bi-${task.id}.png`;
     a.click();
     setShareCardGenerating(false);
+  };
+
+  const matrixStatusLabel = (status: MatrixDayStatus): string => {
+    switch (status) {
+      case 'completed_on_time':
+        return t('stats.matrixOnTime');
+      case 'frozen_by_shield':
+        return t('stats.matrixFrozen');
+      case 'makeup_recovered':
+        return t('stats.matrixMakeup');
+      case 'missed':
+        return t('stats.matrixMissed');
+      case 'upcoming':
+      default:
+        return t('stats.matrixUpcoming');
+    }
   };
 
   const getMatrixColor = (status: MatrixDayStatus): string => {
@@ -325,21 +347,21 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-wider font-bold bg-[#3B6998] px-2.5 py-0.5 rounded-full text-[#E8F0FE]">
-                {task.mode === 'habit' ? 'Báo cáo Thói quen' : 'Báo cáo Dự án'}
+                {task.mode === 'habit' ? t('stats.reportHabit') : t('stats.reportProject')}
               </span>
               <span className="text-xs text-[#E8F0FE]/80">
                 {task.mode === 'project'
                   ? task.targetUnlimited
-                    ? 'Mục tiêu: Không giới hạn'
-                    : `Mục tiêu phiên: ${Math.round(task.targetDurationMs / 60000)} phút`
-                  : `Mục tiêu: ${targetMilestone} ngày`}
+                    ? t('stats.goalUnlimited')
+                    : t('stats.goalSession', { n: Math.round(task.targetDurationMs / 60000) })
+                  : t('stats.goalDays', { n: targetMilestone })}
               </span>
             </div>
             <h2 className="text-xl font-bold mt-1 text-white flex items-center gap-2">
               {task.name}
               {task.mode === 'habit' && (
                 <span className="text-sm font-semibold text-[#FCC934] bg-white/10 px-2 py-0.5 rounded-md">
-                  🔥 {task.currentStreak} ngày
+                  🔥 {task.currentStreak} {t('common.days')}
                 </span>
               )}
             </h2>
@@ -354,7 +376,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   onClose();
                   onEditTask(task);
                 }}
-                title="Chỉnh sửa thông tin tác vụ"
+                title={t('stats.editTitle')}
                 className="w-9 h-9 rounded-full bg-white/15 text-white font-bold hover:bg-[#3B6998] transition-colors flex items-center justify-center cursor-pointer"
               >
                 <Pencil className="w-4 h-4" />
@@ -364,7 +386,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
               <button
                 type="button"
                 onClick={() => setConfirmingDelete((prev) => !prev)}
-                title="Xóa tác vụ này vĩnh viễn"
+                title={t('stats.deleteTitle')}
                 className="w-9 h-9 rounded-full bg-red-500/20 text-red-300 font-bold hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
@@ -373,7 +395,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              title="Đóng bảng báo cáo"
+              title={t('stats.closeTitle')}
               className="w-9 h-9 rounded-full bg-[#3B6998] text-white font-bold hover:bg-[#FF6B00] transition-colors flex items-center justify-center cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -385,8 +407,8 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
         {confirmingDelete && onDeleteTask && (
           <div className="flex shrink-0 flex-col items-start justify-between gap-3 border-b border-red-200 bg-red-50 px-5 py-3.5 sm:flex-row sm:items-center">
             <div className="text-xs text-red-800">
-              <strong>Xác nhận xóa vĩnh viễn:</strong> Bạn có chắc chắn muốn xóa tác vụ <strong>"{task.name}"</strong>{' '}
-              cùng toàn bộ lịch sử phiên làm việc?
+              <strong>{t('stats.deleteConfirmStrong')}</strong> {t('stats.deleteConfirmBefore')}{' '}
+              <strong>"{task.name}"</strong> {t('stats.deleteConfirmAfter')}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
@@ -394,14 +416,14 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 onClick={() => setConfirmingDelete(false)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 cursor-pointer"
               >
-                Hủy
+                {t('stats.deleteCancel')}
               </button>
               <button
                 type="button"
                 onClick={() => onDeleteTask(task.id)}
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 cursor-pointer"
               >
-                Xóa vĩnh viễn
+                {t('stats.deleteConfirmBtn')}
               </button>
             </div>
           </div>
@@ -412,17 +434,14 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
           <div className="flex shrink-0 flex-col items-start justify-between gap-3 border-b border-emerald-200 bg-emerald-50 px-5 py-3.5 sm:flex-row sm:items-center">
             <div className="text-xs text-emerald-900 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>
-                Đang có phiên làm việc tích lũy <strong>{formatDuration(task.accumulatedMs, true)}</strong> chưa chốt
-                vào nhật ký.
-              </span>
+              <span>{t('stats.unsavedSession', { time: formatDuration(task.accumulatedMs, true) })}</span>
             </div>
             <button
               type="button"
               onClick={() => onCompleteSprintSession(task.id)}
               className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
             >
-              Chốt & Lưu Phiên Này
+              {t('stats.saveSessionNow')}
             </button>
           </div>
         )}
@@ -432,44 +451,48 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
           {/* TẦNG 1: Hero Summary Cards (#1E3A5F theme) */}
           <div className="bg-[#1E3A5F] text-white p-5 rounded-2xl shadow-lg border border-[#3B6998]">
             <div className="text-xs font-semibold text-[#E8F0FE]/80 uppercase tracking-wider mb-3">
-              Tầng 1 • Tổng quan năng lực kiên trì (Hero Summary)
+              {t('stats.tier1')}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
                 <div className="flex items-center gap-2 text-[#E8F0FE] text-xs font-medium">
                   <Clock className="w-4 h-4 text-[#FF6B00]" />
-                  <span>Tổng thời gian tích lũy</span>
+                  <span>{t('stats.totalTime')}</span>
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-white mt-1.5 tabular-nums">
                   {formatDuration(totalDurationMs, true)}
                 </div>
-                <div className="text-xs text-blue-200 mt-0.5">{(totalDurationMs / 3600000).toFixed(1)} giờ thực tế</div>
+                <div className="text-xs text-blue-200 mt-0.5">
+                  {t('stats.hoursReal', { hours: (totalDurationMs / 3600000).toFixed(1) })}
+                </div>
               </div>
 
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
                 <div className="flex items-center gap-2 text-[#E8F0FE] text-xs font-medium">
                   <TrendingUp className="w-4 h-4 text-[#FCC934]" />
-                  <span>Mật độ bền bỉ (% Density)</span>
+                  <span>{t('stats.density')}</span>
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-[#FCC934] mt-1.5 tabular-nums">
                   {persistenceDensity}%
                 </div>
                 <div className="text-xs text-blue-200 mt-0.5">
-                  {activeDaysCount} ngày làm / {historyDays} ngày lịch sử
+                  {t('stats.activeDaysHistory', { active: activeDaysCount, history: historyDays })}
                 </div>
               </div>
 
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
                 <div className="flex items-center gap-2 text-[#E8F0FE] text-xs font-medium">
                   <Calendar className="w-4 h-4 text-[#81C995]" />
-                  <span>Trung bình mỗi ngày làm</span>
+                  <span>{t('stats.avgPerDay')}</span>
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-white mt-1.5 tabular-nums">
-                  {avgMinutesPerActiveDay} <span className="text-sm font-normal">phút</span>
+                  {avgMinutesPerActiveDay} <span className="text-sm font-normal">{t('stats.minutes')}</span>
                 </div>
                 <div className="text-xs text-blue-200 mt-0.5">
-                  Định mức:{' '}
-                  {task.targetUnlimited ? 'Không giới hạn' : `${Math.round(task.targetDurationMs / 60000)} phút`}
+                  {t('stats.quota')}{' '}
+                  {task.targetUnlimited
+                    ? t('stats.quotaUnlimited')
+                    : t('stats.quotaMinutes', { n: Math.round(task.targetDurationMs / 60000) })}
                 </div>
               </div>
             </div>
@@ -481,13 +504,11 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-[#1E3A5F]" />
                 <h3 className="text-sm font-bold text-slate-800">
-                  {task.mode === 'project'
-                    ? 'Tầng 2 • Bản đồ nhiệt 30 ngày gần nhất'
-                    : `Tầng 2 • Ma trận chuỗi ${targetMilestone} ngày (UCL habit formation)`}
+                  {task.mode === 'project' ? t('stats.tier2Heatmap') : t('stats.tier2Matrix', { n: targetMilestone })}
                 </h3>
               </div>
               <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-                Rollover: {String(dayRolloverHour).padStart(2, '0')}:00
+                {t('stats.rollover', { hour: `${String(dayRolloverHour).padStart(2, '0')}:00` })}
               </span>
             </div>
 
@@ -498,7 +519,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   {last30Days.map((d, idx) => (
                     <div
                       key={d.dateStr}
-                      title={`${d.label}: ${d.durationMinutes} phút`}
+                      title={t('stats.dayMinutesTooltip', { label: d.label, minutes: d.durationMinutes })}
                       className={`flex h-9 sm:h-12 flex-col items-center justify-center rounded-lg border text-[11px] sm:text-xs font-bold leading-none transition-colors ${getHeatColor(
                         d.durationMinutes,
                       )} ${idx === last30Days.length - 1 ? 'ring-2 ring-[#FF6B00]/60 ring-offset-1' : ''}`}
@@ -514,41 +535,50 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 <div className="text-xs text-slate-500 pt-2 border-t border-slate-200">
                   {maxMinutesIn30Days > 0 ? (
                     <>
-                      <span className="font-semibold text-slate-600">{activeDaysIn30}/30 ngày</span> có làm việc • tổng{' '}
-                      <span className="font-semibold text-slate-600">{totalMinutesIn30} phút</span> • cao nhất{' '}
-                      <span className="font-semibold text-[#FF6B00]">{maxMinutesIn30Days} phút</span>
+                      <span className="font-semibold text-slate-600">
+                        {t('stats.activeDays30', { n: activeDaysIn30 })}
+                      </span>{' '}
+                      {t('stats.hasWorked')}{' '}
+                      <span className="font-semibold text-slate-600">
+                        {t('stats.totalMinutes', { n: totalMinutesIn30 })}
+                      </span>{' '}
+                      • {t('stats.maxLabel')}{' '}
+                      <span className="font-semibold text-[#FF6B00]">
+                        {t('stats.maxMinutes', { n: maxMinutesIn30Days })}
+                      </span>
                     </>
                   ) : (
-                    <span className="font-semibold text-slate-400">Chưa có phiên làm việc trong 30 ngày gần nhất</span>
+                    <span className="font-semibold text-slate-400">{t('stats.noSessions30')}</span>
                   )}
                 </div>
 
                 <div className="text-xs text-slate-500">
-                  Hôm nay cộng dồn: <span className="font-semibold text-slate-700">{todayMinutes} phút</span> •{' '}
-                  {todaySessions.length} phiên
+                  {t('stats.todayAccumulated')}{' '}
+                  <span className="font-semibold text-slate-700">{t('stats.todayMinutes', { n: todayMinutes })}</span> •{' '}
+                  {t('stats.sessionsCount', { n: todaySessions.length })}
                 </div>
 
                 {/* Heat Legend */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-medium text-slate-600">
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#FF6B00] rounded-xs inline-block shrink-0" />
-                    <span>Cao nhất</span>
+                    <span>{t('stats.legendMax')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#1E3A5F] rounded-xs inline-block shrink-0" />
-                    <span>Nhiều</span>
+                    <span>{t('stats.legendHigh')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#7FA8D4] rounded-xs inline-block shrink-0" />
-                    <span>Vừa</span>
+                    <span>{t('stats.legendMedium')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#D0E1FD] rounded-xs inline-block shrink-0" />
-                    <span>Ít</span>
+                    <span>{t('stats.legendLow')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-slate-100 border border-slate-200 rounded-xs inline-block shrink-0" />
-                    <span>Chưa làm</span>
+                    <span>{t('stats.legendNone')}</span>
                   </div>
                 </div>
               </div>
@@ -559,7 +589,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   {streakMatrix.map((cell) => (
                     <div
                       key={cell.dayNumber}
-                      title={`${cell.label}: ${cell.status}`}
+                      title={`${cell.label}: ${matrixStatusLabel(cell.status)}`}
                       className={`h-9 rounded-lg border flex flex-col items-center justify-center text-xs font-bold transition-all shadow-xs ${getMatrixColor(
                         cell.status,
                       )}`}
@@ -573,23 +603,23 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-xs font-medium text-slate-600">
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#FF6B00] rounded-xs inline-block shrink-0" />
-                    <span>Hoàn thành đúng giờ</span>
+                    <span>{t('stats.matrixOnTime')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#FCC934] rounded-xs inline-block shrink-0" />
-                    <span>Khiên bảo vệ</span>
+                    <span>{t('stats.matrixFrozen')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#1E3A5F] rounded-xs inline-block shrink-0" />
-                    <span>Đền bù (x2)</span>
+                    <span>{t('stats.matrixMakeup')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#D93025] rounded-xs inline-block shrink-0" />
-                    <span>Bỏ lỡ / Đứt chuỗi</span>
+                    <span>{t('stats.matrixMissed')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 bg-[#E8F0FE] border border-[#D0E1FD] rounded-xs inline-block shrink-0" />
-                    <span>Ngày tương lai</span>
+                    <span>{t('stats.matrixUpcoming')}</span>
                   </div>
                 </div>
               </div>
@@ -604,10 +634,8 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   <Scissors className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">Cắt gọt thời gian thừa (Trim Session)</h4>
-                  <p className="text-[10px] sm:text-xs text-slate-600">
-                    Nếu bạn để quên đồng hồ chạy qua giờ, hãy kéo thanh trượt để cắt bớt.
-                  </p>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">{t('stats.trimTitle')}</h4>
+                  <p className="text-[10px] sm:text-xs text-slate-600">{t('stats.trimDesc')}</p>
                 </div>
               </div>
 
@@ -620,8 +648,10 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                  <span>Số phút muốn cắt bớt:</span>
-                  <span className="text-[#FF6B00] font-mono text-sm">{trimMinutes} phút</span>
+                  <span>{t('stats.trimMinutesLabel')}</span>
+                  <span className="text-[#FF6B00] font-mono text-sm">
+                    {t('stats.trimMinutesValue', { n: trimMinutes })}
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -636,11 +666,11 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
               <div className="bg-white p-3 rounded-lg border border-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
                 <div>
-                  <span className="text-slate-500">Thời gian sau cắt: </span>
+                  <span className="text-slate-500">{t('stats.trimAfter')} </span>
                   <strong className="text-slate-900 font-mono font-bold text-sm">{formatDuration(trimmedMs)}</strong>
                   <span className="text-slate-400 text-[10px] sm:text-xs block sm:inline">
                     {' '}
-                    (gốc: {formatDuration(targetToTrimMs)})
+                    {t('stats.trimOriginal', { time: formatDuration(targetToTrimMs) })}
                   </span>
                 </div>
                 <button
@@ -648,7 +678,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   onClick={handleApplyTrim}
                   className="w-full sm:w-auto bg-[#FF6B00] hover:bg-[#E65100] text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-xs transition-colors text-center"
                 >
-                  Cắt gọt
+                  {t('stats.trimApply')}
                 </button>
               </div>
             </div>
@@ -659,13 +689,11 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Download className="w-5 h-5 text-[#FF6B00]" />
-                <h4 className="text-sm font-bold text-slate-800">Tầng 3 • Xuất dữ liệu & Thẻ Vinh Danh</h4>
+                <h4 className="text-sm font-bold text-slate-800">{t('stats.tier3Title')}</h4>
               </div>
             </div>
 
-            <p className="text-[11px] sm:text-xs text-slate-600">
-              Xuất nhật ký làm việc để lưu trữ hoặc tạo ảnh 1200x630 chia sẻ mạng xã hội.
-            </p>
+            <p className="text-[11px] sm:text-xs text-slate-600">{t('stats.tier3Desc')}</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
               <button
@@ -674,7 +702,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors border border-slate-200"
               >
                 <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                <span>Xuất file CSV (.csv)</span>
+                <span>{t('stats.exportCsv')}</span>
               </button>
 
               <button
@@ -683,7 +711,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors border border-slate-200"
               >
                 <FileText className="w-4 h-4 text-blue-600" />
-                <span>Xuất Markdown (.md)</span>
+                <span>{t('stats.exportMd')}</span>
               </button>
 
               <button
@@ -693,7 +721,7 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                 className="py-2.5 px-3 bg-[#FF6B00] hover:bg-[#E05E00] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
               >
                 <Award className="w-4 h-4 text-[#FCC934]" />
-                <span>{shareCardGenerating ? 'Đang tạo...' : '🏆 Tạo Thẻ Vinh Danh'}</span>
+                <span>{shareCardGenerating ? t('stats.generating') : t('stats.shareCard')}</span>
               </button>
             </div>
           </div>
@@ -701,13 +729,13 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
 
         {/* Footer */}
         <div className="bg-[#F4F7FA] px-5 sm:px-6 py-3.5 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
-          <span className="text-[10px] sm:text-xs text-slate-500 font-medium">Bền bỉ tới cùng • Chuẩn UCL 66 ngày</span>
+          <span className="text-[10px] sm:text-xs text-slate-500 font-medium">{t('stats.footer')}</span>
           <button
             type="button"
             onClick={onClose}
             className="w-full sm:w-auto px-6 py-2 sm:py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 bg-slate-100 sm:bg-transparent rounded-lg transition-colors border border-slate-200 sm:border-transparent"
           >
-            Đóng báo cáo
+            {t('stats.closeReport')}
           </button>
         </div>
       </div>

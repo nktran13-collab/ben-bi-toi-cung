@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../utils/useI18n';
 
 interface AccountLoadingOverlayProps {
   isLoadingAccount: boolean;
@@ -19,6 +20,7 @@ export const AccountLoadingOverlay: React.FC<AccountLoadingOverlayProps> = ({
   onRetrySync,
   onLogout,
 }) => {
+  const { t } = useI18n();
   if (!isLoadingAccount) return null;
   return (
     <div
@@ -30,14 +32,14 @@ export const AccountLoadingOverlay: React.FC<AccountLoadingOverlayProps> = ({
     >
       <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl">
         <h2 id="account-loading-title" className="text-lg font-bold">
-          {syncError ? 'Chưa tải được dữ liệu tài khoản' : 'Đang tải dữ liệu tài khoản'}
+          {syncError ? t('account.loadError') : t('account.loading')}
         </h2>
         <p
           id="account-loading-description"
           className="mt-3 text-sm text-slate-300"
           role={syncError ? 'alert' : 'status'}
         >
-          {syncError || 'Vui lòng chờ xác thực và tải dữ liệu trước khi tiếp tục.'}
+          {syncError || t('account.wait')}
         </p>
         {accountActionError && (
           <p role="alert" className="mt-3 text-sm text-red-300">
@@ -52,7 +54,7 @@ export const AccountLoadingOverlay: React.FC<AccountLoadingOverlayProps> = ({
               onClick={onRetrySync}
               className="rounded-lg bg-[#FF6B00] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
             >
-              {isSyncing ? 'Đang thử lại...' : 'Thử lại đồng bộ'}
+              {isSyncing ? t('account.retrying') : t('account.retry')}
             </button>
             <button
               type="button"
@@ -60,7 +62,7 @@ export const AccountLoadingOverlay: React.FC<AccountLoadingOverlayProps> = ({
               onClick={onLogout}
               className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold disabled:opacity-50"
             >
-              {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
+              {isLoggingOut ? t('account.loggingOut') : t('account.logout')}
             </button>
           </div>
         )}

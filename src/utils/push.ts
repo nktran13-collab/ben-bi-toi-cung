@@ -1,4 +1,5 @@
 import { cloudEnabled, cloudError, supabase } from './cloud';
+import { t } from './i18n';
 
 export const PUSH_REMINDER_HOUR = 20;
 
@@ -55,10 +56,10 @@ export async function hasActivePushSubscription(): Promise<boolean> {
 }
 
 export async function registerPushSubscription(reminderHour = PUSH_REMINDER_HOUR): Promise<void> {
-  if (!pushConfigured || !supabase) throw new Error('Chưa cấu hình khóa VAPID cho thông báo đẩy.');
+  if (!pushConfigured || !supabase) throw new Error(t('push.vapidMissing'));
   const registration = await getServiceWorkerRegistration();
   if (!registration) {
-    throw new Error('Trình duyệt chưa kích hoạt Service Worker. Hãy mở bản cài đặt (PWA) rồi thử lại.');
+    throw new Error(t('push.swMissing'));
   }
 
   let subscription = await registration.pushManager.getSubscription();
@@ -70,7 +71,7 @@ export async function registerPushSubscription(reminderHour = PUSH_REMINDER_HOUR
   }
 
   const record = toSubscriptionRecord(subscription.toJSON());
-  if (!record) throw new Error('Trình duyệt trả về đăng ký đẩy không hợp lệ.');
+  if (!record) throw new Error(t('push.invalidSubscription'));
 
   const { error } = await supabase.rpc('benbi_register_push_subscription', {
     endpoint_in: record.endpoint,

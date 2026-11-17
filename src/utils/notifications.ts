@@ -1,4 +1,5 @@
 import { formatClockTime, ScheduledPushRecord } from './engine';
+import { t } from './i18n';
 
 class NotificationService {
   private activeTimers = new Map<string, number>();
@@ -54,8 +55,8 @@ class NotificationService {
       scheduledTimeIso: new Date(scheduledEndAtMs).toISOString(),
       displayTime: formatClockTime(scheduledEndAtMs),
       notification: {
-        title: `🔥 Bền Bỉ: ${taskName} đã hoàn thành!`,
-        body: 'Đồng hồ đếm ngược đã chạm 00:00. Mở app và nhấn giữ 0.8 giây để bảo toàn chuỗi.',
+        title: t('notify.scheduledTitle', { name: taskName }),
+        body: t('notify.scheduledBody'),
         tag: `habit-finish-${taskId}`,
       },
     };
@@ -64,10 +65,7 @@ class NotificationService {
     // Client-side timer trigger
     if (typeof window !== 'undefined') {
       const timerId = window.setTimeout(() => {
-        this.sendNotification(
-          `🔥 Bền Bỉ: ${taskName} đã hết giờ!`,
-          'Đồng hồ đã về 00:00. Chạm để mở ứng dụng và nhấn giữ xác nhận chuỗi của bạn.',
-        );
+        this.sendNotification(t('notify.endTitle', { name: taskName }), t('notify.endBody'));
         this.scheduledRecords.delete(taskId);
         this.activeTimers.delete(taskId);
       }, remainingMs);

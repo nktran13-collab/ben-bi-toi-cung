@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Clock, Scissors, Check, Trash2 } from 'lucide-react';
 import { TaskItem, formatDuration } from '../utils/engine';
+import { useI18n } from '../utils/useI18n';
 
 interface IdleDetectionModalProps {
   task: TaskItem | null;
@@ -17,6 +18,7 @@ export const IdleDetectionModal: React.FC<IdleDetectionModalProps> = ({
   onSaveTrimmed,
   onDiscard,
 }) => {
+  const { t } = useI18n();
   const rawMinutes = Math.max(15, Math.round(rawDurationMs / 60000));
   // Default to 60 mins or half of raw minutes as reasonable focused estimate
   const defaultSelectedMinutes = Math.min(60, rawMinutes);
@@ -40,21 +42,21 @@ export const IdleDetectionModal: React.FC<IdleDetectionModalProps> = ({
             <AlertTriangle className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <h3 className="text-lg font-bold">Phát hiện Quên Tắt Đồng Hồ (&gt; 3 Giờ)</h3>
-            <p className="text-xs text-red-100">Bảo vệ độ chính xác dữ liệu tập trung</p>
+            <h3 className="text-lg font-bold">{t('idle.title')}</h3>
+            <p className="text-xs text-red-100">{t('idle.subtitle')}</p>
           </div>
         </div>
 
         {/* Body */}
         <div className="p-6 space-y-5">
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-            <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Tác vụ dự án</div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{t('idle.projectTask')}</div>
             <div className="text-base font-bold text-[#1E3A5F] mt-0.5">{task.name}</div>
             <div className="text-xs text-slate-600 mt-1 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-[#D93025]" />
               <span>
-                Đồng hồ đã chạy liên tục:{' '}
-                <strong className="text-[#D93025]">{formatDuration(rawDurationMs, true)}</strong> ({rawMinutes} phút)
+                {t('idle.running')} <strong className="text-[#D93025]">{formatDuration(rawDurationMs, true)}</strong>
+                {` (${rawMinutes} ${t('common.minutes')})`}
               </span>
             </div>
           </div>
@@ -64,10 +66,10 @@ export const IdleDetectionModal: React.FC<IdleDetectionModalProps> = ({
             <div className="flex justify-between items-center">
               <label htmlFor="idle-trim-slider" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Scissors className="w-4 h-4 text-[#FF6B00]" />
-                Kéo chọn thời gian thực tế bạn đã tập trung:
+                {t('idle.sliderLabel')}
               </label>
               <span className="text-sm font-black text-[#1E3A5F] px-2.5 py-1 bg-[#E8F0FE] rounded-lg">
-                {selectedMinutes} phút ({formatDuration(trimmedMs, true)})
+                {t('idle.selected', { n: selectedMinutes, time: formatDuration(trimmedMs, true) })}
               </span>
             </div>
 
@@ -83,9 +85,9 @@ export const IdleDetectionModal: React.FC<IdleDetectionModalProps> = ({
             />
 
             <div className="flex justify-between text-xs text-slate-500 font-medium">
-              <span>Tối thiểu: 10 phút</span>
-              <span>Cắt bỏ thời gian rác: {Math.round(discardedMs / 60000)} phút</span>
-              <span>Toàn bộ: {rawMinutes} phút</span>
+              <span>{t('idle.min')}</span>
+              <span>{t('idle.discarded', { n: Math.round(discardedMs / 60000) })}</span>
+              <span>{t('idle.all', { n: rawMinutes })}</span>
             </div>
           </div>
 
@@ -96,14 +98,14 @@ export const IdleDetectionModal: React.FC<IdleDetectionModalProps> = ({
               className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs"
             >
               <Trash2 className="w-4 h-4 text-slate-500" />
-              <span>Hủy toàn bộ phiên này</span>
+              <span>{t('idle.discard')}</span>
             </button>
             <button
               onClick={() => onSaveTrimmed(task.id, trimmedMs)}
               className="py-3 px-4 bg-[#1E3A5F] hover:bg-[#162D4A] text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs active:scale-[0.98]"
             >
               <Check className="w-4 h-4 text-[#81C995]" />
-              <span>Lưu {selectedMinutes} phút</span>
+              <span>{t('idle.save', { n: selectedMinutes })}</span>
             </button>
           </div>
         </div>

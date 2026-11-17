@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sparkles, HeartPulse, Briefcase, BookOpen, Layers, Plus, Search } from 'lucide-react';
 import type { TaskCategory, TaskItem } from '../utils/engine';
+import { useI18n } from '../utils/useI18n';
 
 interface TaskFilterBarProps {
   tasks: TaskItem[];
@@ -21,6 +22,7 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
   onSearchChange,
   onAddTask,
 }) => {
+  const { t } = useI18n();
   const categories: {
     value: 'all' | TaskCategory;
     label: string;
@@ -28,31 +30,31 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
     iconClass: string;
     count: number;
   }[] = [
-    { value: 'all', label: 'Tất cả', icon: Layers, iconClass: '', count: tasks.length },
+    { value: 'all', label: t('category.all'), icon: Layers, iconClass: '', count: tasks.length },
     {
       value: 'health',
-      label: 'Sức khoẻ',
+      label: t('category.health'),
       icon: HeartPulse,
       iconClass: 'text-rose-500',
       count: tasks.filter((t) => t.category === 'health').length,
     },
     {
       value: 'work',
-      label: 'Công việc',
+      label: t('category.work'),
       icon: Briefcase,
       iconClass: 'text-[#3B6998]',
       count: tasks.filter((t) => t.category === 'work').length,
     },
     {
       value: 'study',
-      label: 'Học hành',
+      label: t('category.study'),
       icon: BookOpen,
       iconClass: 'text-indigo-500',
       count: tasks.filter((t) => t.category === 'study').length,
     },
     {
       value: 'habit',
-      label: 'Thói quen',
+      label: t('category.habit'),
       icon: Sparkles,
       iconClass: 'text-[#FF6B00]',
       count: tasks.filter((t) => t.category === 'habit').length,
@@ -106,7 +108,7 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Tìm kiếm tác vụ..."
+            placeholder={t('filter.search')}
             className={`w-full min-h-11 sm:min-h-0 pl-8 pr-3 py-2 sm:py-1.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-[#FF6B00] ${
               darkMode
                 ? 'bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500'
@@ -132,10 +134,10 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
           disabled={tasks.length >= 24}
           onClick={onAddTask}
           className="hidden min-h-11 sm:flex sm:min-h-0 px-3.5 py-2 sm:py-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-xs transition-all items-center gap-1.5 cursor-pointer shrink-0"
-          title="Thêm tác vụ mới"
+          title={t('header.addTaskTitle')}
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Thêm tác vụ</span>
+          <span>{t('filter.addTask')}</span>
         </button>
       </div>
     </div>

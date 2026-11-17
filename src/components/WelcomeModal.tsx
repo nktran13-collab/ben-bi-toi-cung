@@ -12,6 +12,7 @@ import {
   BookmarkCheck,
   RotateCcw,
 } from 'lucide-react';
+import { useI18n } from '../utils/useI18n';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface WelcomeModalProps {
 }
 
 export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onOpenQuickStart }) => {
+  const { t } = useI18n();
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
   if (!isOpen) return null;
@@ -52,18 +54,18 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
               </div>
               <div>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[#FCC934] text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">
-                  <span>Chào mừng bạn mới</span>
+                  <span>{t('welcome.badge')}</span>
                   <span>•</span>
-                  <span>Kỷ luật 66 ngày UCL</span>
+                  <span>{t('welcome.ucl')}</span>
                 </div>
-                <h2 className="text-lg sm:text-2xl font-extrabold text-white leading-tight">Bền Bỉ Tới Cùng</h2>
+                <h2 className="text-lg sm:text-2xl font-extrabold text-white leading-tight">{t('welcome.brand')}</h2>
               </div>
             </div>
 
             <button
               type="button"
               onClick={handleRemindLater}
-              aria-label="Đóng bảng hướng dẫn"
+              aria-label={t('common.close')}
               className="p-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -71,8 +73,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
           </div>
 
           <p className="mt-3 text-xs sm:text-sm text-[#E8F0FE]/90 leading-relaxed font-normal [@media(max-height:520px)]:hidden">
-            Không gian rèn luyện kỷ luật không bỏ cuộc, giúp bạn biến hành động có chủ đích thành phản xạ tự nhiên sau
-            30 – 66 ngày bền bỉ.
+            {t('welcome.tagline')}
           </p>
         </div>
 
@@ -86,11 +87,11 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
               </div>
               <div className="space-y-1">
                 <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>Thói Quen & Chuỗi Ngày</span>
+                  <span>{t('welcome.habitTitle')}</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Đồng hồ đếm ngược từng phút, tự động tích lũy <strong>Chuỗi ngày (Streak)</strong> không ngắt quãng
-                  hướng đến cột mốc 66 ngày tự động hóa.
+                  {t('welcome.habitDescPrefix')} <strong>{t('welcome.habitDescStrong')}</strong>{' '}
+                  {t('welcome.habitDescSuffix')}
                 </p>
               </div>
             </div>
@@ -102,11 +103,11 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
               </div>
               <div className="space-y-1">
                 <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>Khiên Bền Bỉ (Shield)</span>
+                  <span>{t('welcome.shieldTitle')}</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Cứ mỗi <strong>7 ngày kỷ luật</strong> bạn nhận 1 Khiên. Khi lỡ quên hoặc có việc đột xuất, Khiên sẽ
-                  bảo vệ giữ nguyên chuỗi streak cho bạn.
+                  {t('welcome.shieldDescPrefix')} <strong>{t('welcome.shieldDescStrong')}</strong>{' '}
+                  {t('welcome.shieldDescSuffix')}
                 </p>
               </div>
             </div>
@@ -118,11 +119,11 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
               </div>
               <div className="space-y-1">
                 <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>Dự Án & Cắt Gọt Thời Gian</span>
+                  <span>{t('welcome.projectTitle')}</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Bấm giờ làm việc sâu, dễ dàng <strong>cắt gọt bớt phút xao nhãng</strong> và chốt từng phiên vào nhật
-                  ký dự án chi tiết.
+                  {t('welcome.projectDescPrefix')} <strong>{t('welcome.projectDescStrong')}</strong>{' '}
+                  {t('welcome.projectDescSuffix')}
                 </p>
               </div>
             </div>
@@ -134,11 +135,12 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
               </div>
               <div className="space-y-1">
                 <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>Đồng Bộ Đám Mây & Giờ Ngày Mới</span>
+                  <span>{t('welcome.cloudTitle')}</span>
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Ngày mới mặc định chuyển lúc <strong>04:00 sáng</strong> cho người thức khuya và có thể đổi trong{' '}
-                  <strong>Cài đặt</strong>. Xác thực email bằng mã OTP để đồng bộ dữ liệu giữa các thiết bị khi có mạng.
+                  {t('welcome.cloudDescPrefix')} <strong>{t('welcome.cloudDescStrong')}</strong>{' '}
+                  {t('welcome.cloudDescMiddle')} <strong>{t('welcome.cloudDescSettings')}</strong>
+                  {t('welcome.cloudDescSuffix')}
                 </p>
               </div>
             </div>
@@ -148,17 +150,17 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
           <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-300">
             <span className="flex items-center gap-1 font-medium">
               <Headphones className="w-3.5 h-3.5 text-[#FF6B00]" />
-              Zen Focus (Brown Noise)
+              {t('welcome.zen')}
             </span>
             <span className="hidden sm:inline text-slate-300 dark:text-slate-600">•</span>
             <span className="flex items-center gap-1 font-medium">
               <Moon className="w-3.5 h-3.5 text-[#1E3A5F] dark:text-[#FCC934]" />
-              Dark Mode dịu mắt
+              {t('welcome.darkMode')}
             </span>
             <span className="hidden sm:inline text-slate-300 dark:text-slate-600">•</span>
             <span className="flex items-center gap-1 font-medium">
               <BookmarkCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Dùng ngoại tuyến, đồng bộ khi có mạng
+              {t('welcome.offline')}
             </span>
           </div>
 
@@ -171,7 +173,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
                 onChange={(e) => setDontShowAgain(e.target.checked)}
                 className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-[#FF6B00] focus:ring-[#FF6B00] accent-[#FF6B00] cursor-pointer"
               />
-              <span>Không hiển thị lại bảng mô tả này vào lần mở sau</span>
+              <span>{t('welcome.dontShow')}</span>
             </label>
           </div>
         </div>
@@ -184,7 +186,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
             className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-            <span>Để sau (Hiện lại lần tới)</span>
+            <span>{t('welcome.later')}</span>
           </button>
 
           <button
@@ -192,7 +194,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
             onClick={handleStartNow}
             className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-[#FF6B00] to-[#E65100] hover:from-[#E65100] hover:to-[#D84315] active:scale-98 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-orange-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
           >
-            <span>Bắt đầu trải nghiệm ngay</span>
+            <span>{t('welcome.start')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

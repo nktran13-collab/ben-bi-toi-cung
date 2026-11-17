@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cloudError } from './cloud';
+import { t } from './i18n';
 import {
   PUSH_REMINDER_HOUR,
   getPushPermission,
@@ -59,7 +60,7 @@ export function usePushReminders(accountId: string | null, isAnonymous: boolean,
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         setStatus(permission === 'denied' ? 'denied' : 'off');
-        const message = 'Bạn cần cho phép thông báo trong trình duyệt để bật nhắc nhở.';
+        const message = t('push.permissionNeeded');
         setError(message);
         throw new Error(message);
       }

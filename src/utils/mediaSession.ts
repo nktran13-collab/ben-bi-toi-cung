@@ -4,13 +4,14 @@
  */
 import { TaskItem } from './engine';
 import { soundEngine } from './audio';
+import { t } from './i18n';
 
-const CATEGORY_NAMES: Record<string, string> = {
-  health: 'Sức khoẻ',
-  work: 'Công việc',
-  study: 'Học hành',
-  habit: 'Thói quen',
-};
+const CATEGORY_KEYS = {
+  health: 'category.health',
+  work: 'category.work',
+  study: 'category.study',
+  habit: 'category.habit',
+} as const;
 
 export function setupMediaSession(
   runningTask: TaskItem | null,
@@ -35,13 +36,14 @@ export function setupMediaSession(
     return;
   }
 
-  const categoryName = CATEGORY_NAMES[runningTask.category] || 'Bền bỉ';
-  const modeName = runningTask.mode === 'habit' ? 'Thói quen' : 'Dự án';
+  const categoryKey = CATEGORY_KEYS[runningTask.category as keyof typeof CATEGORY_KEYS];
+  const categoryName = categoryKey ? t(categoryKey) : t('media.fallback');
+  const modeName = runningTask.mode === 'habit' ? t('media.modeHabit') : t('media.modeProject');
 
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: `${runningTask.name} - ${modeName}`,
-      artist: 'Bền bỉ tới cùng',
+      artist: t('media.artist'),
       album: categoryName,
       artwork: [
         {

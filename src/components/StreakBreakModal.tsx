@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertOctagon, Shield, Flame, RotateCcw, Zap, X, Lock, RefreshCw } from 'lucide-react';
 import { TaskItem, calculateCheckpoint } from '../utils/engine';
+import { useI18n } from '../utils/useI18n';
 
 interface StreakBreakModalProps {
   task: TaskItem;
@@ -23,6 +24,7 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
   onResetToCheckpoint,
   onFullReset,
 }) => {
+  const { t } = useI18n();
   if (!isOpen) return null;
 
   const checkpoint = calculateCheckpoint(task.currentStreak);
@@ -43,13 +45,13 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs uppercase tracking-wider font-extrabold bg-white/25 px-2 py-0.5 rounded-full">
-                  {isSevereBreak ? 'Kỷ luật chuỗi nghiêm ngặt' : 'Bảo vệ chuỗi kiên trì'}
+                  {isSevereBreak ? t('streak.severeBadge') : t('streak.protectBadge')}
                 </span>
                 <span className="text-xs text-white/90">
-                  {missedDays === 1 ? 'Bỏ lỡ 1 ngày' : `Bỏ lỡ ${missedDays} ngày liên tiếp`}
+                  {missedDays === 1 ? t('streak.missed1') : t('streak.missedN', { n: missedDays })}
                 </span>
               </div>
-              <h2 className="text-lg sm:text-xl font-bold mt-1 text-white">Cảnh báo đứt chuỗi: {task.name}</h2>
+              <h2 className="text-lg sm:text-xl font-bold mt-1 text-white">{t('streak.title', { name: task.name })}</h2>
             </div>
           </div>
           <button
@@ -65,13 +67,17 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
         <div className="bg-rose-50/70 p-4 border-b border-rose-100 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
             <Flame className="w-4 h-4 text-[#FF6B00] fill-[#FF6B00]" />
-            <span className="text-slate-700">Chuỗi đang giữ:</span>
-            <strong className="text-slate-900 font-mono text-sm">{task.currentStreak} ngày</strong>
+            <span className="text-slate-700">{t('streak.currentStreak')}</span>
+            <strong className="text-slate-900 font-mono text-sm">
+              {task.currentStreak} {t('common.days')}
+            </strong>
           </div>
           <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-rose-200">
             <Shield className="w-4 h-4 text-[#FCC934] fill-[#FCC934]" />
-            <span className="text-slate-700">Kho khiên:</span>
-            <strong className="text-amber-800 font-bold">{task.shields} khiên</strong>
+            <span className="text-slate-700">{t('streak.shieldStock')}</span>
+            <strong className="text-amber-800 font-bold">
+              {task.shields} {t('common.shields')}
+            </strong>
           </div>
         </div>
 
@@ -80,9 +86,7 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
           <div className="p-4 bg-red-50 border-b border-red-200 text-xs text-red-800 flex items-start gap-2.5">
             <Lock className="w-4 h-4 text-[#D93025] shrink-0 mt-0.5" />
             <div>
-              <strong>Nút Đi tiếp đã bị khóa:</strong> Bạn đã bỏ lỡ từ 2 ngày liên tiếp trở lên mà không đủ khiên. Để
-              bảo vệ kỷ luật thực chất của chuỗi, bạn chỉ có thể chọn Lùi về Cột mốc Bảo lưu gần nhất hoặc Reset toàn
-              bộ.
+              <strong>{t('streak.severeTitle')}</strong> {t('streak.severeBody')}
             </div>
           </div>
         )}
@@ -99,14 +103,14 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <span>Dùng {missedDays} Khiên Bền Bỉ</span>
+                      <span>{t('streak.useShields', { n: missedDays })}</span>
                       <span className="text-xs bg-[#FCC934] text-slate-950 font-extrabold px-1.5 py-0.2 rounded">
-                        Khuyên dùng
+                        {t('streak.recommended')}
                       </span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-1">
-                      Kích hoạt trạng thái <strong className="text-amber-800">FROZEN_BY_SHIELD</strong> (tô màu Vàng kim
-                      trên lưới) để bảo toàn chuỗi {task.currentStreak} ngày.
+                      {t('streak.shieldDesc')} <strong className="text-amber-800">FROZEN_BY_SHIELD</strong>{' '}
+                      {t('streak.shieldDescTail', { n: task.currentStreak })}
                     </p>
                   </div>
                 </div>
@@ -118,7 +122,7 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                   }}
                   className="shrink-0 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-xs bg-[#1E3A5F] hover:bg-[#152a45] text-white active:scale-95"
                 >
-                  Dùng {missedDays} khiên
+                  {t('streak.useShieldBtn', { n: missedDays })}
                 </button>
               </div>
             </div>
@@ -134,12 +138,15 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <span>Cơ hội Đi tiếp: Nhiệm vụ Đền bù (x2 thời gian)</span>
+                      <span>{t('streak.compensationTitle')}</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-1">
-                      Kích hoạt <strong className="text-[#1E3A5F]">MAKEUP_RECOVERED</strong>: Bạn cam kết hoàn thành{' '}
-                      <strong className="text-[#FF6B00]">{doubleMinutes} phút</strong> hôm nay (thay vì {normalMinutes}{' '}
-                      phút) để khôi phục chuỗi hoàn toàn.
+                      {t('streak.compensationDesc')} <strong className="text-[#1E3A5F]">MAKEUP_RECOVERED</strong>
+                      {t('streak.compensationDescMiddle')}{' '}
+                      <strong className="text-[#FF6B00]">
+                        {t('streak.compensationDescMinutes', { n: doubleMinutes })}
+                      </strong>{' '}
+                      {t('streak.compensationDescTail', { normal: normalMinutes })}
                     </p>
                   </div>
                 </div>
@@ -151,7 +158,7 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                   }}
                   className="shrink-0 px-3 py-2 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
                 >
-                  Nhận đền bù x2
+                  {t('streak.acceptCompensation')}
                 </button>
               </div>
             </div>
@@ -165,13 +172,8 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                   <RotateCcw className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900">
-                    Lùi về Cột mốc Bảo lưu gần nhất: Ngày {checkpoint}
-                  </h4>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Bảo vệ thành quả: Hệ thống giữ lại cột mốc đạt được (7, 14, 21, 30, 45, 60 ngày) thay vì bắt đầu lại
-                    từ con số 0.
-                  </p>
+                  <h4 className="text-sm font-bold text-slate-900">{t('streak.rollbackTitle', { n: checkpoint })}</h4>
+                  <p className="text-xs text-slate-600 mt-1">{t('streak.rollbackDesc')}</p>
                 </div>
               </div>
               <button
@@ -182,7 +184,7 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
                 }}
                 className="shrink-0 px-3 py-2 bg-slate-700 hover:bg-slate-800 active:scale-95 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
               >
-                Về Ngày {checkpoint}
+                {t('streak.rollbackBtn', { n: checkpoint })}
               </button>
             </div>
           </div>
@@ -191,7 +193,7 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
           <div className="p-3 bg-red-50/50 rounded-xl border border-red-100 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-slate-600">
               <RefreshCw className="w-4 h-4 text-red-500" />
-              <span>Reset toàn phần về Ngày 0 (Bắt đầu chu trình mới):</span>
+              <span>{t('streak.fullResetLabel')}</span>
             </div>
             <button
               type="button"
@@ -202,7 +204,7 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
               }}
               className="px-2.5 py-1.5 text-xs text-red-700 hover:bg-red-100 rounded-lg font-semibold transition-colors"
             >
-              Reset về Ngày 0
+              {t('streak.fullResetBtn')}
             </button>
           </div>
         </div>
@@ -214,7 +216,7 @@ export const StreakBreakModal: React.FC<StreakBreakModalProps> = ({
             onClick={onClose}
             className="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
           >
-            Đóng
+            {t('streak.close')}
           </button>
         </div>
       </div>

@@ -19,8 +19,10 @@ import {
   Eye,
   HelpCircle,
   MoreVertical,
+  Languages,
 } from 'lucide-react';
 import { getLogicalDate, UserAccount } from '../utils/engine';
+import { useI18n } from '../utils/useI18n';
 
 interface HeaderProps {
   wakeLockActive: boolean;
@@ -100,6 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
   dayRolloverHour,
   needsReauth = false,
 }) => {
+  const { lang, toggleLang, t } = useI18n();
   const headerRef = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -165,7 +168,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-white flex items-center gap-2 truncate">
-                Bền bỉ tới cùng
+                {t('app.name')}
               </h1>
               <span className="hidden sm:inline-block text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 text-[#FCC934] border border-white/15">
                 UCL 66-Day System
@@ -174,14 +177,14 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-2 text-xs text-[#E8F0FE]/90">
               <span className="flex items-center gap-1 font-mono">
                 <Clock className="w-3.5 h-3.5 text-[#FCC934]" />
-                Ngày: <strong className="text-white">{logicalDate}</strong>
+                {t('header.date')}: <strong className="text-white">{logicalDate}</strong>
               </span>
               {isPastMidnight && (
                 <span
                   className="text-xs bg-[#FF6B00]/20 text-[#FFF3E0] px-2 py-0.5 rounded border border-[#FF6B00]/40 font-semibold"
-                  title={`Chế độ sinh học ${rolloverLabel} sáng tính giờ vào ngày hôm trước`}
+                  title={t('header.nightShiftTitle', { hour: rolloverLabel })}
                 >
-                  Ca đêm (&lt; {rolloverLabel})
+                  {t('header.nightShift', { hour: rolloverLabel })}
                 </span>
               )}
             </div>
@@ -195,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({
             {isSimulatedOffline ? (
               <div
                 className="flex min-h-11 items-center gap-1.5 bg-rose-950/60 px-2.5 rounded-lg border border-rose-500/50 text-xs text-rose-200 sm:min-h-0 sm:py-1.5"
-                title="Thiết bị đang ở chế độ Ngoại tuyến (Offline). Thay đổi được ghi nguyên tử vào máy."
+                title={t('header.offlineTitle')}
               >
                 <CloudOff className="h-[18px] w-[18px] text-rose-400 sm:h-3.5 sm:w-3.5" />
                 <span className="font-semibold">
@@ -208,21 +211,21 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={onTriggerSyncNow}
                 disabled={isSyncing}
                 className="flex min-h-11 items-center gap-1.5 bg-[#152a45] text-[#FCC934] hover:bg-[#3B6998]/60 px-2.5 rounded-lg border border-[#FF6B00]/60 text-xs font-semibold shadow-xs transition-colors cursor-pointer sm:min-h-0 sm:py-1.5"
-                title="Có bản ghi chờ đồng bộ. Bấm để đồng bộ ngay."
+                title={t('header.syncPendingTitle')}
               >
                 <RefreshCw
                   className={`h-[18px] w-[18px] text-[#FCC934] sm:h-3.5 sm:w-3.5 ${isSyncing ? 'animate-spin' : ''}`}
                 />
-                <span className="hidden sm:inline">Đồng bộ</span>
+                <span className="hidden sm:inline">{t('header.sync')}</span>
                 <span className="font-mono text-[11px] leading-none">({pendingSyncCount})</span>
               </button>
             ) : (
               <div
                 className="flex min-h-11 items-center gap-1.5 bg-[#152a45] px-2.5 rounded-lg border border-[#81C995]/50 text-xs text-[#81C995] sm:min-h-0 sm:py-1.5"
-                title="Toàn bộ dữ liệu đã được lưu an toàn"
+                title={t('header.savedTitle')}
               >
                 <Cloud className="h-[18px] w-[18px] text-[#81C995] sm:h-3.5 sm:w-3.5" />
-                <span className="font-semibold">Đã lưu</span>
+                <span className="font-semibold">{t('header.saved')}</span>
               </div>
             )}
 
@@ -230,9 +233,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenAuthModal}
-              aria-label={
-                needsReauth ? 'Phiên đăng nhập đã hết hạn, xác thực lại' : 'Tài khoản, đồng bộ đám mây và sao lưu'
-              }
+              aria-label={needsReauth ? t('header.reauthAria') : t('header.accountAria')}
               className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer sm:min-h-0 sm:min-w-0 sm:py-1.5 ${
                 needsReauth
                   ? 'bg-amber-950/60 text-amber-100 border-amber-400/80'
@@ -240,25 +241,21 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-[#152a45] text-white border-[#81C995]/70'
                     : 'bg-[#152a45] text-[#E8F0FE]/90 border-[#3B6998]/60 hover:text-white hover:bg-[#3B6998]/50'
               }`}
-              title={
-                needsReauth
-                  ? 'Phiên đăng nhập đã hết hạn. Bấm để xác thực lại email.'
-                  : 'Quản lý Tài khoản, Đồng bộ Đám mây & Sao lưu JSON'
-              }
+              title={needsReauth ? t('header.reauthTitle') : t('header.accountTitle')}
             >
               <User className="h-[18px] w-[18px] text-[#FCC934] shrink-0 sm:h-3.5 sm:w-3.5" />
               <span className="hidden sm:inline max-w-[125px] truncate">
-                {account.isAnonymous ? 'Sao lưu / Cloud' : account.email?.split('@')[0]}
+                {account.isAnonymous ? t('header.backupCloud') : account.email?.split('@')[0]}
               </span>
               {needsReauth && (
-                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" aria-label="Cần đăng nhập lại" />
+                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" aria-label={t('header.reauthDot')} />
               )}
             </button>
 
             {/* Total Shields Badge */}
             <div
               className="flex min-h-11 items-center gap-1 bg-[#152a45] px-2.5 rounded-lg border border-[#3B6998]/60 text-xs text-white sm:min-h-0 sm:py-1.5"
-              title="Khiên Bền Bỉ tích luỹ (1 khiên mỗi 7 ngày chuỗi) dùng để bảo vệ chuỗi khi lỡ quên"
+              title={t('header.shieldsTitle')}
             >
               <Shield className="h-[18px] w-[18px] text-[#FCC934] fill-[#FCC934] sm:h-3.5 sm:w-3.5" />
               <span className="font-bold font-mono text-[11px] leading-none">{totalShields}</span>
@@ -268,6 +265,18 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Secondary controls stay inline on desktop, move into the mobile menu */}
             <div className="hidden sm:flex items-center gap-1.5 sm:gap-2">
+              {/* Language toggle */}
+              <button
+                type="button"
+                onClick={toggleLang}
+                aria-label={t('header.language')}
+                title={t('header.language')}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold border border-[#3B6998]/60 bg-[#152a45] text-[#FCC934] hover:bg-[#3B6998] transition-colors cursor-pointer"
+              >
+                <Languages className="w-3.5 h-3.5" />
+                <span className="leading-none">{lang === 'vi' ? 'VI' : 'EN'}</span>
+              </button>
+
               {/* Screen Wake Lock Toggle */}
               <button
                 type="button"
@@ -277,10 +286,10 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-[#3B6998] text-white border-[#81C995]/60 shadow-inner'
                     : 'bg-[#152a45] text-[#E8F0FE]/70 border-[#3B6998]/40 hover:text-white'
                 }`}
-                title="Giữ màn hình luôn sáng khi đang bấm giờ tập trung"
+                title={t('header.wakeTitle')}
               >
                 <Eye className={`w-3.5 h-3.5 ${wakeLockActive ? 'text-[#FCC934]' : 'text-[#E8F0FE]/60'}`} />
-                <span className="hidden lg:inline">Giữ sáng</span>
+                <span className="hidden lg:inline">{t('header.keepAwake')}</span>
                 <span className={`w-1.5 h-1.5 rounded-full ${wakeLockActive ? 'bg-[#81C995]' : 'bg-gray-500'}`} />
               </button>
 
@@ -293,7 +302,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-[#3B6998] text-[#FCC934] border-[#FCC934]/50'
                     : 'bg-[#152a45] text-[#E8F0FE]/80 border-[#3B6998]/60 hover:text-white hover:bg-[#3B6998]/50'
                 }`}
-                title={darkMode ? 'Chuyển sang Giao diện Sáng' : 'Chuyển sang Giao diện Tối (Dịu mắt ban đêm)'}
+                title={darkMode ? t('header.darkOnTitle') : t('header.darkOffTitle')}
               >
                 {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
@@ -303,7 +312,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={onOpenSettings}
                 className="p-1.5 rounded-lg border border-[#3B6998]/60 bg-[#152a45] text-[#E8F0FE]/80 hover:text-white hover:bg-[#3B6998]/50 transition-colors cursor-pointer"
-                title={`Cài đặt: ngày mới bắt đầu lúc ${rolloverLabel} (mặc định 04:00)`}
+                title={t('header.settingsTitle', { hour: rolloverLabel })}
               >
                 <Settings className="w-4 h-4" />
               </button>
@@ -315,7 +324,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className={`p-1.5 rounded-lg border border-[#3B6998]/60 bg-[#152a45] transition-colors cursor-pointer ${
                   soundEnabled ? 'text-[#FCC934] hover:bg-[#3B6998]' : 'text-gray-400 hover:text-white'
                 }`}
-                title={soundEnabled ? 'Chuông ngân FM Bell đang BẬT' : 'Chuông đang TẮT'}
+                title={soundEnabled ? t('header.soundOnTitle') : t('header.soundOffTitle')}
               >
                 {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </button>
@@ -326,7 +335,7 @@ export const Header: React.FC<HeaderProps> = ({
                   type="button"
                   onClick={onOpenWelcomeModal}
                   className="p-1.5 rounded-lg border border-[#3B6998]/60 bg-[#152a45] text-[#FCC934] hover:bg-[#3B6998] transition-colors cursor-pointer"
-                  title="Xem Giới thiệu & Hướng dẫn sử dụng ứng dụng"
+                  title={t('header.guideTitle')}
                 >
                   <HelpCircle className="w-4 h-4" />
                 </button>
@@ -337,14 +346,14 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={isPWAInstallable ? onPromptInstall : onOpenPWAGuide}
                 className="flex items-center gap-1 bg-[#152a45] hover:bg-[#3B6998] text-[#E8F0FE] px-2 py-1.5 rounded-lg text-xs font-medium border border-[#3B6998]/60 transition-colors cursor-pointer"
-                title="Cài đặt ứng dụng ra Màn hình chính (PWA)"
+                title={t('header.installTitle')}
               >
                 {isPWAInstallable ? (
                   <Download className="w-3.5 h-3.5 text-[#81C995]" />
                 ) : (
                   <Smartphone className="w-3.5 h-3.5 text-[#FCC934]" />
                 )}
-                <span className="hidden xl:inline">Cài App</span>
+                <span className="hidden xl:inline">{t('header.install')}</span>
               </button>
 
               {/* Dev Mode Toggle (hidden unless unlocked or already enabled) */}
@@ -357,11 +366,7 @@ export const Header: React.FC<HeaderProps> = ({
                       ? 'bg-[#FF6B00]/20 text-[#FCC934] border-[#FF6B00]'
                       : 'bg-[#152a45] text-[#E8F0FE]/50 border-[#3B6998]/40 hover:text-white'
                   }`}
-                  title={
-                    devModeEnabled
-                      ? 'Đang bật Chế độ Nhà phát triển (Dev/Test Toolbar) — Bấm để ẩn'
-                      : 'Bật công cụ kiểm thử dành cho Nhà phát triển (Dev Mode)'
-                  }
+                  title={devModeEnabled ? t('header.devOnTitle') : t('header.devOffTitle')}
                 >
                   <FlaskConical className="w-4 h-4" />
                 </button>
@@ -373,11 +378,11 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={onOpenAddTask}
               className="flex min-h-11 flex-1 items-center justify-center gap-1.5 bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 text-white text-xs font-bold px-3 rounded-lg shadow-sm transition-all cursor-pointer sm:min-h-0 sm:flex-none sm:py-1.5"
-              title="Thêm tác vụ mới"
+              title={t('header.addTaskTitle')}
             >
               <Plus className="h-[18px] w-[18px] sm:h-4 sm:w-4" />
-              <span className="inline sm:hidden">Thêm</span>
-              <span className="hidden sm:inline">Thêm tác vụ</span>
+              <span className="inline sm:hidden">{t('header.add')}</span>
+              <span className="hidden sm:inline">{t('header.addTask')}</span>
             </button>
 
             {/* Mobile-only overflow menu */}
@@ -387,7 +392,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setMenuOpen((open) => !open)}
               aria-expanded={menuOpen}
               aria-haspopup="menu"
-              aria-label="Mở menu cài đặt và tiện ích"
+              aria-label={t('header.menuAria')}
               className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[#3B6998]/60 bg-[#152a45] text-[#E8F0FE] transition-colors hover:bg-[#3B6998] cursor-pointer sm:hidden"
             >
               <MoreVertical className="h-[18px] w-[18px]" />
@@ -404,21 +409,27 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <MenuItem
             icon={<User className="w-4 h-4 text-[#FCC934]" />}
-            label="Tài khoản & Sao lưu"
-            hint={account.isAnonymous ? 'Đăng nhập' : account.email?.split('@')[0]}
+            label={t('header.menuAccount')}
+            hint={account.isAnonymous ? t('header.menuLogin') : account.email?.split('@')[0]}
             onClick={runAndClose(onOpenAuthModal)}
           />
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
           <MenuItem
+            icon={<Languages className="w-4 h-4 text-[#3B6998] dark:text-[#FCC934]" />}
+            label={t('header.language')}
+            hint={lang === 'vi' ? 'VI' : 'EN'}
+            onClick={runAndClose(toggleLang)}
+          />
+          <MenuItem
             icon={<Eye className="w-4 h-4 text-[#3B6998]" />}
-            label="Giữ màn hình sáng"
-            hint={wakeLockActive ? 'Bật' : 'Tắt'}
+            label={t('header.menuWake')}
+            hint={wakeLockActive ? t('common.on') : t('common.off')}
             onClick={runAndClose(onToggleWakeLock)}
           />
           <MenuItem
             icon={darkMode ? <Sun className="w-4 h-4 text-[#FCC934]" /> : <Moon className="w-4 h-4 text-[#3B6998]" />}
-            label="Giao diện tối"
-            hint={darkMode ? 'Bật' : 'Tắt'}
+            label={t('header.menuDark')}
+            hint={darkMode ? t('common.on') : t('common.off')}
             onClick={runAndClose(onToggleDarkMode)}
           />
           <MenuItem
@@ -429,13 +440,13 @@ export const Header: React.FC<HeaderProps> = ({
                 <VolumeX className="w-4 h-4 text-slate-400" />
               )
             }
-            label="Âm thanh chuông"
-            hint={soundEnabled ? 'Bật' : 'Tắt'}
+            label={t('header.menuSound')}
+            hint={soundEnabled ? t('common.on') : t('common.off')}
             onClick={runAndClose(onToggleSound)}
           />
           <MenuItem
             icon={<Settings className="w-4 h-4 text-[#3B6998] dark:text-[#81C995]" />}
-            label="Cài đặt"
+            label={t('header.menuSettings')}
             hint={rolloverLabel}
             onClick={runAndClose(onOpenSettings)}
           />
@@ -443,29 +454,29 @@ export const Header: React.FC<HeaderProps> = ({
           {onOpenWelcomeModal && (
             <MenuItem
               icon={<HelpCircle className="w-4 h-4 text-[#FF6B00]" />}
-              label="Giới thiệu & Hướng dẫn"
+              label={t('header.menuGuide')}
               onClick={runAndClose(onOpenWelcomeModal)}
             />
           )}
           <MenuItem
             icon={<Smartphone className="w-4 h-4 text-[#3B6998]" />}
-            label={isPWAInstallable ? 'Cài ứng dụng ra màn hình chính' : 'Cách cài ứng dụng'}
+            label={isPWAInstallable ? t('header.menuInstall') : t('header.menuInstallGuide')}
             onClick={runAndClose(isPWAInstallable ? onPromptInstall : onOpenPWAGuide)}
           />
           {(devModeEnabled || devToolsUnlocked) && (
             <MenuItem
               icon={<FlaskConical className="w-4 h-4 text-slate-400" />}
-              label="Chế độ nhà phát triển"
-              hint={devModeEnabled ? 'Bật' : 'Tắt'}
+              label={t('header.menuDev')}
+              hint={devModeEnabled ? t('common.on') : t('common.off')}
               onClick={runAndClose(onToggleDevMode)}
             />
           )}
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
           <div className="flex items-center justify-between px-3 py-2 text-[11px] font-semibold text-slate-400">
-            <span>Chuỗi đang duy trì</span>
+            <span>{t('header.menuStreaks')}</span>
             <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
               <Shield className="w-3 h-3 text-[#FCC934] fill-[#FCC934]" />
-              {totalShields} khiên
+              {t('header.menuShields', { n: totalShields })}
             </span>
           </div>
         </div>

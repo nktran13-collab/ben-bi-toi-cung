@@ -9,6 +9,7 @@ import {
 } from '../utils/engine';
 import { soundEngine } from '../utils/audio';
 import { useNow } from '../utils/useNow';
+import { useI18n } from '../utils/useI18n';
 
 interface ZenFocusModalProps {
   task: TaskItem | null;
@@ -31,6 +32,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
   onConfirmHabit,
   onCompleteSprintSession,
 }) => {
+  const { t } = useI18n();
   const [ambientPlaying, setAmbientPlaying] = useState(false);
   const [holdingProgress, setHoldingProgress] = useState(0);
   const holdStartTimeRef = useRef<number | null>(null);
@@ -151,14 +153,14 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <span className="flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-2.5 text-[11px] font-bold uppercase tracking-wider text-[#FCC934] wide:min-h-9 wide:px-3 wide:text-xs">
               <Maximize2 className="h-4 w-4 shrink-0 wide:h-3.5 wide:w-3.5" />
-              <span className="wide:hidden">Zen Focus</span>
-              <span className="hidden wide:inline">Không Gian Tập Trung Sâu (Zen Focus)</span>
+              <span className="wide:hidden">{t('zen.short')}</span>
+              <span className="hidden wide:inline">{t('zen.full')}</span>
             </span>
             {isHabit && (
               <span className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-[#FF6B00]/40 bg-[#FF6B00]/20 px-2.5 text-[11px] font-bold text-[#FF9E40] wide:min-h-9 wide:px-3 wide:text-xs">
                 <Flame className="h-3.5 w-3.5 shrink-0 fill-current" />
-                <span className="wide:hidden">Chuỗi {task.currentStreak}</span>
-                <span className="hidden wide:inline">Chuỗi {task.currentStreak} ngày</span>
+                <span className="wide:hidden">{t('zen.streakShort', { n: task.currentStreak })}</span>
+                <span className="hidden wide:inline">{t('zen.streakLong', { n: task.currentStreak })}</span>
               </span>
             )}
           </div>
@@ -168,23 +170,23 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
               type="button"
               onClick={handleToggleAmbient}
               aria-pressed={ambientPlaying}
-              aria-label={ambientPlaying ? 'Tắt sóng tập trung' : 'Bật sóng tập trung'}
+              aria-label={ambientPlaying ? t('zen.ambientOnAria') : t('zen.ambientOffAria')}
               className={`flex h-11 w-11 items-center justify-center rounded-xl border text-xs font-bold transition-all cursor-pointer wide:h-9 wide:w-auto wide:gap-2 wide:px-3.5 ${
                 ambientPlaying
                   ? 'bg-[#FF6B00] text-white border-[#FF6B00] shadow-lg shadow-[#FF6B00]/30'
                   : 'bg-white/10 hover:bg-white/15 text-slate-200 border-white/15'
               }`}
-              title="Bật/Tắt âm thanh sóng âm Brown Noise giúp não bộ tập trung sâu"
+              title={t('zen.ambientTitle')}
             >
               {ambientPlaying ? (
                 <>
                   <Headphones className="h-[18px] w-[18px] animate-pulse wide:h-4 wide:w-4" />
-                  <span className="hidden wide:inline">Sóng Tập Trung: BẬT</span>
+                  <span className="hidden wide:inline">{t('zen.ambientOn')}</span>
                 </>
               ) : (
                 <>
                   <VolumeX className="h-[18px] w-[18px] text-slate-400 wide:h-4 wide:w-4" />
-                  <span className="hidden wide:inline">Sóng Tập Trung: TẮT</span>
+                  <span className="hidden wide:inline">{t('zen.ambientOff')}</span>
                 </>
               )}
             </button>
@@ -192,9 +194,9 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Thoát chế độ Zen"
+              aria-label={t('zen.exit')}
               className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white transition-colors hover:bg-white/20 cursor-pointer wide:h-9 wide:w-9"
-              title="Thoát chế độ Zen (ESC)"
+              title={t('zen.exitTitle')}
             >
               <X className="h-[18px] w-[18px] wide:h-5 wide:w-5" />
             </button>
@@ -210,15 +212,16 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
             )}
             {isUnlimited ? (
               <p className="text-xs text-blue-200/70 mt-1.5 [@media(max-height:520px)]:hidden">
-                Hôm nay: <strong className="text-[#FCC934]">{todayTotalMinutes} phút</strong> • {todaySessionTotal}{' '}
-                phiên — không giới hạn, cộng dồn cả ngày
+                {t('zen.unlimitedTodayPrefix')}{' '}
+                <strong className="text-[#FCC934]">{t('zen.unlimitedMinutes', { minutes: todayTotalMinutes })}</strong>{' '}
+                {t('zen.unlimitedTail', { sessions: todaySessionTotal })}
               </p>
             ) : (
               !task.notes && (
                 <p className="text-xs text-blue-200/60 mt-1.5 [@media(max-height:520px)]:hidden">
                   {isHabit
-                    ? `Mục tiêu định mức: ${Math.round(effectiveTargetMs / 60000)} phút không xao nhãng`
-                    : 'Tập trung sâu — Mọi giây phút đều được ghi nhận chính xác'}
+                    ? t('zen.habitTarget', { n: Math.round(effectiveTargetMs / 60000) })
+                    : t('zen.deepFocusLine')}
                 </p>
               )
             )}
@@ -258,7 +261,9 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
               {isCompleted ? (
                 <div className="flex flex-col items-center">
                   <CheckCircle2 className="w-12 h-12 text-[#81C995] mb-2" />
-                  <span className="text-base font-bold text-[#81C995] uppercase tracking-wider">Đã Hoàn Thành</span>
+                  <span className="text-base font-bold text-[#81C995] uppercase tracking-wider">
+                    {t('zen.completed')}
+                  </span>
                 </div>
               ) : (
                 <>
@@ -269,12 +274,12 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
                     {isRunning ? (
                       <>
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                        <span>Đang tập trung cao độ</span>
+                        <span>{t('zen.focusing')}</span>
                       </>
                     ) : isPendingConfirmation ? (
-                      <span className="text-[#FCC934] font-bold">Đã chạm mốc 00:00!</span>
+                      <span className="text-[#FCC934] font-bold">{t('zen.goalReached')}</span>
                     ) : (
-                      <span>Đang tạm dừng</span>
+                      <span>{t('zen.paused')}</span>
                     )}
                   </span>
                 </>
@@ -299,7 +304,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
                 />
                 <span className="relative z-10 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-[#FCC934]" />
-                  <span>Xác nhận hoàn thành chuỗi hôm nay</span>
+                  <span>{t('zen.confirmHabit')}</span>
                 </span>
               </button>
             ) : !isCompleted ? (
@@ -316,12 +321,12 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
                   {isRunning ? (
                     <>
                       <Pause className="w-5 h-5 fill-current" />
-                      <span>Tạm dừng</span>
+                      <span>{t('zen.pause')}</span>
                     </>
                   ) : (
                     <>
                       <Play className="w-5 h-5 fill-current" />
-                      <span>{task.accumulatedMs > 0 ? 'Tiếp tục tập trung' : 'Bắt đầu tập trung'}</span>
+                      <span>{task.accumulatedMs > 0 ? t('zen.resume') : t('zen.start')}</span>
                     </>
                   )}
                 </button>
@@ -336,7 +341,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
                     className="px-6 py-3.5 rounded-2xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 shadow-xl transition-all cursor-pointer"
                   >
                     <Check className="w-5 h-5" />
-                    <span>Hoàn tất & Lưu phiên</span>
+                    <span>{t('zen.finishSession')}</span>
                   </button>
                 )}
               </>
@@ -345,9 +350,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
         </div>
 
         {/* Footer quote */}
-        <div className="text-center text-xs text-blue-200/60 [@media(max-height:520px)]:hidden">
-          “Chiến thắng không thuộc về người thông minh nhất, mà thuộc về người bền bỉ tới cùng.”
-        </div>
+        <div className="text-center text-xs text-blue-200/60 [@media(max-height:520px)]:hidden">{t('zen.quote')}</div>
       </div>
     </div>
   );

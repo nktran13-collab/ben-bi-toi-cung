@@ -17,6 +17,7 @@ import {
 import { soundEngine } from './audio';
 import { notificationService } from './notifications';
 import { realtimeManager } from './realtime';
+import { t as tr } from './i18n';
 
 interface UseTaskActionsOptions {
   tasks: TaskItem[];
@@ -238,7 +239,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
           }
 
           if (earned) {
-            showToast(`🛡️ Bạn vừa được thưởng +1 Khiên Bền Bỉ vì chuỗi ${newStreak} ngày!`);
+            showToast(tr('tasks.shieldEarned', { n: newStreak }));
           }
 
           return updatedTask;
@@ -268,8 +269,8 @@ export function useTaskActions(options: UseTaskActionsOptions) {
 
       showToast(
         wasInCompensation
-          ? `⚡ Đã hoàn thành Nhiệm vụ Đền bù x2! Chuỗi khôi phục và tăng lên ${updatedStreak} ngày.`
-          : `🔥 Đã hoàn thành thói quen hôm nay! Chuỗi tăng lên ${updatedStreak} ngày.`,
+          ? tr('tasks.compensationDone', { n: updatedStreak })
+          : tr('tasks.habitDone', { n: updatedStreak }),
       );
 
       if (shouldTriggerMilestoneModal) {
@@ -288,7 +289,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       );
       setMilestoneTask(null);
       soundEngine.playSuccessChime();
-      showToast('🚀 Đã nâng cấp mục tiêu lên 66 ngày! Phản xạ thần kinh đang dần tự động hóa.');
+      showToast(tr('tasks.upgrade66'));
     },
     [setTasks, setMilestoneTask, showToast],
   );
@@ -342,7 +343,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       setLogs((prev) => [newLog, ...prev]);
 
       setRetroactiveItem(null);
-      showToast('✅ Đã truy lĩnh và bảo toàn chuỗi ngày hôm qua thành công!');
+      showToast(tr('tasks.retroConfirmed'));
     },
     [tasks, setTasks, setLogs, setRetroactiveItem, showToast, dayRolloverHour],
   );
@@ -411,7 +412,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       );
 
       setIdleDetectionTask(null);
-      showToast(`Đã lưu phiên làm việc ${formatDuration(trimmedDurationMs, true)} sau khi cắt gọt.`);
+      showToast(tr('tasks.idleSaved', { time: formatDuration(trimmedDurationMs, true) }));
     },
     [idleRawDurationMs, setSessions, setTasks, setIdleDetectionTask, showToast, dayRolloverHour],
   );
@@ -434,7 +435,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
         ),
       );
       setIdleDetectionTask(null);
-      showToast('Đã hủy phiên làm việc chạy quá giờ.');
+      showToast(tr('tasks.idleDiscarded'));
     },
     [setTasks, setIdleDetectionTask, showToast],
   );
@@ -526,7 +527,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
         ),
       );
 
-      showToast(`✅ Đã chốt & lưu phiên làm việc ${formatDuration(sessionDuration)} vào nhật ký dự án.`);
+      showToast(tr('tasks.sessionSaved', { time: formatDuration(sessionDuration) }));
     },
     [tasks, setSessions, setTasks, showToast, dayRolloverHour],
   );
@@ -538,7 +539,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       setSessions(sessions.filter((s) => s.taskId !== taskId));
       setLogs(logs.filter((l) => l.taskId !== taskId));
       setStatsModalTaskId(null);
-      showToast('Đã xóa tác vụ thành công.');
+      showToast(tr('tasks.deleted'));
     },
     [tasks, sessions, logs, setTasks, setSessions, setLogs, setStatsModalTaskId, showToast],
   );
@@ -579,7 +580,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       };
       setLogs((prev) => [newLog, ...prev]);
 
-      showToast('🛡️ Đã sử dụng Khiên Bền Bỉ để bảo vệ chuỗi thành công!');
+      showToast(tr('tasks.shieldUsed'));
     },
     [breakStreakMissedDays, setTasks, setLogs, showToast, dayRolloverHour],
   );
@@ -602,7 +603,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
             : t,
         ),
       );
-      showToast('⚡ Đã kích hoạt Nhiệm vụ Đền bù x2 thời gian cho hôm nay!');
+      showToast(tr('tasks.compensationOn'));
     },
     [setTasks, showToast, dayRolloverHour],
   );
@@ -626,7 +627,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
           };
         }),
       );
-      showToast('Đã trở về cột mốc bảo lưu gần nhất.');
+      showToast(tr('tasks.checkpointRestored'));
     },
     [setTasks, showToast, dayRolloverHour],
   );
@@ -650,7 +651,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
             : t,
         ),
       );
-      showToast('Đã đặt lại chuỗi về Ngày 0.');
+      showToast(tr('tasks.fullReset'));
     },
     [setTasks, showToast, dayRolloverHour],
   );
@@ -673,7 +674,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       >,
     ) => {
       if (tasks.length >= 24) {
-        showToast('Đã đạt giới hạn tối đa 24 tác vụ. Vui lòng hoàn tất hoặc xóa bớt tác vụ.');
+        showToast(tr('tasks.limitReached'));
         return;
       }
       soundEngine.playSoftChime(659.25, 0.25, 0.5);
@@ -695,7 +696,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
       setTasks((prev) => [newTask, ...prev]);
       setCurrentCategory('all');
       setSearchQuery('');
-      showToast(`Đã tạo tác vụ "${newTask.name}".`);
+      showToast(tr('tasks.created', { name: newTask.name }));
     },
     [tasks, setTasks, setCurrentCategory, setSearchQuery, showToast],
   );
@@ -719,7 +720,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
         prev.map((t) => (t.id === taskId ? { ...t, ...updates, sync_status: 1, updated_at_ms: now } : t)),
       );
       setEditingTask(null);
-      showToast(`Đã cập nhật tác vụ "${updates.name}".`);
+      showToast(tr('tasks.updated', { name: updates.name }));
     },
     [setTasks, setEditingTask, showToast],
   );

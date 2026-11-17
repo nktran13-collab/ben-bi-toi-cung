@@ -32,6 +32,7 @@ import {
   verifyLoginOtp,
 } from './cloud';
 import { realtimeManager } from './realtime';
+import { t } from './i18n';
 
 function cleanGuest(): LocalCache {
   return {
@@ -91,8 +92,7 @@ export function useCloudSync() {
         }
       })
       .catch(() => {
-        if (mountedRef.current)
-          setStorageError('Không ghi được bộ nhớ thiết bị. Hãy xuất bản sao JSON trước khi đóng ứng dụng.');
+        if (mountedRef.current) setStorageError(t('sync.storageWrite'));
       });
   }, []);
 
@@ -157,7 +157,7 @@ export function useCloudSync() {
     if (inFlightRef.current) return inFlightRef.current;
     const userId = userIdRef.current;
     if (offlineRef.current) {
-      setSyncError('Đang ngoại tuyến. Thay đổi được giữ trong hàng đợi trên thiết bị.');
+      setSyncError(t('sync.offlineQueued'));
       return Promise.resolve(false);
     }
     if (supabase && !userId && !cacheRef.current.account.isAnonymous) {
@@ -174,11 +174,7 @@ export function useCloudSync() {
         });
     }
     if (!supabase || !userId || cacheRef.current.account.id !== userId) {
-      setSyncError(
-        cloudEnabled
-          ? 'Đăng nhập bằng email đã xác thực để đồng bộ đám mây.'
-          : 'Chưa cấu hình Supabase. Dữ liệu chỉ nằm trên thiết bị.',
-      );
+      setSyncError(cloudEnabled ? t('sync.loginRequired') : t('sync.notConfigured'));
       return Promise.resolve(false);
     }
     cancelRetry();
@@ -196,7 +192,7 @@ export function useCloudSync() {
           persist({ ...current, initialized: true, snapshot: initial, acknowledged: remote?.snapshot ?? null });
         }
         const saved = await synchronizeSnapshot(userId, () => {
-          if (!stillCurrent()) throw new Error('Phiên đăng nhập đã thay đổi.');
+          if (!stillCurrent()) throw new Error(t('sync.sessionChanged'));
           return cacheRef.current.snapshot;
         });
         if (!stillCurrent()) return false;
@@ -257,7 +253,7 @@ export function useCloudSync() {
         setIsSyncing(false);
         if (!cacheRef.current.account.isAnonymous && !signingOutRef.current) {
           setNeedsAuthentication(true);
-          setSyncError('Phiên đăng nhập đã hết hạn. Bản ngoại tuyến vẫn được giữ; xác thực lại email để đồng bộ.');
+          setSyncError(t('sync.sessionExpired'));
         }
         setAuthReady(true);
         return;
@@ -278,9 +274,7 @@ export function useCloudSync() {
       try {
         stored = previous.account.id === user.id ? previous : await readCache(user.id);
       } catch {
-        setStorageError(
-          'Không thể giữ bản dữ liệu cũ trước khi đăng nhập. Hãy sao lưu hoặc giải phóng bộ nhớ thiết bị.',
-        );
+        setStorageError(t('sync.migrationError'));
         setAuthReady(true);
         return;
       }
@@ -322,9 +316,7 @@ export function useCloudSync() {
         }
       } catch {
         if (mountedRef.current) {
-          setStorageError(
-            'Không đọc hoặc ghi được bộ nhớ thiết bị. Dữ liệu gốc chưa bị xóa; đừng đóng trang khi còn thay đổi chưa sao lưu.',
-          );
+          setStorageError(t('sync.storageRead'));
         }
       } finally {
         if (mountedRef.current) setHydrated(true);
@@ -455,7 +447,7 @@ export function useCloudSync() {
           persist({ ...latest, snapshot: merged });
         })
         .catch(() => {
-          setSyncError('Không đọc được thay đổi từ tab khác. Vui lòng đồng bộ lại.');
+          setSyncError(t('sync.crossTab'));
         });
     };
     window.addEventListener('storage', onStorage);
@@ -463,18 +455,17 @@ export function useCloudSync() {
   }, [cancelRetry, persist]);
 
   const sendOtp = useCallback(async (email: string) => {
-    if (offlineRef.current) throw new Error('Cần kết nối mạng để gửi mã đăng nhập.');
+    if (offlineRef.current) throw new Error(t('sync.sendOtpOffline'));
     await sendLoginOtp(email);
   }, []);
 
   const verifyOtp = useCallback(
     async (email: string, code: string) => {
-      if (offlineRef.current) throw new Error('Cần kết nối mạng để xác thực đăng nhập.');
+      if (offlineRef.current) throw new Error(t('sync.verifyOtpOffline'));
       const verified = await verifyLoginOtp(email, code);
       const { data, error } = await supabase!.auth.getSession();
       if (error) throw new Error(cloudError(error));
-      if (data.session?.user.id !== verified.user.id)
-        throw new Error('Phiên đăng nhập đã thay đổi ở tab khác. Vui lòng thử lại.');
+      if (data.session?.user.id !== verified.user.id) throw new Error(t('sync.loginChangedOtherTab'));
       await adoptSession(data.session);
     },
     [adoptSession],
@@ -493,9 +484,7 @@ export function useCloudSync() {
       ) {
         const saved = await syncRef.current();
         if (!saved || pendingChanges(cacheRef.current.snapshot, cacheRef.current.acknowledged)) {
-          throw new Error(
-            'Còn thay đổi chưa đồng bộ. Kết nối mạng và lưu lên đám mây trước khi đăng xuất; bạn cũng có thể tải bản sao JSON.',
-          );
+          throw new Error(t('sync.logoutPending'));
         }
       }
       if (supabase) {
@@ -519,9 +508,7 @@ export function useCloudSync() {
       persist(cleanGuest());
       setIsSyncing(false);
       setNeedsAuthentication(false);
-      setSyncError(
-        retained ? 'Bản chưa đồng bộ được giữ riêng trên thiết bị. Đăng nhập lại đúng tài khoản để tiếp tục.' : null,
-      );
+      setSyncError(retained ? t('sync.logoutRetained') : null);
     } finally {
       signingOutRef.current = false;
     }

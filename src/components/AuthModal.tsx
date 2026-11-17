@@ -17,6 +17,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { UserAccount, formatClockTime } from '../utils/engine';
+import { useI18n } from '../utils/useI18n';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -57,6 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   recoveryAvailable = false,
   onExportRecovery,
 }) => {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [code, setCode] = useState('');
@@ -98,7 +100,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (submittingRef.current || !cloudEnabled || Date.now() < cooldownUntil) return;
     const cleanEmail = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      setError('Vui lòng nhập email hợp lệ (ví dụ: tenban@gmail.com).');
+      setError(t('auth.emailInvalid'));
       return;
     }
 
@@ -113,9 +115,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setStep('otp');
       setCooldownUntil(Date.now() + 60_000);
       setCooldown(60);
-      setInfo('Đã gửi mã xác thực. Kiểm tra hộp thư và thư rác.');
+      setInfo(t('auth.otpSent'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không gửi được mã. Vui lòng thử lại.');
+      setError(err instanceof Error ? err.message : t('auth.otpSendError'));
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
@@ -125,7 +127,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleVerifyOtp = async () => {
     if (submittingRef.current || !cloudEnabled) return;
     if (!/^\d{6}$/.test(code)) {
-      setError('Vui lòng nhập đủ 6 chữ số trong email.');
+      setError(t('auth.otpDigits'));
       return;
     }
 
@@ -139,7 +141,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setCode('');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không xác thực được mã. Vui lòng thử lại.');
+      setError(err instanceof Error ? err.message : t('auth.otpVerifyError'));
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
@@ -159,7 +161,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setCode('');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không đăng xuất được. Vui lòng thử lại.');
+      setError(err instanceof Error ? err.message : t('auth.logoutError'));
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
@@ -190,9 +192,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const ok = onImportBackupJSON(content);
       if (ok) {
         setError(null);
-        setInfo('Đã khôi phục dữ liệu từ file sao lưu (.json) thành công!');
+        setInfo(t('auth.restoreSuccess'));
       } else {
-        setError('File sao lưu không hợp lệ hoặc bị hỏng.');
+        setError(t('auth.restoreInvalid'));
       }
     };
     reader.readAsText(file);
@@ -215,14 +217,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h2 id="auth-modal-title" className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                {account.isAnonymous ? 'Đăng Nhập & Đồng Bộ Đám Mây' : 'Hồ Sơ Đám Mây Của Bạn'}
+                {account.isAnonymous ? t('auth.loginTitle') : t('auth.profileTitle')}
               </h2>
               <p className="text-xs text-[#E8F0FE]/80">
                 {account.isAnonymous
-                  ? 'Xác thực email bằng mã OTP qua Supabase để đồng bộ'
+                  ? t('auth.loginSubtitle')
                   : needsReauth
-                    ? `Phiên đã hết hạn: ${account.email}`
-                    : `Email đã xác thực qua Supabase: ${account.email}`}
+                    ? t('auth.reauthSubtitle', { email: account.email ?? '' })
+                    : t('auth.verifiedSubtitle', { email: account.email ?? '' })}
               </p>
             </div>
           </div>
@@ -230,7 +232,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            aria-label="Đóng"
+            aria-label={t('common.close')}
             className="p-1.5 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X className="w-5 h-5" />
@@ -247,16 +249,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <Laptop className="w-4 h-4 text-[#1E3A5F]" />
             </div>
             <div className="text-xs text-slate-700 leading-relaxed">
-              <strong className="text-slate-900 block font-semibold mb-0.5">Đồng bộ bằng email đã xác thực</strong>
-              Khi đổi thiết bị, bạn cần xác thực mã OTP gửi đến email qua Supabase để truy cập dữ liệu đám mây. Chỉ nhập
-              email chưa đủ để đăng nhập.
+              <strong className="text-slate-900 block font-semibold mb-0.5">{t('auth.crossDeviceStrong')}</strong>
+              {t('auth.crossDeviceBody')}
             </div>
           </div>
 
           {!cloudEnabled && (
             <p role="status" className="bg-amber-50 text-amber-800 text-xs p-3 rounded-xl border border-amber-200">
-              Chưa cấu hình Supabase nên chưa thể gửi mã OTP hoặc đồng bộ. Bạn vẫn có thể dùng dữ liệu trên máy và sao
-              lưu JSON.
+              {t('auth.notConfigured')}
             </p>
           )}
           {error && (
@@ -292,12 +292,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       {needsReauth ? (
                         <>
                           <span className="w-2 h-2 rounded-full bg-amber-500" />
-                          <span className="text-amber-700 font-medium">Phiên đăng nhập đã hết hạn</span>
+                          <span className="text-amber-700 font-medium">{t('auth.profileExpired')}</span>
                         </>
                       ) : (
                         <>
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-emerald-700 font-medium">Email đã xác thực qua Supabase</span>
+                          <span className="text-emerald-700 font-medium">{t('auth.profileVerified')}</span>
                         </>
                       )}
                     </div>
@@ -312,7 +312,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   className="flex items-center gap-1.5 bg-[#1E3A5F] hover:bg-[#152a45] active:scale-95 text-white px-3 py-2 rounded-xl text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer transition-all"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{isSyncing ? 'Đang lưu...' : 'Lưu lên Đám mây'}</span>
+                  <span>{isSyncing ? t('auth.saving') : t('auth.saveCloud')}</span>
                 </button>
               </div>
 
@@ -323,9 +323,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               )}
 
               <div className="text-xs text-slate-600 border-t border-slate-200 pt-3 flex items-center justify-between">
-                <span>Lần đồng bộ gần nhất:</span>
+                <span>{t('auth.lastSync')}</span>
                 <strong className="font-mono text-slate-800">
-                  {account.lastSyncedAtMs ? formatClockTime(account.lastSyncedAtMs) : 'Chưa đồng bộ'}
+                  {account.lastSyncedAtMs ? formatClockTime(account.lastSyncedAtMs) : t('auth.neverSynced')}
                 </strong>
               </div>
 
@@ -337,7 +337,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Đăng xuất tài khoản này</span>
+                  <span>{t('auth.logout')}</span>
                 </button>
               </div>
             </div>
@@ -345,7 +345,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {needsReauth && !account.isAnonymous && (
             <p role="status" className="bg-amber-50 text-amber-800 text-xs p-3 rounded-xl border border-amber-200">
-              Dữ liệu trên máy vẫn được giữ. Xác thực lại email {account.email} để tiếp tục đồng bộ.
+              {t('auth.reauthBanner', { email: account.email ?? '' })}
             </p>
           )}
 
@@ -359,9 +359,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                   {step === 'email'
                     ? needsReauth
-                      ? 'Xác thực lại bằng OTP'
-                      : 'Đăng nhập bằng OTP qua Supabase'
-                    : 'Xác thực email qua Supabase'}
+                      ? t('auth.otpSectionReauth')
+                      : t('auth.otpSectionLogin')
+                    : t('auth.otpSectionVerify')}
                 </span>
               </div>
 
@@ -369,7 +369,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {step === 'email' ? (
                   <div>
                     <label htmlFor="auth-email" className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Địa chỉ email của bạn
+                      {t('auth.emailLabel')}
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
@@ -382,20 +382,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         disabled={isSubmitting}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="nhap-email-cua-ban@gmail.com"
+                        placeholder={t('auth.emailPlaceholder')}
                         className="w-full text-xs sm:text-sm pl-9 pr-3 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] focus:border-transparent transition-all disabled:opacity-60"
                       />
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-1.5">
-                      Supabase sẽ gửi mã OTP đến email này. Chỉ sau khi xác thực thành công, bạn mới đăng nhập để đồng
-                      bộ dữ liệu.
-                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1.5">{t('auth.emailHint')}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2 text-xs">
                       <span className="text-slate-600 break-all">
-                        Mã đã gửi đến <strong>{email}</strong>
+                        {t('auth.codeSent')} <strong>{email}</strong>
                       </span>
                       <button
                         type="button"
@@ -403,12 +400,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         disabled={isSubmitting}
                         className="shrink-0 px-2 py-1.5 text-[#1E3A5F] font-semibold rounded-lg hover:bg-slate-100 cursor-pointer disabled:opacity-50"
                       >
-                        Sửa email
+                        {t('auth.editEmail')}
                       </button>
                     </div>
                     <div>
                       <label htmlFor="auth-otp" className="block text-xs font-bold text-slate-700 mb-1.5">
-                        Mã OTP gồm 6 chữ số
+                        {t('auth.otpLabel')}
                       </label>
                       <input
                         id="auth-otp"
@@ -433,7 +430,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       disabled={isSubmitting || !cloudEnabled || cooldown > 0}
                       className="text-xs font-semibold text-[#1E3A5F] hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {cooldown > 0 ? `Gửi lại mã sau ${cooldown}s` : 'Gửi lại mã'}
+                      {cooldown > 0 ? t('auth.resendIn', { n: cooldown }) : t('auth.resend')}
                     </button>
                   </div>
                 )}
@@ -446,17 +443,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   {isSubmitting ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Đang xử lý...</span>
+                      <span>{t('auth.processing')}</span>
                     </>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
                       <span>
                         {step === 'otp'
-                          ? 'Xác thực & Đăng nhập'
+                          ? t('auth.verifyLogin')
                           : cooldown > 0
-                            ? `Gửi mã sau ${cooldown}s`
-                            : 'Gửi mã OTP'}
+                            ? t('auth.sendIn', { n: cooldown })
+                            : t('auth.sendOtp')}
                       </span>
                     </>
                   )}
@@ -467,17 +464,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {recoveryAvailable && onExportRecovery && (
             <div role="status" className="bg-amber-50 p-3.5 rounded-xl border border-amber-200 space-y-2.5">
-              <p className="text-xs text-amber-900 leading-relaxed">
-                Phát hiện dữ liệu cũ trên máy không đọc được và đã được giữ lại nguyên trạng. Hãy tải về để không bị
-                mất.
-              </p>
+              <p className="text-xs text-amber-900 leading-relaxed">{t('auth.recoveryBody')}</p>
               <button
                 type="button"
                 onClick={onExportRecovery}
                 className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Tải dữ liệu khôi phục</span>
+                <span>{t('auth.downloadRecovery')}</span>
               </button>
             </div>
           )}
@@ -485,17 +479,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {/* Backup & Restore JSON Section */}
           <div className="bg-[#F4F7FA] p-4 rounded-xl border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#1E3A5F] uppercase tracking-wider">
-                Sao lưu & Khôi phục Tệp (.JSON)
-              </span>
+              <span className="text-xs font-bold text-[#1E3A5F] uppercase tracking-wider">{t('auth.backupTitle')}</span>
               <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3" />
-                <span>Sao lưu trên máy</span>
+                <span>{t('auth.backupBadge')}</span>
               </span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Bạn luôn có thể tải toàn bộ tác vụ, chuỗi ngày và lịch sử về máy dạng tệp{' '}
-              <code className="font-mono text-[#1E3A5F]">.json</code> để lưu trữ độc lập hoặc nạp vào bất kỳ lúc nào.
+              {t('auth.backupBodyPrefix')} <code className="font-mono text-[#1E3A5F]">.json</code>{' '}
+              {t('auth.backupBodySuffix')}
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               {onExportBackupJSON && (
@@ -505,7 +497,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   className="py-2.5 px-3 bg-[#1E3A5F] hover:bg-[#152a45] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 >
                   <Download className="w-3.5 h-3.5 text-[#FCC934]" />
-                  <span>Tải bản Sao lưu</span>
+                  <span>{t('auth.downloadBackup')}</span>
                 </button>
               )}
               {onImportBackupJSON && (
@@ -523,7 +515,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     className="py-2.5 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5 text-[#FF6B00]" />
-                    <span>Nhập tệp JSON</span>
+                    <span>{t('auth.importJson')}</span>
                   </button>
                 </>
               )}
@@ -535,11 +527,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-200/80 space-y-2.5">
               <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#FF6B00]" />
-                <span>Không gian Bền Bỉ của riêng bạn</span>
+                <span>{t('auth.starterTitle')}</span>
               </div>
               <p className="text-xs text-slate-600">
-                Đặt toàn bộ chuỗi về <strong>Ngày 0</strong> để bắt đầu hành trình thực tế của bạn, hoặc nạp bộ dữ liệu
-                mẫu 21 ngày để trải nghiệm.
+                {t('auth.starterBodyPrefix')} <strong>{t('auth.starterBodyStrong')}</strong>{' '}
+                {t('auth.starterBodySuffix')}
               </p>
 
               {!confirmCleanReset ? (
@@ -551,7 +543,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       className="py-2 px-2.5 bg-white hover:bg-amber-100/60 text-slate-800 border border-amber-300 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-[#FF6B00]" />
-                      <span>Bắt đầu từ Ngày 0</span>
+                      <span>{t('auth.startDay0')}</span>
                     </button>
                   )}
                   {onLoadDemoSeed && (
@@ -566,22 +558,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       className="py-2 px-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-[#1E3A5F]" />
-                      <span>Nạp dữ liệu Demo</span>
+                      <span>{t('auth.loadDemo')}</span>
                     </button>
                   )}
                 </div>
               ) : (
                 <div className="bg-white p-3 rounded-lg border border-red-200 space-y-2">
-                  <p className="text-xs text-red-700 font-medium">
-                    Đặt lại toàn bộ chuỗi về Ngày 0 và xóa lịch sử demo để bắt đầu mới?
-                  </p>
+                  <p className="text-xs text-red-700 font-medium">{t('auth.resetConfirm')}</p>
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setConfirmCleanReset(false)}
                       className="px-3 py-1 text-xs font-semibold text-slate-600 bg-slate-100 rounded-md cursor-pointer"
                     >
-                      Hủy
+                      {t('common.cancel')}
                     </button>
                     <button
                       type="button"
@@ -594,7 +584,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       disabled={isSubmitting}
                       className="px-3 py-1 text-xs font-bold text-white bg-[#FF6B00] hover:bg-[#E65100] rounded-md cursor-pointer disabled:opacity-50"
                     >
-                      Xác nhận đặt về Ngày 0
+                      {t('auth.confirmDay0')}
                     </button>
                   </div>
                 </div>
@@ -611,7 +601,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             disabled={isSubmitting}
             className="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Đóng
+            {t('auth.close')}
           </button>
         </div>
       </div>

@@ -29,6 +29,7 @@ import {
   getEffectiveTargetDurationMs,
 } from '../utils/engine';
 import { useNow } from '../utils/useNow';
+import { useI18n } from '../utils/useI18n';
 
 interface CircularTaskNodeProps {
   task: TaskItem;
@@ -63,6 +64,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
   onSimulateBreakStreak,
   onFastForward5s,
 }) => {
+  const { t } = useI18n();
   const isRunning = task.status === 'running';
   const currentTimeMs = useNow(1000, isRunning);
   const isHabit = task.mode === 'habit';
@@ -180,6 +182,14 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
   const todayTotalMs = todaySavedMs + currentElapsedMs;
   const todayTotalMinutes = Math.floor(todayTotalMs / 60000);
   const todaySessionTotal = todaySessionCount + (currentElapsedMs > 0 ? 1 : 0);
+  const categoryLabel =
+    task.category === 'health'
+      ? t('category.health')
+      : task.category === 'work'
+        ? t('category.work')
+        : task.category === 'study'
+          ? t('category.study')
+          : t('category.habit');
 
   return (
     <div
@@ -201,17 +211,9 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
           }`}
         >
           {renderCategoryIcon()}
-          <span className="truncate capitalize">
-            {task.category === 'health'
-              ? 'Sức khoẻ'
-              : task.category === 'work'
-                ? 'Công việc'
-                : task.category === 'study'
-                  ? 'Học hành'
-                  : 'Thói quen'}
-          </span>
+          <span className="truncate capitalize">{categoryLabel}</span>
           {task.sync_status === 1 && (
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] shrink-0" title="Đang chờ đồng bộ đám mây" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] shrink-0" title={t('card.syncPending')} />
           )}
         </div>
 
@@ -229,8 +231,11 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               }`}
               title={
                 task.inCompensationQuest
-                  ? 'Đang trong Nhiệm vụ Đền bù x2: Hoàn thành hôm nay để khôi phục chuỗi'
-                  : `Chuỗi hiện tại: ${task.currentStreak} ngày / Mục tiêu ${task.targetMilestoneDays || 30} ngày`
+                  ? t('card.compensationTitle')
+                  : t('card.streakTitle', {
+                      streak: task.currentStreak,
+                      target: task.targetMilestoneDays || 30,
+                    })
               }
             >
               <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current shrink-0" />
@@ -245,12 +250,12 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                   ? 'bg-slate-800 text-sky-300 border-sky-500/30'
                   : 'bg-[#E8F0FE] text-[#1E3A5F] border-[#3B6998]/30'
               }`}
-              title={`Đã tích lũy qua ${task.currentStreak} phiên/ngày`}
+              title={t('card.projectSessionsTitle', { n: task.currentStreak })}
             >
               <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
               <span>
-                {task.currentStreak} <span className="hidden sm:inline">phiên</span>
-                <span className="sm:hidden">p</span>
+                {task.currentStreak} <span className="hidden sm:inline">{t('common.sessions')}</span>
+                <span className="sm:hidden">{t('common.sessionShort')}</span>
               </span>
             </div>
           )}
@@ -267,7 +272,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
         }}
         role="button"
         tabIndex={0}
-        aria-label={`${task.name}: ${isRunning ? 'Tạm dừng' : 'Bắt đầu'}`}
+        aria-label={t(isRunning ? 'card.ariaPause' : 'card.ariaStart', { name: task.name })}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -322,15 +327,15 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             <div className="flex flex-col items-center">
               <CheckCircle2 className="w-6 h-6 sm:w-9 sm:h-9 text-[#81C995] mb-0.5 sm:mb-1" />
               <span className="text-[9px] sm:text-xs font-bold text-[#81C995] uppercase tracking-wider">
-                Đã hoàn thành
+                {t('card.completed')}
               </span>
-              <span className="text-[9px] sm:text-[10px] text-slate-400 font-mono">Hôm nay</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-mono">{t('card.today')}</span>
             </div>
           ) : isPendingConfirmation ? (
             <div className="flex flex-col items-center">
-              <span className="text-[10px] sm:text-xs font-bold text-[#FF6B00] animate-bounce">00:00 Hết giờ!</span>
+              <span className="text-[10px] sm:text-xs font-bold text-[#FF6B00] animate-bounce">{t('card.timeUp')}</span>
               <span className={`text-[10px] sm:text-xs font-bold mt-1 ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-                Xác nhận
+                {t('card.confirm')}
               </span>
             </div>
           ) : isRunning ? (
@@ -344,7 +349,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               </span>
               <span className="text-[9px] sm:text-xs font-semibold text-emerald-500 flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                Đang chạy
+                {t('card.running')}
               </span>
             </div>
           ) : task.accumulatedMs > 0 ? (
@@ -356,7 +361,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               >
                 {displayTime}
               </span>
-              <span className="text-[9px] sm:text-xs font-semibold text-amber-500">Tạm dừng</span>
+              <span className="text-[9px] sm:text-xs font-semibold text-amber-500">{t('card.paused')}</span>
             </div>
           ) : (
             <div className="flex flex-col items-center max-w-[100px] sm:max-w-[130px] px-1">
@@ -376,7 +381,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                       : 'bg-[#F4F7FA] text-slate-500 border-slate-200'
                 }`}
               >
-                {isUnlimited ? 'Không giới hạn' : `${Math.round(effectiveTargetMs / 60000)} phút`}
+                {isUnlimited ? t('card.unlimited') : t('card.minutes', { n: Math.round(effectiveTargetMs / 60000) })}
                 {task.inCompensationQuest ? ' (x2)' : ''}
               </span>
             </div>
@@ -396,19 +401,21 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
         </h3>
         <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 line-clamp-1 truncate">
           {isUnlimited
-            ? `Hôm nay: ${todayTotalMinutes} phút • ${todaySessionTotal} phiên`
+            ? t('card.todayUnlimited', { minutes: todayTotalMinutes, sessions: todaySessionTotal })
             : task.notes
               ? task.notes
               : isHabit
-                ? `Định mức ${Math.round(effectiveTargetMs / 60000)}p/ngày`
-                : `Mục tiêu phiên: ${Math.round(effectiveTargetMs / 60000)}p`}
+                ? t('card.habitQuota', { n: Math.round(effectiveTargetMs / 60000) })
+                : t('card.projectTarget', { n: Math.round(effectiveTargetMs / 60000) })}
         </p>
 
         {/* Scheduled Web Push Notification Badge */}
         {isHabit && isRunning && expectedEndFormatted && (
           <div className="mt-1 inline-flex items-center gap-1 text-[9px] sm:text-xs font-semibold text-[#FF6B00] bg-[#FFF3E0] dark:bg-[#FF6B00]/15 px-1.5 sm:px-2 py-0.5 rounded-md border border-[#FF6B00]/30 animate-pulse max-w-full">
             <Bell className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-            <span className="truncate max-w-[100px] sm:max-w-none">Đích: {expectedEndFormatted}</span>
+            <span className="truncate max-w-[100px] sm:max-w-none">
+              {t('card.endsAt', { time: expectedEndFormatted })}
+            </span>
           </div>
         )}
       </div>
@@ -430,7 +437,11 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             />
             <span className="relative z-10 flex items-center justify-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FCC934]" />
-              <span>{holdingProgress > 0 ? `Giữ: ${Math.round(holdingProgress)}%` : 'Nhấn giữ 0.8s xác nhận'}</span>
+              <span>
+                {holdingProgress > 0
+                  ? t('card.holdPercent', { percent: Math.round(holdingProgress) })
+                  : t('card.holdToConfirm')}
+              </span>
             </span>
           </button>
 
@@ -439,7 +450,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             onClick={() => onConfirmHabit(task.id)}
             className="w-full text-center text-[10px] sm:text-xs font-semibold text-[#FF6B00] hover:underline cursor-pointer min-h-11 sm:min-h-0 py-2 sm:py-1"
           >
-            Xác nhận nhanh
+            {t('card.quickConfirm')}
           </button>
         </div>
       )}
@@ -464,19 +475,19 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
               {isRunning ? (
                 <>
                   <Pause className="w-4 h-4 fill-current shrink-0" />
-                  <span className="truncate">Dừng</span>
+                  <span className="truncate">{t('card.stop')}</span>
                 </>
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-current shrink-0" />
-                  <span className="truncate">{task.accumulatedMs > 0 ? 'Tiếp' : 'Bắt đầu'}</span>
+                  <span className="truncate">{task.accumulatedMs > 0 ? t('card.resume') : t('card.start')}</span>
                 </>
               )}
             </button>
           ) : (
             <div className="flex-1 min-w-0 text-center min-h-11 py-2 sm:min-h-0 sm:py-2 px-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-lg text-[11px] sm:text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              <span className="truncate">Đã ghi nhận</span>
+              <span className="truncate">{t('card.recorded')}</span>
             </div>
           )}
 
@@ -487,7 +498,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                 type="button"
                 onClick={() => onCompleteSprintSession(task.id)}
                 className="flex min-w-11 min-h-11 items-center justify-center p-2 sm:min-w-0 sm:min-h-0 sm:p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0"
-                title="Chốt & Lưu phiên làm việc này vào lịch sử dự án"
+                title={t('card.saveSessionTitle')}
               >
                 <Check className="w-4 h-4" />
               </button>
@@ -503,7 +514,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                     ? 'text-slate-300 border-slate-700 hover:bg-slate-800'
                     : 'text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
-                title="Mở không gian tập trung toàn màn hình (Zen Focus & Sóng âm)"
+                title={t('card.zenTitle')}
               >
                 <Maximize2 className="w-4 h-4" />
               </button>
@@ -515,7 +526,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                 type="button"
                 onClick={() => onResetTimer(task.id)}
                 className="flex min-w-11 min-h-11 items-center justify-center p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shrink-0"
-                title="Đặt lại đồng hồ về 0"
+                title={t('card.resetTitle')}
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
@@ -531,7 +542,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                     ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                     : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
                 }`}
-                title="Chỉnh sửa thông tin tác vụ"
+                title={t('card.editTitle')}
               >
                 <Pencil className="w-4 h-4" />
               </button>
@@ -546,7 +557,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                   ? 'text-sky-300 border-sky-500/30 hover:bg-slate-800'
                   : 'text-[#1E3A5F] hover:bg-[#E8F0FE] border-[#3B6998]/30'
               }`}
-              title="Xem báo cáo 3 tầng, ma trận chuỗi & tạo thẻ vinh danh"
+              title={t('card.statsTitle')}
             >
               <BarChart2 className="w-4 h-4" />
             </button>
@@ -557,7 +568,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                 type="button"
                 onClick={() => onSimulateBreakStreak(task.id)}
                 className="flex min-w-11 min-h-11 items-center justify-center p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 cursor-pointer shrink-0"
-                title="[Dev] Giả lập đứt chuỗi"
+                title={t('card.devBreakTitle')}
               >
                 <AlertTriangle className="w-4 h-4" />
               </button>
@@ -568,7 +579,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                 type="button"
                 onClick={() => onFastForward5s(task.id)}
                 className="min-w-11 min-h-11 p-2 sm:min-w-0 sm:min-h-0 sm:p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-xs font-mono border border-amber-200 cursor-pointer hidden sm:flex sm:items-center sm:justify-center shrink-0"
-                title="[Dev] Tua nhanh còn 5 giây"
+                title={t('card.devFastForwardTitle')}
               >
                 <Zap className="w-4 h-4" />
               </button>
@@ -581,10 +592,10 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
       {isHabit && task.shields > 0 && (
         <div
           className="absolute -top-2 -left-1 sm:-left-2 bg-[#FCC934] text-slate-900 font-extrabold text-[9px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 rounded-full flex items-center gap-0.5 sm:gap-1 shadow-sm border border-amber-400 z-10"
-          title={`${task.shields} Khiên Bền Bỉ sẵn sàng cứu chuỗi`}
+          title={t('card.shieldTitle', { n: task.shields })}
         >
           <Shield className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 fill-slate-900 shrink-0" />
-          <span>{task.shields} khiên</span>
+          <span>{t('card.shieldBadge', { n: task.shields })}</span>
         </div>
       )}
     </div>

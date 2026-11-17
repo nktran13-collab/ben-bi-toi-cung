@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2, Clock, Flame, RotateCcw, TrendingUp } from 'lucide-react';
+import { useI18n } from '../utils/useI18n';
 
 interface DailyCommandCenterProps {
   darkMode: boolean;
@@ -28,13 +29,14 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
   rolloverHour,
   onOpenResetOptions,
 }) => {
+  const { t } = useI18n();
   const cardClass = `p-3 sm:p-3.5 rounded-xl border ${
     darkMode ? 'bg-slate-800/70 border-slate-700/80' : 'bg-[#F4F7FA] border-slate-200/70'
   }`;
 
   return (
     <section
-      aria-label="Tổng quan tiến độ kỷ luật hôm nay"
+      aria-label={t('daily.aria')}
       className={`mb-6 rounded-2xl p-3 sm:p-5 border shadow-xs transition-colors ${
         darkMode ? 'bg-slate-900/90 border-slate-800 text-slate-100' : 'bg-white border-slate-200/90 text-slate-800'
       }`}
@@ -44,8 +46,8 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
         <div className={cardClass}>
           <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
             <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#81C995]" />
-            <span className="sm:hidden">Thói quen</span>
-            <span className="hidden sm:inline">Thói quen hôm nay</span>
+            <span className="sm:hidden">{t('daily.habits')}</span>
+            <span className="hidden sm:inline">{t('daily.habitsToday')}</span>
           </div>
           <div className="mt-1.5 flex items-baseline justify-between gap-2">
             <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
@@ -65,14 +67,14 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
         <div className={cardClass}>
           <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
             <TrendingUp className="h-3.5 w-3.5 shrink-0 text-[#3B6998]" />
-            <span>Tập trung hôm nay</span>
+            <span>{t('daily.focusToday')}</span>
           </div>
           <div className="mt-1.5 flex items-baseline gap-1.5">
             <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">{totalFocusedTodayMinutes}</span>
-            <span className="text-xs font-semibold text-slate-400">phút</span>
+            <span className="text-xs font-semibold text-slate-400">{t('daily.minutes')}</span>
           </div>
           <div className="mt-1 text-[11px] leading-tight text-slate-400">
-            {(totalFocusedTodayMinutes / 60).toFixed(1)} giờ tích lũy
+            {t('daily.hoursAccumulated', { hours: (totalFocusedTodayMinutes / 60).toFixed(1) })}
           </div>
         </div>
 
@@ -80,25 +82,25 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
         <div className={cardClass}>
           <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
             <Flame className="h-3.5 w-3.5 shrink-0 text-[#FF6B00] fill-[#FF6B00]" />
-            <span>Chuỗi dẫn đầu</span>
+            <span>{t('daily.topStreak')}</span>
           </div>
           <div className="mt-1.5 flex items-baseline gap-1.5">
             <span className="text-xl sm:text-2xl font-black font-mono tabular-nums text-[#FF6B00]">
               {highestStreak}
             </span>
-            <span className="text-xs font-semibold text-slate-400">ngày liên tiếp</span>
+            <span className="text-xs font-semibold text-slate-400">{t('daily.daysInARow')}</span>
           </div>
           <div className="mt-1 text-[11px] leading-tight text-slate-400 flex items-center justify-between gap-1">
-            <span>Đang duy trì {totalActiveStreaks} chuỗi</span>
+            <span>{t('daily.maintaining', { n: totalActiveStreaks })}</span>
             {highestStreak > 0 && (
               <button
                 type="button"
                 onClick={onOpenResetOptions}
                 className="text-[#3B6998] dark:text-sky-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
-                title="Đặt lại về Ngày 0 hoặc Sao lưu dữ liệu"
+                title={t('daily.resetTitle')}
               >
                 <RotateCcw className="w-2.5 h-2.5" />
-                <span>Đặt lại</span>
+                <span>{t('daily.reset')}</span>
               </button>
             )}
           </div>
@@ -108,15 +110,15 @@ export const DailyCommandCenter: React.FC<DailyCommandCenterProps> = ({
         <div className={cardClass}>
           <div className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-slate-500 dark:text-slate-400">
             <Clock className="h-3.5 w-3.5 shrink-0 text-[#FCC934]" />
-            <span>Quỹ thời gian</span>
+            <span>{t('daily.timeBudget')}</span>
           </div>
           <div className="mt-1.5 flex items-baseline gap-1.5">
             <span className="text-xl sm:text-2xl font-black font-mono tabular-nums">
-              {hoursUntilRollover}g {String(minsUntilRollover).padStart(2, '0')}p
+              {t('daily.timeLeft', { hours: hoursUntilRollover, minutes: String(minsUntilRollover).padStart(2, '0') })}
             </span>
           </div>
           <div className="mt-1 text-[11px] leading-tight text-slate-400">
-            Mốc {String(rolloverHour).padStart(2, '0')}:00 sáng
+            {t('daily.rolloverAt', { hour: String(rolloverHour).padStart(2, '0') })}
           </div>
         </div>
       </div>

@@ -3,6 +3,8 @@
  * (Persistence To The End) - GIAI ĐOẠN 3: UCL 66-day Psychology, Edge Cases & Analytics.
  */
 
+import { t as tr } from './i18n';
+
 export type MatrixDayStatus =
   | 'completed_on_time' // Relentless Orange #FF6B00
   | 'frozen_by_shield' // Gold #FCC934
@@ -437,13 +439,13 @@ export function generateStreakMatrix(
         dayNumber: i,
         status,
         durationMs: log?.actualDurationMs,
-        label: `Ngày ${i}`,
+        label: tr('stats.matrixDay', { n: i }),
       });
     } else {
       cells.push({
         dayNumber: i,
         status: 'upcoming',
-        label: `Ngày ${i}`,
+        label: tr('stats.matrixDay', { n: i }),
       });
     }
   }
@@ -456,15 +458,15 @@ export function generateStreakMatrix(
  */
 export function generateCSVExport(task: TaskItem, sessions: TimeSession[], logs: HabitDailyLog[]): string {
   const lines: string[] = [];
-  lines.push(`Mã tác vụ,Tên tác vụ,Chế độ,Danh mục,Chuỗi hiện tại,Chuỗi kỷ lục,Định mức (phút)`);
+  lines.push(tr('export.csvHeader'));
   lines.push(
-    `"${task.id}","${task.name}","${task.mode}","${task.category}",${task.currentStreak},${task.bestStreak},"${task.targetUnlimited ? 'Không giới hạn' : Math.round(task.targetDurationMs / 60000)}"`,
+    `"${task.id}","${task.name}","${task.mode}","${task.category}",${task.currentStreak},${task.bestStreak},"${task.targetUnlimited ? tr('export.unlimited') : Math.round(task.targetDurationMs / 60000)}"`,
   );
   lines.push('');
 
   if (task.mode === 'project') {
-    lines.push(`Lịch sử các phiên làm việc (Project Sessions)`);
-    lines.push(`Mã phiên,Ngày logic,Bắt đầu,Kết thúc,Thời lượng (phút),Đã cắt gọt (phút)`);
+    lines.push(tr('export.projectSessionsTitle'));
+    lines.push(tr('export.sessionHeader'));
     const taskSessions = sessions.filter((s) => s.taskId === task.id);
     for (const s of taskSessions) {
       lines.push(
@@ -472,12 +474,12 @@ export function generateCSVExport(task: TaskItem, sessions: TimeSession[], logs:
       );
     }
   } else {
-    lines.push(`Nhật ký chuỗi thói quen (Habit Logs)`);
-    lines.push(`Mã log,Ngày logic,Hoàn thành,Thời lượng thực (phút),Loại ghi nhận,Thời điểm xác nhận`);
+    lines.push(tr('export.habitLogsTitle'));
+    lines.push(tr('export.logHeader'));
     const taskLogs = logs.filter((l) => l.taskId === task.id);
     for (const l of taskLogs) {
       lines.push(
-        `"${l.id}","${l.logicalDate}",${l.completed ? 'Có' : 'Không'},${(l.actualDurationMs / 60000).toFixed(1)},"${l.recoveryType || 'on_time'}","${l.confirmedAt ? new Date(l.confirmedAt).toLocaleString() : ''}"`,
+        `"${l.id}","${l.logicalDate}",${l.completed ? tr('export.yes') : tr('export.no')},${(l.actualDurationMs / 60000).toFixed(1)},"${l.recoveryType || 'on_time'}","${l.confirmedAt ? new Date(l.confirmedAt).toLocaleString() : ''}"`,
       );
     }
   }
@@ -490,24 +492,28 @@ export function generateCSVExport(task: TaskItem, sessions: TimeSession[], logs:
  */
 export function generateMarkdownExport(task: TaskItem, sessions: TimeSession[], logs: HabitDailyLog[]): string {
   const lines: string[] = [];
-  lines.push(`# Báo Cáo Bền Bỉ: ${task.name}`);
-  lines.push(`- **Chế độ**: ${task.mode === 'habit' ? 'Thói quen đếm ngược' : 'Đo lường dự án'}`);
-  lines.push(`- **Danh mục**: ${task.category}`);
-  lines.push(`- **Chuỗi hiện tại**: 🔥 ${task.currentStreak} ngày (Kỷ lục: ${task.bestStreak} ngày)`);
+  lines.push(tr('export.mdTitle', { name: task.name }));
   lines.push(
-    `- **Định mức**: ${task.targetUnlimited ? 'Không giới hạn' : `${Math.round(task.targetDurationMs / 60000)} phút`}`,
+    `- **${tr('export.mdMode')}**: ${task.mode === 'habit' ? tr('export.mdModeHabit') : tr('export.mdModeProject')}`,
   );
-  lines.push(`- **Khiên Bền Bỉ**: 🛡️ ${task.shields} khiên`);
+  lines.push(`- **${tr('export.mdCategory')}**: ${task.category}`);
+  lines.push(
+    `- **${tr('export.mdCurrentStreak')}**: ${tr('export.mdStreakValue', { streak: task.currentStreak, best: task.bestStreak })}`,
+  );
+  lines.push(
+    `- **${tr('export.mdQuota')}**: ${task.targetUnlimited ? tr('export.unlimited') : tr('export.mdQuotaValue', { n: Math.round(task.targetDurationMs / 60000) })}`,
+  );
+  lines.push(`- **${tr('export.mdShields')}**: ${tr('export.mdShieldsValue', { n: task.shields })}`);
   lines.push('');
 
   if (task.mode === 'project') {
     const taskSessions = sessions.filter((s) => s.taskId === task.id);
     const totalMs = taskSessions.reduce((sum, s) => sum + s.durationMs, 0);
-    lines.push(`### Thống kê tổng hợp`);
-    lines.push(`- **Tổng thời gian tích lũy**: ${formatDuration(totalMs, true)}`);
-    lines.push(`- **Tổng số phiên làm việc**: ${taskSessions.length}`);
+    lines.push(tr('export.mdSummary'));
+    lines.push(`- **${tr('export.mdTotalTime')}**: ${formatDuration(totalMs, true)}`);
+    lines.push(`- **${tr('export.mdTotalSessions')}**: ${taskSessions.length}`);
     lines.push('');
-    lines.push(`| Ngày logic | Bắt đầu | Kết thúc | Thời lượng | Đã cắt gọt |`);
+    lines.push(tr('export.mdSessionTable'));
     lines.push(`| :--- | :--- | :--- | :--- | :--- |`);
     for (const s of taskSessions) {
       lines.push(
@@ -516,8 +522,8 @@ export function generateMarkdownExport(task: TaskItem, sessions: TimeSession[], 
     }
   } else {
     const taskLogs = logs.filter((l) => l.taskId === task.id);
-    lines.push(`### Nhật ký chuỗi thói quen (${taskLogs.length} ngày)`);
-    lines.push(`| Ngày logic | Hoàn thành | Thời lượng | Kiểu ghi nhận |`);
+    lines.push(tr('export.mdLogTitle', { n: taskLogs.length }));
+    lines.push(tr('export.mdLogTable'));
     lines.push(`| :--- | :--- | :--- | :--- |`);
     for (const l of taskLogs) {
       lines.push(

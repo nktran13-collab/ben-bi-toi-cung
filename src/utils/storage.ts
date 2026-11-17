@@ -2,6 +2,7 @@ import type { TaskItem, TimeSession, HabitDailyLog, UserAccount } from './engine
 import { getLogicalDate } from './engine.ts';
 import { parseSnapshot, type SyncSnapshot } from './sync.ts';
 import { dbDeleteCache, dbGetCache, dbPutCache } from './db.ts';
+import { t } from './i18n.ts';
 
 const STORAGE_KEYS = {
   TASKS: 'benbi_tasks_v2',
@@ -66,7 +67,7 @@ export function getInitialSeedTasks(): {
   const tasks: TaskItem[] = [
     {
       id: 'task-read-30-uuid',
-      name: 'Đọc sách chuyên sâu',
+      name: t('seed.readName'),
       mode: 'habit',
       category: 'study',
       targetDurationMs: 30 * 60 * 1000,
@@ -79,13 +80,13 @@ export function getInitialSeedTasks(): {
       startedAtMs: null,
       accumulatedMs: 0,
       historyStartTimestamp: now - 14 * DAY_MS,
-      notes: 'Đọc ít nhất 30 phút mỗi ngày không xao nhãng.',
+      notes: t('seed.readNotes'),
       sync_status: 0, // initially synced
       updated_at_ms: now - 3600000,
     },
     {
       id: 'task-meditation-15-uuid',
-      name: 'Thiền chánh niệm & Thở sâu',
+      name: t('seed.meditateName'),
       mode: 'habit',
       category: 'health',
       targetDurationMs: 15 * 60 * 1000,
@@ -98,13 +99,13 @@ export function getInitialSeedTasks(): {
       startedAtMs: null,
       accumulatedMs: 0,
       historyStartTimestamp: now - 25 * DAY_MS,
-      notes: 'Thả lỏng cơ thể và tập trung hơi thở đầu ngày.',
+      notes: t('seed.meditateNotes'),
       sync_status: 0,
       updated_at_ms: now - 7200000,
     },
     {
       id: 'task-project-frontend-uuid',
-      name: 'Xây dựng Core Applet PWA',
+      name: t('seed.pwaName'),
       mode: 'project',
       category: 'work',
       targetDurationMs: 90 * 60 * 1000,
@@ -116,13 +117,13 @@ export function getInitialSeedTasks(): {
       startedAtMs: null,
       accumulatedMs: 25 * 60 * 1000,
       historyStartTimestamp: now - 10 * DAY_MS,
-      notes: 'Thiết kế kiến trúc Offline-First và đồng bộ dữ liệu.',
+      notes: t('seed.pwaNotes'),
       sync_status: 0,
       updated_at_ms: now - 1800000,
     },
     {
       id: 'task-pushups-core-uuid',
-      name: 'Tập Hít đất & Thể lực',
+      name: t('seed.pushupsName'),
       mode: 'habit',
       category: 'habit',
       targetDurationMs: 20 * 60 * 1000,
@@ -135,13 +136,13 @@ export function getInitialSeedTasks(): {
       startedAtMs: null,
       accumulatedMs: 0,
       historyStartTimestamp: now - 7 * DAY_MS,
-      notes: 'Duy trì sức bền cơ bắp và sự tỉnh táo.',
+      notes: t('seed.pushupsNotes'),
       sync_status: 0,
       updated_at_ms: now - 5000000,
     },
     {
       id: 'task-project-english-uuid',
-      name: 'Luyện Nghe Nói Tiếng Anh',
+      name: t('seed.englishName'),
       mode: 'project',
       category: 'study',
       targetDurationMs: 45 * 60 * 1000,
@@ -153,7 +154,7 @@ export function getInitialSeedTasks(): {
       startedAtMs: null,
       accumulatedMs: 0,
       historyStartTimestamp: now - 12 * DAY_MS,
-      notes: 'Nghe podcast kỹ thuật và lặp lại shadow speaking.',
+      notes: t('seed.englishNotes'),
       sync_status: 0,
       updated_at_ms: now - 86400000,
     },
@@ -243,7 +244,7 @@ function parseCacheRaw(raw: string, id: string): LocalCache | null {
       typeof cache.initialized !== 'boolean' ||
       (cache.migrationEmail !== undefined && typeof cache.migrationEmail !== 'string')
     ) {
-      throw new Error('Thông tin bộ nhớ đệm không hợp lệ.');
+      throw new Error(t('sync.invalidCache'));
     }
     const snapshot = parseSnapshot(cache.snapshot);
     let acknowledged: SyncSnapshot | null = null;
@@ -307,7 +308,7 @@ function parseLegacySnapshot(data: {
     data.settings !== undefined &&
     (!data.settings || typeof data.settings !== 'object' || Array.isArray(data.settings))
   ) {
-    throw new Error('Cài đặt không hợp lệ.');
+    throw new Error(t('sync.invalidSettings'));
   }
   return parseSnapshot({
     version: 3,

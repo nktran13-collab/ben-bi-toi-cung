@@ -1,6 +1,7 @@
 import React from 'react';
 import { Moon, CheckCircle2, Clock } from 'lucide-react';
 import { RetroactiveConfirmation } from '../utils/engine';
+import { useI18n } from '../utils/useI18n';
 
 interface RetroactiveConfirmModalProps {
   item: RetroactiveConfirmation | null;
@@ -17,10 +18,11 @@ export const RetroactiveConfirmModal: React.FC<RetroactiveConfirmModalProps> = (
   onDiscard,
   dayRolloverHour = 4,
 }) => {
+  const { t, locale } = useI18n();
   if (!isOpen || !item) return null;
 
   const endedDate = new Date(item.endedAtMs);
-  const timeStr = endedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const timeStr = endedDate.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   const rolloverLabel = `${String(dayRolloverHour).padStart(2, '0')}:00`;
 
   return (
@@ -32,8 +34,8 @@ export const RetroactiveConfirmModal: React.FC<RetroactiveConfirmModalProps> = (
             <Moon className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold">Xác nhận Truy lĩnh Sáng Hôm Sau</h3>
-            <p className="text-xs text-blue-100">Bảo toàn chuỗi kiên trì thực tế</p>
+            <h3 className="text-lg font-bold">{t('retro.title')}</h3>
+            <p className="text-xs text-blue-100">{t('retro.subtitle')}</p>
           </div>
         </div>
 
@@ -43,18 +45,15 @@ export const RetroactiveConfirmModal: React.FC<RetroactiveConfirmModalProps> = (
             <div className="flex items-start gap-3">
               <Clock className="w-5 h-5 text-[#FF6B00] shrink-0 mt-0.5" />
               <div className="text-xs text-slate-700 leading-relaxed">
-                Bạn đã hoàn thành đủ định mức cho thói quen{' '}
-                <strong className="text-[#1E3A5F]">"{item.taskName}"</strong> vào lúc{' '}
-                <strong className="text-[#FF6B00]">{timeStr}</strong> hôm trước (ngày logic{' '}
-                <span className="font-semibold text-slate-800">{item.logicalDate}</span>) nhưng chưa kịp nhấn giữ xác
-                nhận trước giờ chuyển ngày {rolloverLabel}.
+                {t('retro.bodyPrefix')} <strong className="text-[#1E3A5F]">"{item.taskName}"</strong>{' '}
+                {t('retro.bodyAt')} <strong className="text-[#FF6B00]">{timeStr}</strong> {t('retro.bodyYesterday')}{' '}
+                <span className="font-semibold text-slate-800">{item.logicalDate}</span>
+                {t('retro.bodyTail', { hour: rolloverLabel })}
               </div>
             </div>
           </div>
 
-          <p className="text-xs text-slate-600">
-            Bạn có muốn truy lĩnh và ghi nhận thành tích cho chuỗi ngày hôm qua không?
-          </p>
+          <p className="text-xs text-slate-600">{t('retro.question')}</p>
 
           {/* Action buttons */}
           <div className="pt-2 space-y-2">
@@ -63,13 +62,13 @@ export const RetroactiveConfirmModal: React.FC<RetroactiveConfirmModalProps> = (
               className="w-full py-3 px-4 bg-[#FF6B00] hover:bg-[#E05E00] text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-sm active:scale-[0.98]"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Xác nhận ghi nhận chuỗi hôm qua</span>
+              <span>{t('retro.confirm')}</span>
             </button>
             <button
               onClick={() => onDiscard(item.taskId)}
               className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl transition-colors text-xs"
             >
-              Bỏ qua & Đặt lại ngày hôm nay
+              {t('retro.discard')}
             </button>
           </div>
         </div>

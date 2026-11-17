@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { mergeSnapshots, parseSnapshot, snapshotFingerprint, type SyncSnapshot } from './sync';
+import { t } from './i18n';
 
 const url = (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
 const key = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
@@ -11,24 +12,19 @@ export const supabase = cloudEnabled
   : null;
 
 function client() {
-  if (!supabase) throw new Error('Chưa cấu hình Supabase. Dữ liệu hiện chỉ được lưu trên thiết bị.');
+  if (!supabase) throw new Error(t('cloud.notConfigured'));
   return supabase;
 }
 
 export function cloudError(error: unknown): string {
   const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
-  if (/rate limit|too many|security purposes/i.test(message))
-    return 'Máy chủ đang giới hạn yêu cầu. Vui lòng chờ một phút rồi thử lại.';
-  if (/expired|invalid.*(token|otp)|token.*(invalid|expired)/i.test(message))
-    return 'Mã không đúng hoặc đã hết hạn. Kiểm tra email hoặc gửi lại mã.';
-  if (/email.*not.*authorized|email_address_not_authorized/i.test(message))
-    return 'Máy chủ email chưa cấu hình SMTP riêng nên chưa gửi được tới địa chỉ này.';
-  if (/captcha/i.test(message)) return 'Máy chủ yêu cầu xác minh trình duyệt. Vui lòng kiểm tra cấu hình CAPTCHA.';
-  if (/permission denied|row.level|42501/i.test(message))
-    return 'Chưa có quyền truy cập dữ liệu. Hãy đăng nhập lại hoặc kiểm tra schema Supabase.';
-  if (/fetch|network|load failed/i.test(message))
-    return 'Không kết nối được máy chủ. Thay đổi vẫn nằm trong hàng đợi trên thiết bị.';
-  return message || 'Chưa đồng bộ được. Dữ liệu trên thiết bị chưa bị xóa.';
+  if (/rate limit|too many|security purposes/i.test(message)) return t('cloud.rateLimit');
+  if (/expired|invalid.*(token|otp)|token.*(invalid|expired)/i.test(message)) return t('cloud.otpInvalid');
+  if (/email.*not.*authorized|email_address_not_authorized/i.test(message)) return t('cloud.smtp');
+  if (/captcha/i.test(message)) return t('cloud.captcha');
+  if (/permission denied|row.level|42501/i.test(message)) return t('cloud.permission');
+  if (/fetch|network|load failed/i.test(message)) return t('cloud.network');
+  return message || t('cloud.generic');
 }
 
 export async function sendLoginOtp(email: string) {
@@ -40,10 +36,10 @@ export async function sendLoginOtp(email: string) {
 }
 
 export async function verifyLoginOtp(email: string, token: string) {
-  if (!/^\d{6}$/.test(token)) throw new Error('Mã xác thực phải gồm 6 chữ số.');
+  if (!/^\d{6}$/.test(token)) throw new Error(t('cloud.otpSixDigits'));
   const { data, error } = await client().auth.verifyOtp({ email: email.trim().toLowerCase(), token, type: 'email' });
   if (error) throw new Error(cloudError(error));
-  if (!data.session || data.user?.is_anonymous) throw new Error('Chưa tạo được phiên đăng nhập đã xác thực.');
+  if (!data.session || data.user?.is_anonymous) throw new Error(t('cloud.noSession'));
   return data.session;
 }
 
@@ -73,5 +69,5 @@ export async function synchronizeSnapshot(userId: string, getCurrent: () => Sync
     }
     if (data) return parseSnapshot(data.data);
   }
-  throw new Error('Dữ liệu đang thay đổi trên thiết bị khác. Sẽ thử đồng bộ lại.');
+  throw new Error(t('cloud.repeatedChange'));
 }

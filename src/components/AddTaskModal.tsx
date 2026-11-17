@@ -11,6 +11,7 @@ import {
   Infinity as InfinityIcon,
 } from 'lucide-react';
 import { TaskMode, TaskCategory, TaskItem } from '../utils/engine';
+import { useI18n } from '../utils/useI18n';
 
 interface AddTaskModalProps {
   isOpen: boolean;
@@ -54,6 +55,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   onEditTask,
   taskCount = 0,
 }) => {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [mode, setMode] = useState<TaskMode>('habit');
   const [category, setCategory] = useState<TaskCategory>('study');
@@ -95,15 +97,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLimitReached) {
-      setError('Đã đạt giới hạn tối đa 24 tác vụ. Vui lòng hoàn tất hoặc xóa bớt tác vụ.');
+      setError(t('addTask.errorLimit'));
       return;
     }
     if (!name.trim()) {
-      setError('Vui lòng nhập tên tác vụ.');
+      setError(t('addTask.errorName'));
       return;
     }
     if (!isUnlimitedTarget && (!durationMinutes || durationMinutes <= 0)) {
-      setError('Thời lượng định mức phải lớn hơn 0 phút.');
+      setError(t('addTask.errorDuration'));
       return;
     }
 
@@ -147,24 +149,22 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               {isEditing ? (
                 <>
                   <Pencil className="w-5 h-5 text-[#FCC934]" />
-                  <span>Chỉnh Sửa Tác Vụ</span>
+                  <span>{t('addTask.editTitle')}</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-5 h-5 text-[#FCC934]" />
-                  <span>Thêm Tác Vụ Mới</span>
+                  <span>{t('addTask.newTitle')}</span>
                 </>
               )}
             </h2>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[11px] sm:text-xs text-[#E8F0FE]/80">
-                {isEditing
-                  ? 'Cập nhật định mức, danh mục hoặc ghi chú ý định'
-                  : 'Thiết lập mục tiêu và định mức kỷ luật hàng ngày'}
+                {isEditing ? t('addTask.editSubtitle') : t('addTask.newSubtitle')}
               </span>
               {!isEditing && (
                 <span className="shrink-0 whitespace-nowrap text-[11px] sm:text-xs font-mono px-2 py-0.2 rounded-full bg-white/10 text-[#FCC934]">
-                  {taskCount}/24 tối đa
+                  {t('addTask.maxCount', { n: taskCount })}
                 </span>
               )}
             </div>
@@ -172,7 +172,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label={t('addTask.close')}
             className="p-1.5 rounded-lg text-[#E8F0FE]/70 hover:text-white hover:bg-[#3B6998] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -186,7 +186,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         >
           {isLimitReached && (
             <div className="bg-red-50 text-red-700 text-xs p-3 rounded-lg border border-red-200 font-medium">
-              ⚠️ Đã đạt giới hạn tối đa 24 tác vụ. Bạn không thể tạo thêm tác vụ mới để duy trì sự tập trung tối ưu.
+              {t('addTask.limitReached')}
             </div>
           )}
           {error && (
@@ -196,7 +196,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           {/* Task Name */}
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Tên tác vụ <span className="text-rose-500">*</span>
+              {t('addTask.nameLabel')} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -207,14 +207,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 setName(e.target.value);
                 if (error) setError(null);
               }}
-              placeholder="VD: Đọc sách 30p, Lập trình Frontend, Thiền sáng..."
+              placeholder={t('addTask.namePlaceholder')}
               className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] focus:border-transparent"
             />
           </div>
 
           {/* Mode Selection */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Chế độ tác vụ</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              {t('addTask.modeLabel')}
+            </label>
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
@@ -227,11 +229,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               >
                 <div className="text-xs font-bold text-[#FF6B00] flex items-center gap-1.5">
                   <Clock className="w-4 h-4" />
-                  <span>Thói quen (Đếm ngược)</span>
+                  <span>{t('addTask.modeHabit')}</span>
                 </div>
-                <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">
-                  Đếm từ 100% về 0%, yêu cầu giữ 0.8s để xác nhận chuỗi 🔥
-                </div>
+                <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">{t('addTask.modeHabitDesc')}</div>
               </button>
 
               <button
@@ -245,10 +245,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               >
                 <div className="text-xs font-bold text-[#1E3A5F] dark:text-sky-400 flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
-                  <span>Dự án (Đo lường)</span>
+                  <span>{t('addTask.modeProject')}</span>
                 </div>
                 <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">
-                  Đo tổng thời gian, mật độ bền bỉ % và có tính năng chốt phiên
+                  {t('addTask.modeProjectDesc')}
                 </div>
               </button>
             </div>
@@ -256,13 +256,20 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
           {/* Category Selection */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Nhóm danh mục</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              {t('addTask.categoryLabel')}
+            </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                { id: 'health', label: 'Sức khoẻ', icon: HeartPulse, color: 'text-rose-500' },
-                { id: 'work', label: 'Công việc', icon: Briefcase, color: 'text-[#3B6998] dark:text-sky-400' },
-                { id: 'study', label: 'Học hành', icon: BookOpen, color: 'text-indigo-500' },
-                { id: 'habit', label: 'Thói quen', icon: Sparkles, color: 'text-[#FF6B00]' },
+                { id: 'health', label: t('category.health'), icon: HeartPulse, color: 'text-rose-500' },
+                {
+                  id: 'work',
+                  label: t('category.work'),
+                  icon: Briefcase,
+                  color: 'text-[#3B6998] dark:text-sky-400',
+                },
+                { id: 'study', label: t('category.study'), icon: BookOpen, color: 'text-indigo-500' },
+                { id: 'habit', label: t('category.habit'), icon: Sparkles, color: 'text-[#FF6B00]' },
               ].map((cat) => {
                 const Icon = cat.icon;
                 const isSelected = category === cat.id;
@@ -289,16 +296,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Định mức mục tiêu{mode === 'habit' ? ' (phút)' : ''}
+                {t('addTask.targetLabel')}
+                {mode === 'habit' ? ` (${t('common.minutes')})` : ''}
               </label>
               <span
                 className={`text-xs font-bold font-mono ${
                   isUnlimitedTarget ? 'text-[#1E3A5F] dark:text-sky-400' : 'text-[#FF6B00]'
                 }`}
               >
-                {isUnlimitedTarget
-                  ? 'Không giới hạn'
-                  : `${durationMinutes} phút (${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}p)`}
+                {isUnlimitedTarget ? t('addTask.unlimited') : `${durationMinutes} ${t('common.minutes')}`}
               </span>
             </div>
             <div className="flex flex-wrap gap-2 mb-2">
@@ -316,7 +322,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                       : 'bg-[#F4F7FA] dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
-                  {mins}p
+                  {mins}
+                  {t('common.minutesShort')}
                 </button>
               ))}
               {mode === 'project' && (
@@ -328,17 +335,18 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                       ? 'bg-[#1E3A5F] text-white'
                       : 'bg-[#E8F0FE] dark:bg-sky-950/40 text-[#1E3A5F] dark:text-sky-300 border border-[#3B6998]/30 hover:bg-[#D0E1FD] dark:hover:bg-sky-900/50'
                   }`}
-                  title="Không đặt định mức phiên, thời gian chạy được cộng dồn cả ngày"
+                  title={t('addTask.unlimitedTitle')}
                 >
                   <InfinityIcon className="w-3.5 h-3.5" />
-                  <span>Không giới hạn</span>
+                  <span>{t('addTask.unlimited')}</span>
                 </button>
               )}
             </div>
             {isUnlimitedTarget ? (
               <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 bg-[#E8F0FE]/70 dark:bg-sky-950/30 border border-[#3B6998]/20 dark:border-sky-800/40 rounded-lg px-3 py-2 leading-relaxed">
-                Mỗi ngày bạn có thể chạy <strong>nhiều phiên</strong>; thời gian được <strong>cộng dồn</strong> vào tổng
-                ngày, không bị chặn bởi định mức phiên.
+                {t('addTask.unlimitedHintPrefix')} <strong>{t('addTask.unlimitedHintMany')}</strong>
+                {t('addTask.unlimitedHintMiddle')} <strong>{t('addTask.unlimitedHintAccumulate')}</strong>{' '}
+                {t('addTask.unlimitedHintSuffix')}
               </p>
             ) : (
               <input
@@ -368,7 +376,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           {mode === 'habit' && (
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Cột mốc mục tiêu chuỗi
+                {t('addTask.milestoneLabel')}
               </label>
               <div className="flex gap-2">
                 {[30, 66, 100].map((days) => (
@@ -382,7 +390,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                         : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
                     }`}
                   >
-                    🔥 {days} ngày {days === 66 ? '(Chuẩn UCL)' : ''}
+                    🔥 {t('addTask.milestoneDays', { n: days })} {days === 66 ? t('addTask.milestoneUcl') : ''}
                   </button>
                 ))}
               </div>
@@ -392,13 +400,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           {/* Optional Notes */}
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Ghi chú ý định (Tùy chọn)
+              {t('addTask.notesLabel')}
             </label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="VD: Đọc sách vào 21:00 trước khi ngủ, không dùng điện thoại"
+              placeholder={t('addTask.notesPlaceholder')}
               className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
@@ -410,13 +418,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
             >
-              Hủy
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="px-5 py-2 text-xs font-bold text-white bg-[#FF6B00] hover:bg-[#E65100] active:scale-95 rounded-lg shadow-sm transition-all cursor-pointer"
             >
-              {isEditing ? 'Lưu thay đổi' : 'Tạo tác vụ'}
+              {isEditing ? t('common.saveChanges') : t('common.createTask')}
             </button>
           </div>
         </form>

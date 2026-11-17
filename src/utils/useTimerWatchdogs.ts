@@ -3,6 +3,7 @@ import type { TaskItem } from './engine';
 import { getEffectiveTargetDurationMs } from './engine';
 import { soundEngine } from './audio';
 import { notificationService } from './notifications';
+import { t } from './i18n';
 
 type SetTasks = (value: React.SetStateAction<TaskItem[]>) => void;
 
@@ -60,10 +61,7 @@ export function useTimerWatchdogs({
         habitHandledRef.current.add(task.id);
         soundEngine.playBellChime(523.25);
 
-        notificationService.sendNotification(
-          `🔥 Bền Bỉ: ${task.name} đã hoàn thành!`,
-          'Đồng hồ đếm ngược đã chạm 00:00. Nhấn giữ 0.8 giây để xác nhận chuỗi của bạn.',
-        );
+        notificationService.sendNotification(t('notify.endTitle', { name: task.name }), t('notify.endBody'));
 
         setTasks((prev) =>
           prev.map((t) =>

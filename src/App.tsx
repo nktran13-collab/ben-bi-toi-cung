@@ -33,6 +33,7 @@ import { PUSH_REMINDER_HOUR } from './utils/push';
 import { notificationService } from './utils/notifications';
 import { realtimeManager } from './utils/realtime';
 import { setupMediaSession } from './utils/mediaSession';
+import { useI18n } from './utils/useI18n';
 
 import { Header } from './components/Header';
 import { CircularTaskNode } from './components/CircularTaskNode';
@@ -54,6 +55,7 @@ import { ZenFocusModal } from './components/ZenFocusModal';
 import { WelcomeModal } from './components/WelcomeModal';
 
 export default function App() {
+  const { t, lang } = useI18n();
   // The sync hook owns the canonical data and per-account offline cache.
   const {
     tasks,
@@ -381,7 +383,7 @@ export default function App() {
         handleToggleTimer(runningTask.id);
       },
     });
-  }, [runningTask, handleToggleTimer]);
+  }, [runningTask, handleToggleTimer, lang]);
 
   const handleKeep30Days = useCallback(() => {
     setMilestoneTask(null);
@@ -397,8 +399,8 @@ export default function App() {
     a.download = `ben-bi-backup-${getLogicalDate(Date.now(), dayRolloverHour)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('📦 Đã tải xuống file sao lưu dữ liệu (.json) thành công!');
-  }, [tasks, sessions, logs, settings, showToast, dayRolloverHour]);
+    showToast(t('app.toast.backupDownloaded'));
+  }, [tasks, sessions, logs, settings, showToast, dayRolloverHour, t]);
 
   const handleExportRecovery = useCallback(() => {
     const blob = new Blob([exportRecoveryJSON()], { type: 'application/json;charset=utf-8;' });
@@ -416,23 +418,23 @@ export default function App() {
       if (!parsed) return false;
       replaceData(parsed);
       soundEngine.playSuccessChime();
-      showToast('✅ Đã khôi phục toàn bộ dữ liệu từ bản sao lưu!');
+      showToast(t('app.toast.backupRestored'));
       return true;
     },
-    [replaceData, showToast],
+    [replaceData, showToast, t],
   );
 
   const handleResetToCleanStarter = useCallback(() => {
     replaceData(getCleanStarterTasks());
     soundEngine.playSoftChime(523.25, 0.25, 0.5);
-    showToast('🌱 Đã đặt lại toàn bộ chuỗi về Ngày 0 để bạn bắt đầu hành trình thực tế!');
-  }, [replaceData, showToast]);
+    showToast(t('app.toast.cleanStarter'));
+  }, [replaceData, showToast, t]);
 
   const handleLoadDemoSeed = useCallback(() => {
     replaceData(getInitialSeedTasks());
     soundEngine.playSoftChime(659.25, 0.25, 0.5);
-    showToast('✨ Đã nạp bộ dữ liệu mẫu 21 ngày để trải nghiệm tính năng!');
-  }, [replaceData, showToast]);
+    showToast(t('app.toast.demoSeed'));
+  }, [replaceData, showToast, t]);
 
   const handleCloseWelcomeModal = useCallback((dontShowAgain: boolean) => {
     setIsWelcomeModalOpen(false);
@@ -448,7 +450,7 @@ export default function App() {
   // Only report cloud success when the hook confirms a completed sync.
   const handleTriggerSyncNow = useCallback(async () => {
     if (account.isAnonymous) {
-      showToast('Vui lòng đăng nhập bằng email đã xác thực để đồng bộ đám mây.');
+      showToast(t('app.toast.loginRequired'));
       return;
     }
     if (isSyncing) return;
@@ -457,20 +459,20 @@ export default function App() {
       const saved = await syncNow();
       if (saved) {
         soundEngine.playSoftChime(880, 0.15, 0.3);
-        showToast('Đã đồng bộ với đám mây thành công.');
+        showToast(t('app.toast.syncSuccess'));
       } else {
         showToast(
           !cloudEnabled
-            ? 'Chưa cấu hình đồng bộ đám mây. Dữ liệu chỉ nằm trên thiết bị.'
+            ? t('app.toast.syncNotConfigured')
             : isOffline
-              ? 'Đang ngoại tuyến. Thay đổi đang chờ đồng bộ trên thiết bị.'
-              : 'Chưa đồng bộ được. Xem lỗi trong phần tài khoản và thử lại.',
+              ? t('app.toast.syncOffline')
+              : t('app.toast.syncFailed'),
         );
       }
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Đồng bộ thất bại. Vui lòng thử lại.');
+      showToast(error instanceof Error ? error.message : t('app.toast.syncErrorFallback'));
     }
-  }, [account.isAnonymous, isSyncing, syncNow, cloudEnabled, isOffline, showToast]);
+  }, [account.isAnonymous, isSyncing, syncNow, cloudEnabled, isOffline, showToast, t]);
 
   const handleLogout = useCallback(async () => {
     setIsLoggingOut(true);
@@ -478,27 +480,27 @@ export default function App() {
       await disablePush().catch(() => {});
       await logout();
       soundEngine.playTap(false);
-      showToast('Đã đăng xuất. Bạn đang sử dụng chế độ khách.');
+      showToast(t('app.toast.loggedOut'));
     } finally {
       setIsLoggingOut(false);
     }
-  }, [disablePush, logout, showToast]);
+  }, [disablePush, logout, showToast, t]);
 
   const handleTogglePush = useCallback(
     async (next: boolean) => {
       try {
         if (next) {
           await enablePush();
-          showToast('🔔 Đã bật nhắc nhở đẩy hằng ngày.');
+          showToast(t('app.toast.pushOn'));
         } else {
           await disablePush();
-          showToast('Đã tắt nhắc nhở đẩy.');
+          showToast(t('app.toast.pushOff'));
         }
       } catch (error) {
-        showToast(error instanceof Error ? error.message : 'Không đổi được cài đặt nhắc nhở.');
+        showToast(error instanceof Error ? error.message : t('app.toast.pushSettingError'));
       }
     },
-    [enablePush, disablePush, showToast],
+    [enablePush, disablePush, showToast, t],
   );
 
   // Request Notification Permission
@@ -507,24 +509,18 @@ export default function App() {
     setNotificationPermission(result);
     setSettings((current) => ({ ...current, notificationsEnabled: result === 'granted' }));
     if (result === 'granted') {
-      notificationService.sendNotification(
-        '🔔 Bền Bỉ Tới Cùng',
-        'Đã bật thông báo thành công! Bạn sẽ nhận được chuông báo khi hoàn thành thói quen.',
-      );
-      showToast('Đã cấp quyền thông báo hệ thống.');
+      notificationService.sendNotification(t('app.notifTitle'), t('app.notifEnabledBody'));
+      showToast(t('app.toast.notifGranted'));
     } else {
-      showToast('Quyền thông báo bị từ chối.');
+      showToast(t('app.toast.notifDenied'));
     }
-  }, [setSettings, showToast]);
+  }, [setSettings, showToast, t]);
 
   const handleTestNotification = useCallback(() => {
-    notificationService.sendNotification(
-      '🔔 Thử nghiệm thông báo Bền Bỉ',
-      'Hệ thống thông báo đẩy đang hoạt động hoàn hảo ngay cả khi khóa màn hình.',
-    );
+    notificationService.sendNotification(t('app.notifTestTitle'), t('app.notifTestBody'));
     soundEngine.playSoftChime(659.25, 0.25, 0.4);
-    showToast('Đã bắn thông báo thử nghiệm.');
-  }, [showToast]);
+    showToast(t('app.toast.testNotifSent'));
+  }, [showToast, t]);
 
   const handleBroadcastTestEvent = useCallback(() => {
     const now = Date.now();
@@ -534,9 +530,9 @@ export default function App() {
       startedAtMs: now,
       accumulatedMs: 0,
     });
-    setLastRealtimeMessage(`[${formatClockTime(now)}] Đã phát gói tin test từ thiết bị này`);
-    showToast('Đã phát gói tin Realtime Broadcast sang các tab/thiết bị khác.');
-  }, [tasks, showToast]);
+    setLastRealtimeMessage(t('app.realtimeMessage', { time: formatClockTime(now) }));
+    showToast(t('app.toast.realtimeBroadcast'));
+  }, [tasks, showToast, t]);
 
   // DevTestToolbar Triggers
   const handleTestMilestone30 = useCallback(() => {
@@ -697,11 +693,7 @@ export default function App() {
           onToggleDevMode={() => {
             const next = !devModeEnabled;
             setDevModeEnabled(next);
-            showToast(
-              next
-                ? '🧪 Đã bật Chế độ Nhà phát triển (Dev/Test Toolbar).'
-                : '✨ Đã ẩn công cụ kiểm thử (Giao diện chuẩn Production).',
-            );
+            showToast(next ? t('app.toast.devOn') : t('app.toast.devOff'));
           }}
           totalShields={totalShields}
           totalActiveStreaks={totalActiveStreaks}
@@ -789,9 +781,7 @@ export default function App() {
                 <Filter className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-sm">
-                {searchQuery
-                  ? `Không tìm thấy tác vụ nào khớp với "${searchQuery}"`
-                  : 'Chưa có tác vụ nào trong danh mục này'}
+                {searchQuery ? t('app.emptySearch', { query: searchQuery }) : t('app.emptyCategory')}
               </h3>
               <button
                 type="button"
@@ -800,7 +790,7 @@ export default function App() {
                 className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#FF6B00] hover:bg-[#E65100] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Thêm tác vụ mới</span>
+                <span>{t('app.addTask')}</span>
               </button>
             </div>
           )}
@@ -948,11 +938,7 @@ export default function App() {
             isSimulatedOffline={isSimulatedOffline}
             onToggleSimulatedOffline={() => {
               setIsSimulatedOffline((prev) => !prev);
-              showToast(
-                !isSimulatedOffline
-                  ? 'Đã bật mô phỏng ngoại tuyến.'
-                  : 'Đã tắt mô phỏng ngoại tuyến. Kết nối thực tế tùy thuộc thiết bị.',
-              );
+              showToast(!isSimulatedOffline ? t('app.toast.offlineSimOn') : t('app.toast.offlineSimOff'));
             }}
             pendingSyncCount={pendingSyncCount}
             onTriggerSyncNow={handleTriggerSyncNow}
@@ -987,7 +973,7 @@ export default function App() {
           try {
             await handleLogout();
           } catch (error) {
-            setAccountActionError(error instanceof Error ? error.message : 'Không đăng xuất được. Vui lòng thử lại.');
+            setAccountActionError(error instanceof Error ? error.message : t('app.toast.logoutError'));
           }
         }}
       />
