@@ -629,6 +629,16 @@ export default function App() {
     }, 0);
   const totalFocusedTodayMinutes = Math.round((todayLogsMs + todaySessionsMs + activeTimersMs) / 60000);
 
+  // Saved project time per task for the current logical day (live session is added by the card itself).
+  const todayProjectSaved = new Map<string, { ms: number; count: number }>();
+  for (const s of sessions) {
+    if (s.logicalDate !== currentLogicalDate) continue;
+    const entry = todayProjectSaved.get(s.taskId) ?? { ms: 0, count: 0 };
+    entry.ms += s.durationMs;
+    entry.count += 1;
+    todayProjectSaved.set(s.taskId, entry);
+  }
+
   const highestStreak = tasks.reduce((max, t) => Math.max(max, t.currentStreak), 0);
   const msUntilRollover = getMillisecondsUntilRollover(metricsNowMs, dayRolloverHour);
   const hoursUntilRollover = Math.floor(msUntilRollover / 3600000);
@@ -749,6 +759,8 @@ export default function App() {
                   task={task}
                   devModeEnabled={devModeEnabled}
                   darkMode={darkMode}
+                  todaySavedMs={todayProjectSaved.get(task.id)?.ms ?? 0}
+                  todaySessionCount={todayProjectSaved.get(task.id)?.count ?? 0}
                   onToggleTimer={handleToggleTimer}
                   onResetTimer={handleResetTimer}
                   onConfirmHabit={handleConfirmHabit}
@@ -818,6 +830,8 @@ export default function App() {
         <ZenFocusModal
           task={selectedZenTask}
           isOpen={!!zenFocusTaskId}
+          todaySavedMs={selectedZenTask ? (todayProjectSaved.get(selectedZenTask.id)?.ms ?? 0) : 0}
+          todaySessionCount={selectedZenTask ? (todayProjectSaved.get(selectedZenTask.id)?.count ?? 0) : 0}
           onClose={() => setZenFocusTaskId(null)}
           onToggleTimer={handleToggleTimer}
           onConfirmHabit={handleConfirmHabit}

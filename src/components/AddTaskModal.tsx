@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, HeartPulse, Briefcase, BookOpen, Clock, Calendar, Pencil } from 'lucide-react';
+import {
+  X,
+  Sparkles,
+  HeartPulse,
+  Briefcase,
+  BookOpen,
+  Clock,
+  Calendar,
+  Pencil,
+  Infinity as InfinityIcon,
+} from 'lucide-react';
 import { TaskMode, TaskCategory, TaskItem } from '../utils/engine';
 
 interface AddTaskModalProps {
@@ -29,6 +39,7 @@ interface AddTaskModalProps {
       category: TaskCategory;
       targetDurationMs: number;
       targetMilestoneDays?: number;
+      targetUnlimited?: boolean;
       notes?: string;
     },
   ) => void;
@@ -47,6 +58,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [mode, setMode] = useState<TaskMode>('habit');
   const [category, setCategory] = useState<TaskCategory>('study');
   const [durationMinutes, setDurationMinutes] = useState(30);
+  const [unlimited, setUnlimited] = useState(false);
   const [milestoneDays, setMilestoneDays] = useState(30);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +69,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setMode(editingTask.mode);
       setCategory(editingTask.category);
       setDurationMinutes(Math.max(1, Math.round(editingTask.targetDurationMs / 60000)));
+      setUnlimited(editingTask.mode === 'project' && !!editingTask.targetUnlimited);
       setMilestoneDays(editingTask.targetMilestoneDays || 30);
       setNotes(editingTask.notes || '');
       setError(null);
@@ -65,6 +78,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setMode('habit');
       setCategory('study');
       setDurationMinutes(30);
+      setUnlimited(false);
       setMilestoneDays(30);
       setNotes('');
       setError(null);
@@ -75,6 +89,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   const isEditing = !!editingTask;
   const isLimitReached = !isEditing && taskCount >= 24;
+  const isUnlimitedTarget = mode === 'project' && unlimited;
+  const resolvedDurationMinutes = durationMinutes > 0 ? durationMinutes : 30;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +102,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setError('Vui lòng nhập tên tác vụ.');
       return;
     }
-    if (!durationMinutes || durationMinutes <= 0) {
+    if (!isUnlimitedTarget && (!durationMinutes || durationMinutes <= 0)) {
       setError('Thời lượng định mức phải lớn hơn 0 phút.');
       return;
     }
@@ -96,8 +112,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         name: name.trim(),
         mode,
         category,
-        targetDurationMs: durationMinutes * 60 * 1000,
+        targetDurationMs: resolvedDurationMinutes * 60 * 1000,
         targetMilestoneDays: milestoneDays,
+        targetUnlimited: isUnlimitedTarget ? true : undefined,
         notes: notes.trim() || undefined,
       });
     } else {
@@ -105,14 +122,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         name: name.trim(),
         mode,
         category,
-        targetDurationMs: durationMinutes * 60 * 1000,
+        targetDurationMs: resolvedDurationMinutes * 60 * 1000,
         targetMilestoneDays: milestoneDays,
+        targetUnlimited: isUnlimitedTarget ? true : undefined,
         notes: notes.trim() || undefined,
       });
     }
 
     setName('');
     setDurationMinutes(30);
+    setUnlimited(false);
     setNotes('');
     setError(null);
     onClose();
@@ -269,9 +288,17 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           {/* Target Duration */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Định mức mục tiêu (phút)</label>
-              <span className="text-xs font-bold font-mono text-[#FF6B00]">
-                {durationMinutes} phút ({Math.floor(durationMinutes / 60)}h {durationMinutes % 60}p)
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Định mức mục tiêu{mode === 'habit' ? ' (phút)' : ''}
+              </label>
+              <span
+                className={`text-xs font-bold font-mono ${
+                  isUnlimitedTarget ? 'text-[#1E3A5F] dark:text-sky-400' : 'text-[#FF6B00]'
+                }`}
+              >
+                {isUnlimitedTarget
+                  ? 'Không giới hạn'
+                  : `${durationMinutes} phút (${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}p)`}
               </span>
             </div>
             <div className="flex flex-wrap gap-2 mb-2">
@@ -279,9 +306,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 <button
                   key={mins}
                   type="button"
-                  onClick={() => setDurationMinutes(mins)}
+                  onClick={() => {
+                    setUnlimited(false);
+                    setDurationMinutes(mins);
+                  }}
                   className={`px-2.5 py-1 rounded-md text-xs font-semibold font-mono transition-colors cursor-pointer ${
-                    durationMinutes === mins
+                    !isUnlimitedTarget && durationMinutes === mins
                       ? 'bg-[#1E3A5F] text-white'
                       : 'bg-[#F4F7FA] dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
@@ -289,26 +319,49 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   {mins}p
                 </button>
               ))}
+              {mode === 'project' && (
+                <button
+                  type="button"
+                  onClick={() => setUnlimited(true)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                    isUnlimitedTarget
+                      ? 'bg-[#1E3A5F] text-white'
+                      : 'bg-[#E8F0FE] dark:bg-sky-950/40 text-[#1E3A5F] dark:text-sky-300 border border-[#3B6998]/30 hover:bg-[#D0E1FD] dark:hover:bg-sky-900/50'
+                  }`}
+                  title="Không đặt định mức phiên, thời gian chạy được cộng dồn cả ngày"
+                >
+                  <InfinityIcon className="w-3.5 h-3.5" />
+                  <span>Không giới hạn</span>
+                </button>
+              )}
             </div>
-            <input
-              type="number"
-              min="1"
-              max="600"
-              value={durationMinutes || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '') {
-                  setDurationMinutes(0);
-                } else {
-                  const num = Number(val);
-                  if (!Number.isNaN(num)) {
-                    setDurationMinutes(num);
+            {isUnlimitedTarget ? (
+              <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 bg-[#E8F0FE]/70 dark:bg-sky-950/30 border border-[#3B6998]/20 dark:border-sky-800/40 rounded-lg px-3 py-2 leading-relaxed">
+                Mỗi ngày bạn có thể chạy <strong>nhiều phiên</strong>; thời gian được <strong>cộng dồn</strong> vào tổng
+                ngày, không bị chặn bởi định mức phiên.
+              </p>
+            ) : (
+              <input
+                type="number"
+                min="1"
+                max="600"
+                value={durationMinutes || ''}
+                onChange={(e) => {
+                  setUnlimited(false);
+                  const val = e.target.value;
+                  if (val === '') {
+                    setDurationMinutes(0);
+                  } else {
+                    const num = Number(val);
+                    if (!Number.isNaN(num)) {
+                      setDurationMinutes(num);
+                    }
                   }
-                }
-              }}
-              placeholder="30"
-              className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 font-mono"
-            />
+                }}
+                placeholder="30"
+                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 font-mono"
+              />
+            )}
           </div>
 
           {/* Milestone Target Days (For Habits) */}

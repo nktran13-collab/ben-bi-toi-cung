@@ -13,6 +13,8 @@ import { useNow } from '../utils/useNow';
 interface ZenFocusModalProps {
   task: TaskItem | null;
   isOpen: boolean;
+  todaySavedMs?: number;
+  todaySessionCount?: number;
   onClose: () => void;
   onToggleTimer: (taskId: string) => void;
   onConfirmHabit: (taskId: string) => void;
@@ -22,6 +24,8 @@ interface ZenFocusModalProps {
 export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
   task,
   isOpen,
+  todaySavedMs = 0,
+  todaySessionCount = 0,
   onClose,
   onToggleTimer,
   onConfirmHabit,
@@ -58,6 +62,7 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
 
   const isRunning = task.status === 'running';
   const isHabit = task.mode === 'habit';
+  const isUnlimited = !isHabit && !!task.targetUnlimited;
   const isCompleted = task.status === 'completed_today';
   const isPendingConfirmation = task.status === 'pending_confirmation';
   const effectiveTargetMs = getEffectiveTargetDurationMs(task);
@@ -88,12 +93,18 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
       task.accumulatedMs,
       currentTimeMs,
     );
-    progressRatio = Math.min(1, ratio);
+    progressRatio = isUnlimited ? 1 : Math.min(1, ratio);
     displayTime = formatDuration(elapsedMs, true);
     strokeColor = '#38BDF8';
   }
 
-  const strokeDashoffset = circumference * (1 - Math.max(0, Math.min(1, progressRatio)));
+  const strokeDashoffset = isUnlimited ? 0 : circumference * (1 - Math.max(0, Math.min(1, progressRatio)));
+
+  const sessionElapsedMs =
+    task.accumulatedMs + (isRunning && task.startedAtMs ? Math.max(0, currentTimeMs - task.startedAtMs) : 0);
+  const todayTotalMs = todaySavedMs + sessionElapsedMs;
+  const todayTotalMinutes = Math.floor(todayTotalMs / 60000);
+  const todaySessionTotal = todaySessionCount + (sessionElapsedMs > 0 ? 1 : 0);
 
   const handleToggleAmbient = () => {
     if (ambientPlaying) {
@@ -194,14 +205,22 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
         <div className="flex flex-col items-center justify-center my-auto py-2 sm:py-6 [@media(max-height:520px)]:py-0">
           <div className="text-center mb-3 max-w-lg sm:mb-6 [@media(max-height:520px)]:mb-2">
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">{task.name}</h2>
-            {task.notes ? (
+            {task.notes && (
               <p className="text-sm text-blue-200/80 mt-2 italic [@media(max-height:520px)]:hidden">“{task.notes}”</p>
-            ) : (
-              <p className="text-xs text-blue-200/60 mt-1.5 [@media(max-height:520px)]:hidden">
-                {isHabit
-                  ? `Mục tiêu định mức: ${Math.round(effectiveTargetMs / 60000)} phút không xao nhãng`
-                  : 'Tập trung sâu — Mọi giây phút đều được ghi nhận chính xác'}
+            )}
+            {isUnlimited ? (
+              <p className="text-xs text-blue-200/70 mt-1.5 [@media(max-height:520px)]:hidden">
+                Hôm nay: <strong className="text-[#FCC934]">{todayTotalMinutes} phút</strong> • {todaySessionTotal}{' '}
+                phiên — không giới hạn, cộng dồn cả ngày
               </p>
+            ) : (
+              !task.notes && (
+                <p className="text-xs text-blue-200/60 mt-1.5 [@media(max-height:520px)]:hidden">
+                  {isHabit
+                    ? `Mục tiêu định mức: ${Math.round(effectiveTargetMs / 60000)} phút không xao nhãng`
+                    : 'Tập trung sâu — Mọi giây phút đều được ghi nhận chính xác'}
+                </p>
+              )
             )}
           </div>
 
@@ -227,10 +246,11 @@ export const ZenFocusModal: React.FC<ZenFocusModalProps> = ({
                 fill="transparent"
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
-                strokeDasharray={circumference}
+                strokeDasharray={isUnlimited ? '12 18' : circumference}
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
-                className="transition-all duration-300 ease-out"
+                opacity={isUnlimited ? 0.45 : undefined}
+                className={`transition-all duration-300 ease-out ${isUnlimited && isRunning ? 'animate-pulse' : ''}`}
               />
             </svg>
 

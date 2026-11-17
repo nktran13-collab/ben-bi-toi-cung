@@ -52,6 +52,7 @@ export interface TaskItem {
   category: TaskCategory;
   targetDurationMs: number; // Base Habit quota or Project goal/session target (in ms)
   targetMilestoneDays?: number; // 30, 66, or 100 days
+  targetUnlimited?: boolean; // Project only: no session quota, running time accumulates all day
   currentStreak: number;
   bestStreak: number;
   shields: number;
@@ -457,7 +458,7 @@ export function generateCSVExport(task: TaskItem, sessions: TimeSession[], logs:
   const lines: string[] = [];
   lines.push(`Mã tác vụ,Tên tác vụ,Chế độ,Danh mục,Chuỗi hiện tại,Chuỗi kỷ lục,Định mức (phút)`);
   lines.push(
-    `"${task.id}","${task.name}","${task.mode}","${task.category}",${task.currentStreak},${task.bestStreak},${Math.round(task.targetDurationMs / 60000)}`,
+    `"${task.id}","${task.name}","${task.mode}","${task.category}",${task.currentStreak},${task.bestStreak},"${task.targetUnlimited ? 'Không giới hạn' : Math.round(task.targetDurationMs / 60000)}"`,
   );
   lines.push('');
 
@@ -493,7 +494,9 @@ export function generateMarkdownExport(task: TaskItem, sessions: TimeSession[], 
   lines.push(`- **Chế độ**: ${task.mode === 'habit' ? 'Thói quen đếm ngược' : 'Đo lường dự án'}`);
   lines.push(`- **Danh mục**: ${task.category}`);
   lines.push(`- **Chuỗi hiện tại**: 🔥 ${task.currentStreak} ngày (Kỷ lục: ${task.bestStreak} ngày)`);
-  lines.push(`- **Định mức**: ${Math.round(task.targetDurationMs / 60000)} phút`);
+  lines.push(
+    `- **Định mức**: ${task.targetUnlimited ? 'Không giới hạn' : `${Math.round(task.targetDurationMs / 60000)} phút`}`,
+  );
   lines.push(`- **Khiên Bền Bỉ**: 🛡️ ${task.shields} khiên`);
   lines.push('');
 

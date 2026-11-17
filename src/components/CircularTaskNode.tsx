@@ -34,6 +34,8 @@ interface CircularTaskNodeProps {
   task: TaskItem;
   devModeEnabled?: boolean;
   darkMode?: boolean;
+  todaySavedMs?: number;
+  todaySessionCount?: number;
   onToggleTimer: (taskId: string) => void;
   onResetTimer: (taskId: string) => void;
   onConfirmHabit: (taskId: string) => void;
@@ -49,6 +51,8 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
   task,
   devModeEnabled = false,
   darkMode = false,
+  todaySavedMs = 0,
+  todaySessionCount = 0,
   onToggleTimer,
   onResetTimer,
   onConfirmHabit,
@@ -62,6 +66,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
   const isRunning = task.status === 'running';
   const currentTimeMs = useNow(1000, isRunning);
   const isHabit = task.mode === 'habit';
+  const isUnlimited = !isHabit && !!task.targetUnlimited;
   const isCompleted = task.status === 'completed_today';
   const isPendingConfirmation = task.status === 'pending_confirmation';
   const effectiveTargetMs = getEffectiveTargetDurationMs(task);
@@ -103,12 +108,16 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
       task.accumulatedMs,
       currentTimeMs,
     );
-    progressRatio = Math.min(1, ratio);
+    progressRatio = isUnlimited ? 1 : Math.min(1, ratio);
     displayTime = formatDuration(elapsedMs);
     strokeColor = isCompleted ? '#81C995' : darkMode ? '#38BDF8' : '#1E3A5F';
   }
 
-  const strokeDashoffset = isHabit && isCompleted ? 0 : circumference * (1 - Math.max(0, Math.min(1, progressRatio)));
+  const strokeDashoffset = isUnlimited
+    ? 0
+    : isHabit && isCompleted
+      ? 0
+      : circumference * (1 - Math.max(0, Math.min(1, progressRatio)));
 
   // Long-press confirmation logic (0.8s hold)
   const [holdingProgress, setHoldingProgress] = useState(0);
@@ -168,6 +177,9 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
     isRunning && task.startedAtMs
       ? task.accumulatedMs + Math.max(0, currentTimeMs - task.startedAtMs)
       : task.accumulatedMs;
+  const todayTotalMs = todaySavedMs + currentElapsedMs;
+  const todayTotalMinutes = Math.floor(todayTotalMs / 60000);
+  const todaySessionTotal = todaySessionCount + (currentElapsedMs > 0 ? 1 : 0);
 
   return (
     <div
@@ -296,10 +308,11 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
             fill="transparent"
             stroke={strokeColor}
             strokeWidth={strokeWidth}
-            strokeDasharray={circumference}
+            strokeDasharray={isUnlimited ? '9 13' : circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            className="transition-all duration-300 ease-out"
+            opacity={isUnlimited ? 0.45 : undefined}
+            className={`transition-all duration-300 ease-out ${isUnlimited && isRunning ? 'animate-pulse' : ''}`}
           />
         </svg>
 
@@ -363,7 +376,7 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
                       : 'bg-[#F4F7FA] text-slate-500 border-slate-200'
                 }`}
               >
-                {Math.round(effectiveTargetMs / 60000)} phút
+                {isUnlimited ? 'Không giới hạn' : `${Math.round(effectiveTargetMs / 60000)} phút`}
                 {task.inCompensationQuest ? ' (x2)' : ''}
               </span>
             </div>
@@ -382,11 +395,13 @@ export const CircularTaskNode: React.FC<CircularTaskNodeProps> = ({
           {task.name}
         </h3>
         <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 line-clamp-1 truncate">
-          {task.notes
-            ? task.notes
-            : isHabit
-              ? `Định mức ${Math.round(effectiveTargetMs / 60000)}p/ngày`
-              : `Mục tiêu phiên: ${Math.round(effectiveTargetMs / 60000)}p`}
+          {isUnlimited
+            ? `Hôm nay: ${todayTotalMinutes} phút • ${todaySessionTotal} phiên`
+            : task.notes
+              ? task.notes
+              : isHabit
+                ? `Định mức ${Math.round(effectiveTargetMs / 60000)}p/ngày`
+                : `Mục tiêu phiên: ${Math.round(effectiveTargetMs / 60000)}p`}
         </p>
 
         {/* Scheduled Web Push Notification Badge */}

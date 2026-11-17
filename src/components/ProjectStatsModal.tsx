@@ -109,6 +109,9 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
   const maxMinutesIn30Days = Math.max(...last30Days.map((d) => d.durationMinutes));
   const activeDaysIn30 = last30Days.filter((d) => d.durationMinutes > 0).length;
   const totalMinutesIn30 = last30Days.reduce((sum, d) => sum + d.durationMinutes, 0);
+  const todayStr = last30Days[last30Days.length - 1]?.dateStr ?? getLogicalDate(now, dayRolloverHour);
+  const todaySessions = taskSessions.filter((s) => s.logicalDate === todayStr);
+  const todayMinutes = Math.round(todaySessions.reduce((sum, s) => sum + s.durationMs, 0) / 60000);
 
   const getHeatColor = (minutes: number): string => {
     if (minutes <= 0) return 'bg-slate-100 text-slate-400 border-slate-200';
@@ -324,7 +327,13 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
               <span className="text-xs uppercase tracking-wider font-bold bg-[#3B6998] px-2.5 py-0.5 rounded-full text-[#E8F0FE]">
                 {task.mode === 'habit' ? 'Báo cáo Thói quen' : 'Báo cáo Dự án'}
               </span>
-              <span className="text-xs text-[#E8F0FE]/80">Mục tiêu: {targetMilestone} ngày</span>
+              <span className="text-xs text-[#E8F0FE]/80">
+                {task.mode === 'project'
+                  ? task.targetUnlimited
+                    ? 'Mục tiêu: Không giới hạn'
+                    : `Mục tiêu phiên: ${Math.round(task.targetDurationMs / 60000)} phút`
+                  : `Mục tiêu: ${targetMilestone} ngày`}
+              </span>
             </div>
             <h2 className="text-xl font-bold mt-1 text-white flex items-center gap-2">
               {task.name}
@@ -459,7 +468,8 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   {avgMinutesPerActiveDay} <span className="text-sm font-normal">phút</span>
                 </div>
                 <div className="text-xs text-blue-200 mt-0.5">
-                  Định mức: {Math.round(task.targetDurationMs / 60000)} phút
+                  Định mức:{' '}
+                  {task.targetUnlimited ? 'Không giới hạn' : `${Math.round(task.targetDurationMs / 60000)} phút`}
                 </div>
               </div>
             </div>
@@ -511,6 +521,11 @@ export const ProjectStatsModal: React.FC<ProjectStatsModalProps> = ({
                   ) : (
                     <span className="font-semibold text-slate-400">Chưa có phiên làm việc trong 30 ngày gần nhất</span>
                   )}
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  Hôm nay cộng dồn: <span className="font-semibold text-slate-700">{todayMinutes} phút</span> •{' '}
+                  {todaySessions.length} phiên
                 </div>
 
                 {/* Heat Legend */}

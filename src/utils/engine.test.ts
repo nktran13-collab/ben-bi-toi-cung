@@ -279,6 +279,29 @@ test('generateCSVExport & generateMarkdownExport output valid report data', () =
   assert.match(md, /Tập thể dục/);
 });
 
+test('unlimited project targets export without a numeric quota', () => {
+  const task: TaskItem = {
+    id: 'project-unlimited',
+    name: 'Deep Work',
+    mode: 'project',
+    category: 'work',
+    targetDurationMs: 1800000,
+    targetUnlimited: true,
+    currentStreak: 2,
+    bestStreak: 2,
+    shields: 0,
+    status: 'idle',
+    startedAtMs: null,
+    accumulatedMs: 0,
+    historyStartTimestamp: 0,
+    sync_status: 0,
+    updated_at_ms: Date.now(),
+  };
+
+  assert.match(generateCSVExport(task, [], []), /"Không giới hạn"/);
+  assert.match(generateMarkdownExport(task, [], []), /\*\*Định mức\*\*: Không giới hạn/);
+});
+
 test('getEffectiveTargetDurationMs doubles quota only while inCompensationQuest is active', () => {
   const baseMs = 30 * 60 * 1000;
   assert.equal(

@@ -709,6 +709,7 @@ export function useTaskActions(options: UseTaskActionsOptions) {
         category: TaskCategory;
         targetDurationMs: number;
         targetMilestoneDays?: number;
+        targetUnlimited?: boolean;
         notes?: string;
       },
     ) => {
