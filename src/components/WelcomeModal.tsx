@@ -34,8 +34,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onO
   };
 
   const handleRemindLater = () => {
-    // Explicitly keep showing next time
-    onClose(false);
+    onClose(dontShowAgain);
   };
 
   return (
